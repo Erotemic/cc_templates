@@ -68,7 +68,8 @@ def draw_bytebuddy(draw: ImageDraw.ImageDraw, box, phase=0.0, action="idle"):
     x0, y0, x1, y1 = box
     w = x1 - x0
     h = y1 - y0
-    cx, cy = (x0 + x1) // 2, (y0 + y1) // 2
+    cx = (x0 + x1) // 2
+    cy = (y0 + y1) // 2
 
     # Hover offset for liveliness
     hover = int(2 * sin(phase * 2 * pi))

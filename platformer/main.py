@@ -1,3 +1,7 @@
+"""
+This script is a helper that invokes the main function from the package folder.
+"""
+
 from platformer.main import main
 
 
