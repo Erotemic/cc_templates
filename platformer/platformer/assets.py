@@ -12,6 +12,10 @@ Tile size: 48x48 by default.
 
 Usage (CLI):
     python make_bytebuddy_assets.py --outdir ./assets --scale 1
+
+See Also:
+    https://craftpix.net/freebies/?srsltid=AfmBOor5Nm0DD_AL6PvphX5ctl_74W3c7kI29O0WkAOnjGnLD6hhj_m-
+    https://github.com/Erotemic/binary_content
 """
 
 from __future__ import annotations
