@@ -16,6 +16,8 @@ Usage (CLI):
 See Also:
     https://craftpix.net/freebies/?srsltid=AfmBOor5Nm0DD_AL6PvphX5ctl_74W3c7kI29O0WkAOnjGnLD6hhj_m-
     https://github.com/Erotemic/binary_content
+    https://opengameart.org/
+    https://kenney.nl/
 """
 
 from __future__ import annotations
