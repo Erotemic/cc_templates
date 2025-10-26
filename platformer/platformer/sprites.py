@@ -30,8 +30,8 @@ class Player(pygame.sprite.Sprite):
         self.visual = None
         if USE_SPRITES:
             paths = get_default_paths()
-            paths['sheet'] = '/home/joncrall/code/binary_content/spritesheets/assets-v001.png'
-            paths['meta'] = '/home/joncrall/code/cc_templates/platformer/assets-v001_metadata.json'
+            # paths['sheet'] = '/home/joncrall/code/binary_content/spritesheets/assets-v001.png'
+            # paths['meta'] = '/home/joncrall/code/cc_templates/platformer/assets-v001_metadata.json'
             sheet = SpriteSheet(paths["sheet"], paths["meta"])
             anims = {
                 "idle":   sheet.anim_surfs("idle", entity_name='bytebuddy'),
