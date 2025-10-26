@@ -114,8 +114,12 @@ class SpriteView(QtWidgets.QGraphicsView):
         # Important: the QGraphicsView uses an internal viewport widget that actually receives the DnD events
         self.viewport().setAcceptDrops(True)
         self.setMouseTracking(True)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
 
         self._scene = QtWidgets.QGraphicsScene(self)
         self.setScene(self._scene)
@@ -136,18 +140,18 @@ class SpriteView(QtWidgets.QGraphicsView):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
                 low = url.toLocalFile().lower()
-                if low.endswith('.png') or low.endswith('.json'):
-                    logging.info('[SpriteView] dragEnterEvent accept: %s', low)
+                if low.endswith(".png") or low.endswith(".json"):
+                    logging.info("[SpriteView] dragEnterEvent accept: %s", low)
                     event.acceptProposedAction()
                     return
-        logging.info('[SpriteView] dragEnterEvent ignore')
+        logging.info("[SpriteView] dragEnterEvent ignore")
         event.ignore()
 
     def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
                 low = url.toLocalFile().lower()
-                if low.endswith('.png') or low.endswith('.json'):
+                if low.endswith(".png") or low.endswith(".json"):
                     # keep accepting while dragging over the view
                     event.acceptProposedAction()
                     return
@@ -156,21 +160,23 @@ class SpriteView(QtWidgets.QGraphicsView):
     def dropEvent(self, event: QtGui.QDropEvent):
         for url in event.mimeData().urls():
             local = url.toLocalFile()
-            logging.info('[SpriteView] dropEvent path: %s', local)
+            logging.info("[SpriteView] dropEvent path: %s", local)
             try:
                 self.path_dropped.emit(local)
                 event.acceptProposedAction()
             except Exception as ex:
-                logging.exception('[SpriteView] path_dropped emit failed: %s', ex)
+                logging.exception("[SpriteView] path_dropped emit failed: %s", ex)
             break
 
     # ------------- Image Handling -------------
     def load_image(self, path: str):
-        logging.info('[SpriteView] load_image: %s', path)
+        logging.info("[SpriteView] load_image: %s", path)
         pix = QtGui.QPixmap(path)
         if pix.isNull():
-            logging.error('[SpriteView] load_image failed: %s', path)
-            QtWidgets.QMessageBox.warning(self, 'Load Error', 'Failed to load image: ' + path)
+            logging.error("[SpriteView] load_image failed: %s", path)
+            QtWidgets.QMessageBox.warning(
+                self, "Load Error", "Failed to load image: " + path
+            )
             return
         self._scene.clear()
         self._pixmap_item = self._scene.addPixmap(pix)
@@ -180,7 +186,7 @@ class SpriteView(QtWidgets.QGraphicsView):
         self.resetTransform()
         self._zoom = 1.0
         self.image_changed.emit()
-        logging.info('[SpriteView] image loaded: %dx%d', pix.width(), pix.height())
+        logging.info("[SpriteView] image loaded: %dx%d", pix.width(), pix.height())
 
     def image_loaded(self) -> bool:
         return self._pixmap_item is not None
@@ -265,37 +271,52 @@ class SpriteView(QtWidgets.QGraphicsView):
 # Metadata Panel (Dock)
 # -----------------------------
 class MetadataPanel(QtWidgets.QWidget):
-    fields_changed = QtCore.pyqtSignal(dict)  # emits full metadata + rect dict
+    """Edits either a single box or applies *only changed fields* to all selections.
+    Numeric fields are QLineEdit+validators so they can be blank for mixed values."""
+
+    # Emits only the fields that actually changed, e.g. {
+    #   'entity_name': 'orc', 'rect': {'x': 12, 'h': 64}, 'animation_frame_number': 3
+    # }
+    fields_changed = QtCore.pyqtSignal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._current_box_id: Optional[int] = None
+        self._selection_count = 0
+        self._touched: set = set()  # which fields were edited by the user
 
-        # Metadata widgets
+        # Banner shows multi-edit state
+        self.banner = QtWidgets.QLabel("")
+        self.banner.setStyleSheet("color:#2b6;font-weight:600;")
+
+        # Text fields
         self.entity_edit = QtWidgets.QLineEdit()
+        self._wire_text(self.entity_edit, "entity_name")
         self.anim_edit = QtWidgets.QLineEdit()
-        self.frame_spin = QtWidgets.QSpinBox()
-        self.frame_spin.setRange(0, 10000)
+        self._wire_text(self.anim_edit, "animation_name")
 
-        # Rect widgets
-        self.x_spin = QtWidgets.QSpinBox()
-        self.x_spin.setRange(0, 1_000_000)
-        self.y_spin = QtWidgets.QSpinBox()
-        self.y_spin.setRange(0, 1_000_000)
-        self.w_spin = QtWidgets.QSpinBox()
-        self.w_spin.setRange(1, 1_000_000)
-        self.h_spin = QtWidgets.QSpinBox()
-        self.h_spin.setRange(1, 1_000_000)
+        # Numeric as QLineEdit so we can display blank on mixed
+        def int_edit(name, minv=0, maxv=1_000_000):
+            e = QtWidgets.QLineEdit()
+            e.setValidator(QtGui.QIntValidator(minv, maxv, e))
+            self._wire_text(e, name)
+            return e
+
+        self.frame_edit = int_edit("animation_frame_number", 0, 10000)
+        self.x_edit = int_edit("x")
+        self.y_edit = int_edit("y")
+        self.w_edit = int_edit("w", 1)
+        self.h_edit = int_edit("h", 1)
 
         form = QtWidgets.QFormLayout()
+        form.addRow(self.banner)
         form.addRow("Entity Name", self.entity_edit)
         form.addRow("Animation Name", self.anim_edit)
-        form.addRow("Animation Frame #", self.frame_spin)
+        form.addRow("Animation Frame #", self.frame_edit)
         form.addRow(QtWidgets.QLabel(""))
-        form.addRow("X", self.x_spin)
-        form.addRow("Y", self.y_spin)
-        form.addRow("Width", self.w_spin)
-        form.addRow("Height", self.h_spin)
+        form.addRow("X", self.x_edit)
+        form.addRow("Y", self.y_edit)
+        form.addRow("Width", self.w_edit)
+        form.addRow("Height", self.h_edit)
 
         wrap = QtWidgets.QWidget()
         wrap.setLayout(form)
@@ -305,67 +326,81 @@ class MetadataPanel(QtWidgets.QWidget):
         lay = QtWidgets.QVBoxLayout(self)
         lay.addWidget(scroll)
 
-        for w in [self.entity_edit, self.anim_edit]:
-            w.textEdited.connect(self._emit)
-        for w in [self.frame_spin, self.x_spin, self.y_spin, self.w_spin, self.h_spin]:
-            w.valueChanged.connect(self._emit)
+    # ---- helpers ----
+    def _wire_text(self, widget: QtWidgets.QLineEdit, field_name: str):
+        # mark as touched on any edit; emit on editingFinished with only this field
+        def _mark(_):
+            self._touched.add(field_name)
 
-    def set_box(
-        self, box_id: Optional[int], rect: Optional[QtCore.QRectF], meta: Optional[Dict]
-    ):
-        self._current_box_id = box_id
-        widgets = [
+        def _emit():
+            if field_name not in self._touched:
+                return
+            payload = {}
+            if field_name in {
+                "entity_name",
+                "animation_name",
+                "animation_frame_number",
+            }:
+                if field_name == "animation_frame_number":
+                    txt = widget.text().strip()
+                    if txt != "":
+                        payload["animation_frame_number"] = int(txt)
+                else:
+                    payload[field_name] = widget.text().strip()
+            else:
+                # rect field
+                txt = widget.text().strip()
+                if txt != "":
+                    payload["rect"] = {field_name: int(txt)}
+            if payload:
+                self.fields_changed.emit(payload)
+            # keep touched so successive edits still emit; clear on set_from_values
+
+        widget.textEdited.connect(_mark)
+        widget.editingFinished.connect(_emit)
+
+    def set_selection_count(self, n: int):
+        self._selection_count = n
+        self.banner.setText(f"Editing {n} selected" if n > 1 else "")
+
+    def set_from_values(self, meta: Dict, rect: Dict, multi: bool):
+        """Set widget contents from possibly-partial values.
+        Any key missing or set to None is shown as blank.
+        When multi=True and a value is None, placeholder '(multiple)' is shown."""
+        # prevent feedback loops
+        edits: List[QtWidgets.QLineEdit] = [
             self.entity_edit,
             self.anim_edit,
-            self.frame_spin,
-            self.x_spin,
-            self.y_spin,
-            self.w_spin,
-            self.h_spin,
+            self.frame_edit,
+            self.x_edit,
+            self.y_edit,
+            self.w_edit,
+            self.h_edit,
         ]
-        for w in widgets:
+        for w in edits:
             w.blockSignals(True)
 
-        if rect and meta is not None and box_id is not None:
-            self.entity_edit.setText(meta.get("entity_name", ""))
-            self.anim_edit.setText(meta.get("animation_name", ""))
-            self.frame_spin.setValue(int(meta.get("animation_frame_number", 0)))
-            self.x_spin.setValue(int(rect.x()))
-            self.y_spin.setValue(int(rect.y()))
-            self.w_spin.setValue(int(rect.width()))
-            self.h_spin.setValue(int(rect.height()))
-        else:
-            self.entity_edit.clear()
-            self.anim_edit.clear()
-            self.frame_spin.setValue(0)
-            self.x_spin.setValue(0)
-            self.y_spin.setValue(0)
-            self.w_spin.setValue(1)
-            self.h_spin.setValue(1)
+        # text helpers
+        def set_or_blank(edit: QtWidgets.QLineEdit, value):
+            if value is None:
+                edit.clear()
+                edit.setPlaceholderText("(multiple)" if multi else "")
+            else:
+                edit.setText(str(value))
+                edit.setPlaceholderText("")
 
-        for w in widgets:
+        set_or_blank(self.entity_edit, meta.get("entity_name"))
+        set_or_blank(self.anim_edit, meta.get("animation_name"))
+        set_or_blank(self.frame_edit, meta.get("animation_frame_number"))
+        set_or_blank(self.x_edit, rect.get("x"))
+        set_or_blank(self.y_edit, rect.get("y"))
+        set_or_blank(self.w_edit, rect.get("w"))
+        set_or_blank(self.h_edit, rect.get("h"))
+        for w in edits:
             w.blockSignals(False)
-
-    def _emit(self):
-        if self._current_box_id is None:
-            return
-        data = {
-            "id": self._current_box_id,
-            "entity_name": self.entity_edit.text().strip(),
-            "animation_name": self.anim_edit.text().strip(),
-            "animation_frame_number": int(self.frame_spin.value()),
-            "rect": {
-                "x": int(self.x_spin.value()),
-                "y": int(self.y_spin.value()),
-                "w": int(self.w_spin.value()),
-                "h": int(self.h_spin.value()),
-            },
-        }
-        self.fields_changed.emit(data)
+        self._touched.clear()
 
 
-# -----------------------------
-# Main Window
 # -----------------------------
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -381,7 +416,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.view.path_dropped.connect(self.on_path_dropped)
 
         self.list_widget = QtWidgets.QListWidget()
+        self.list_widget.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.list_widget.currentRowChanged.connect(self.on_list_selection_changed)
+        self.list_widget.itemSelectionChanged.connect(
+            self.on_list_items_selection_changed
+        )
         self.list_widget.itemDoubleClicked.connect(self.focus_selected_box)
 
         self.add_btn = QtWidgets.QPushButton("+ New Box")
@@ -393,6 +432,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.save_btn.setToolTip("Save metadata (Ctrl+S)")
         self.save_btn.clicked.connect(self.save_metadata)
 
+        # Batch tools
+        self.distrib_h_btn = QtWidgets.QPushButton("Distribute H")
+        self.distrib_h_btn.setToolTip("Evenly distribute left edges horizontally")
+        self.distrib_h_btn.clicked.connect(self.distribute_h)
+        self.distrib_v_btn = QtWidgets.QPushButton("Distribute V")
+        self.distrib_v_btn.setToolTip("Evenly distribute top edges vertically")
+        self.distrib_v_btn.clicked.connect(self.distribute_v)
+
         side = QtWidgets.QWidget()
         side_lay = QtWidgets.QVBoxLayout(side)
         side_lay.addWidget(QtWidgets.QLabel("Boxes"))
@@ -401,6 +448,10 @@ class MainWindow(QtWidgets.QMainWindow):
         btn_row.addWidget(self.add_btn)
         btn_row.addWidget(self.del_btn)
         side_lay.addLayout(btn_row)
+        tool_row = QtWidgets.QHBoxLayout()
+        tool_row.addWidget(self.distrib_h_btn)
+        tool_row.addWidget(self.distrib_v_btn)
+        side_lay.addLayout(tool_row)
         side_lay.addWidget(self.save_btn)
 
         splitter = QtWidgets.QSplitter()
@@ -420,7 +471,9 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.meta_dock)
 
-        self.statusBar().showMessage("Drag & drop a PNG or JSON anywhere. Shift+Drag to draw a rectangle, or click '+ New Box'.")
+        self.statusBar().showMessage(
+            "Drag & drop a PNG or JSON anywhere. Shift+Drag to draw a rectangle, or click '+ New Box'."
+        )
 
         self.image_path: Optional[str] = None
         self.box_counter = 0
@@ -485,6 +538,15 @@ class MainWindow(QtWidgets.QMainWindow):
         act_save.setShortcut(QtGui.QKeySequence("Ctrl+S"))
         act_save.triggered.connect(self.save_metadata)
         toolbar.addAction(act_save)
+        toolbar.addSeparator()
+        act_dh = QtWidgets.QAction("Distribute H", self)
+        act_dh.setToolTip("Evenly distribute left edges of selected boxes")
+        act_dh.triggered.connect(self.distribute_h)
+        toolbar.addAction(act_dh)
+        act_dv = QtWidgets.QAction("Distribute V", self)
+        act_dv.setToolTip("Evenly distribute top edges of selected boxes")
+        act_dv.triggered.connect(self.distribute_v)
+        toolbar.addAction(act_dv)
 
     def show_about(self):
         msg = (
@@ -514,7 +576,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def open_image_path(self, path: str):
         if not path:
             return
-        logging.info('[MainWindow] open_image_path: %s', path)
+        logging.info("[MainWindow] open_image_path: %s", path)
         self.view.load_image(path)
         self.image_path = path
 
@@ -530,15 +592,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.box_index[item.box_id] = item
         self._add_list_item(item)
         self.select_box_in_list(item.box_id)
-        self.meta_panel.set_box(item.box_id, item.scene_rect(), item.meta)
+        # ensure scene/list selection sync and panel reflects the single selection
+        self.on_list_items_selection_changed()
         item.signals.geometry_changed.connect(self._on_rect_geom_changed)
 
     def _on_rect_geom_changed(self, box_id: int):
         ri = self.box_index.get(box_id)
         if not ri:
             return
-        self.meta_panel.set_box(ri.box_id, ri.scene_rect(), ri.meta)
         self._refresh_list_item(ri.box_id)
+        self._update_meta_panel_from_selected()
 
     def on_box_created(self, item: RectItem):
         item.box_id = self.box_counter
@@ -547,7 +610,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.box_index[item.box_id] = item
         self._add_list_item(item)
         self.select_box_in_list(item.box_id)
-        self.meta_panel.set_box(item.box_id, item.scene_rect(), item.meta)
+        self.on_list_items_selection_changed()
         item.signals.geometry_changed.connect(self._on_rect_geom_changed)
 
     def _add_list_item(self, rect_item: RectItem):
@@ -576,13 +639,53 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.list_widget.setCurrentRow(i)
                 break
 
+    def get_selected_ids(self) -> List[int]:
+        ids = []
+        for it in self.list_widget.selectedItems():
+            ids.append(it.data(QtCore.Qt.UserRole))
+        return ids
+
+    def get_selected_rect_items(self) -> List[RectItem]:
+        return [
+            self.box_index[i] for i in self.get_selected_ids() if i in self.box_index
+        ]
+
     def get_selected_rect_item(self) -> Optional[RectItem]:
-        idx = self.list_widget.currentRow()
-        if idx < 0:
-            return None
-        item = self.list_widget.item(idx)
-        box_id = item.data(QtCore.Qt.UserRole)
-        return self.box_index.get(box_id)
+        items = self.get_selected_rect_items()
+        return items[0] if items else None
+
+    # ---- Batch arrange tools ----
+    def distribute_h(self):
+        items = self.get_selected_rect_items()
+        if len(items) < 3:
+            return
+        items.sort(key=lambda ri: ri.pos().x())
+        lefts = [ri.pos().x() for ri in items]
+        first, last = lefts[0], lefts[-1]
+        if last == first:
+            step = 0
+        else:
+            step = (last - first) / (len(items) - 1)
+        for i, ri in enumerate(items):
+            ri.setPos(int(round(first + i * step)), int(ri.pos().y()))
+            self._refresh_list_item(ri.box_id)
+        self._update_meta_panel_from_selected()
+
+    def distribute_v(self):
+        items = self.get_selected_rect_items()
+        if len(items) < 3:
+            return
+        items.sort(key=lambda ri: ri.pos().y())
+        tops = [ri.pos().y() for ri in items]
+        first, last = tops[0], tops[-1]
+        if last == first:
+            step = 0
+        else:
+            step = (last - first) / (len(items) - 1)
+        for i, ri in enumerate(items):
+            ri.setPos(int(ri.pos().x()), int(round(first + i * step)))
+            self._refresh_list_item(ri.box_id)
+        self._update_meta_panel_from_selected()
 
     def sync_selection_from_scene(self):
         selected_ids = [
@@ -590,71 +693,141 @@ class MainWindow(QtWidgets.QMainWindow):
             for it in self.view._scene.selectedItems()
             if isinstance(it, RectItem)
         ]
-        if not selected_ids:
-            self.list_widget.clearSelection()
-            self.meta_panel.set_box(None, None, None)
-            return
-        target = selected_ids[0]
-        self.select_box_in_list(target)
-        self.meta_panel.set_box(
-            target, self.box_index[target].scene_rect(), self.box_index[target].meta
-        )
+        # Sync list selection to match scene selection
+        self.list_widget.blockSignals(True)
+        self.list_widget.clearSelection()
+        for i in range(self.list_widget.count()):
+            it = self.list_widget.item(i)
+            if it.data(QtCore.Qt.UserRole) in selected_ids:
+                it.setSelected(True)
+        self.list_widget.blockSignals(False)
+        # Update metadata panel with common values only
+        self._update_meta_panel_from_selected()
 
     def on_list_selection_changed(self, idx: int):
-        if idx < 0:
-            self.meta_panel.set_box(None, None, None)
-            return
-        item = self.list_widget.item(idx)
-        box_id = item.data(QtCore.Qt.UserRole)
+        # Kept for compatibility with single selection changes
+        self.on_list_items_selection_changed()
+
+    def on_list_items_selection_changed(self):
+        # Update scene selection from list selection
+        selected_ids = self.get_selected_ids()
         for rect_item in self.view.all_rect_items():
-            rect_item.setSelected(rect_item.box_id == box_id)
-        if box_id in self.box_index:
-            ri = self.box_index[box_id]
-            self.view.centerOn(ri)
-            self.meta_panel.set_box(ri.box_id, ri.scene_rect(), ri.meta)
+            rect_item.setSelected(rect_item.box_id in selected_ids)
+        # Update metadata panel with common values only
+        self._update_meta_panel_from_selected()
+
+    def _common_or_none(self, vals: List):
+        vals = list(vals)
+        if not vals:
+            return None
+        first = vals[0]
+        for v in vals[1:]:
+            if v != first:
+                return None
+        return first
+
+    def _update_meta_panel_from_selected(self):
+        items = self.get_selected_rect_items()
+        n = len(items)
+        if n == 0:
+            self.meta_panel.set_selection_count(0)
+            self.meta_panel.set_from_values({}, {}, multi=False)
+            return
+        self.meta_panel.set_selection_count(n)
+        metas = [ri.meta for ri in items]
+        rects = [ri.scene_rect() for ri in items]
+        meta_values = {
+            "entity_name": self._common_or_none(
+                [m.get("entity_name", "") for m in metas]
+            ),
+            "animation_name": self._common_or_none(
+                [m.get("animation_name", "") for m in metas]
+            ),
+            "animation_frame_number": self._common_or_none(
+                [int(m.get("animation_frame_number", 0)) for m in metas]
+            ),
+        }
+        rect_values = {
+            "x": self._common_or_none([int(r.x()) for r in rects]),
+            "y": self._common_or_none([int(r.y()) for r in rects]),
+            "w": self._common_or_none([int(r.width()) for r in rects]),
+            "h": self._common_or_none([int(r.height()) for r in rects]),
+        }
+        self.meta_panel.set_from_values(meta_values, rect_values, multi=(n > 1))
 
     def focus_selected_box(self):
         ri = self.get_selected_rect_item()
         if ri:
             self.view.centerOn(ri)
-            self.meta_panel.set_box(ri.box_id, ri.scene_rect(), ri.meta)
+            self._update_meta_panel_from_selected()
             self.meta_dock.raise_()
 
-    def on_meta_fields_changed(self, data: Dict):
-        box_id = data.get("id")
-        if box_id not in self.box_index:
+    def on_meta_fields_changed(self, changes: Dict):
+        # Apply *only* changed fields to the current selection
+        items = self.get_selected_rect_items()
+        if not items:
             return
-        ri = self.box_index[box_id]
-        ri.meta.update(
-            {
-                "entity_name": data["entity_name"],
-                "animation_name": data["animation_name"],
-                "animation_frame_number": int(data["animation_frame_number"]),
-            }
-        )
-        ri.setRect(0, 0, data["rect"]["w"], data["rect"]["h"])
-        ri.setPos(data["rect"]["x"], data["rect"]["y"])
-        self._refresh_list_item(box_id)
+        # Metadata keys
+        if "entity_name" in changes:
+            for ri in items:
+                ri.meta["entity_name"] = changes["entity_name"]
+        if "animation_name" in changes:
+            for ri in items:
+                ri.meta["animation_name"] = changes["animation_name"]
+        if "animation_frame_number" in changes:
+            for ri in items:
+                ri.meta["animation_frame_number"] = int(
+                    changes["animation_frame_number"]
+                )
+        # Rect keys
+        rect = changes.get("rect", {})
+        for ri in items:
+            x = int(ri.pos().x())
+            y = int(ri.pos().y())
+            w = int(ri.rect().width())
+            h = int(ri.rect().height())
+            if "x" in rect:
+                x = int(rect["x"])
+            if "y" in rect:
+                y = int(rect["y"])
+            if "w" in rect:
+                w = int(rect["w"])
+            if "h" in rect:
+                h = int(rect["h"])
+            ri.setRect(0, 0, w, h)
+            ri.setPos(x, y)
+        for ri in items:
+            self._refresh_list_item(ri.box_id)
+        # Refresh panel to reflect new common values
+        self._update_meta_panel_from_selected()
 
     def delete_selected_box(self):
-        idx = self.list_widget.currentRow()
-        if idx < 0:
+        selected_ids = self.get_selected_ids()
+        if not selected_ids:
             return
-        item = self.list_widget.item(idx)
-        box_id = item.data(QtCore.Qt.UserRole)
+        confirm = (
+            f"Delete {len(selected_ids)} box(es)?"
+            if len(selected_ids) > 1
+            else f"Delete box #{selected_ids[0]}?"
+        )
         reply = QtWidgets.QMessageBox.question(
             self,
-            "Delete Box",
-            f"Delete box #{box_id}?",
+            "Delete Box(es)",
+            confirm,
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
         )
         if reply != QtWidgets.QMessageBox.Yes:
             return
-        rect_item = self.box_index.pop(box_id, None)
-        if rect_item:
-            self.view._scene.removeItem(rect_item)
-        self.list_widget.takeItem(idx)
-        self.meta_panel.set_box(None, None, None)
+        for i in reversed(range(self.list_widget.count())):
+            it = self.list_widget.item(i)
+            if it.data(QtCore.Qt.UserRole) in selected_ids:
+                box_id = it.data(QtCore.Qt.UserRole)
+                rect_item = self.box_index.pop(box_id, None)
+                if rect_item:
+                    self.view._scene.removeItem(rect_item)
+                self.list_widget.takeItem(i)
+        self.meta_panel.set_selection_count(0)
+        self.meta_panel.set_from_values({}, {}, multi=False)
 
     def save_metadata(self):
         if not self.view.image_loaded():
@@ -708,24 +881,26 @@ class MainWindow(QtWidgets.QMainWindow):
     def load_metadata_path(self, path: str):
         if not path:
             return
-        logging.info('[MainWindow] load_metadata_path: %s', path)
+        logging.info("[MainWindow] load_metadata_path: %s", path)
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except Exception as ex:
-            logging.exception('[MainWindow] load_metadata_path failed')
-            QtWidgets.QMessageBox.warning(self, 'Load Error', 'Failed to read JSON: ' + str(ex))
+            logging.exception("[MainWindow] load_metadata_path failed")
+            QtWidgets.QMessageBox.warning(
+                self, "Load Error", "Failed to read JSON: " + str(ex)
+            )
             return
 
-        img_path = data.get('image_path') or ''
+        img_path = data.get("image_path") or ""
         if img_path and os.path.exists(img_path):
             self.view.load_image(img_path)
             self.image_path = img_path
         elif not self.view.image_loaded():
             QtWidgets.QMessageBox.information(
                 self,
-                'Image Required',
-                'The metadata file does not reference a valid image path. Please open the PNG first, then load the metadata again.',
+                "Image Required",
+                "The metadata file does not reference a valid image path. Please open the PNG first, then load the metadata again.",
             )
             return
 
@@ -735,23 +910,23 @@ class MainWindow(QtWidgets.QMainWindow):
         self.box_index.clear()
         self.box_counter = 0
 
-        for b in data.get('boxes', []):
-            r = b.get('rect', {'x': 0, 'y': 0, 'w': 1, 'h': 1})
+        for b in data.get("boxes", []):
+            r = b.get("rect", {"x": 0, "y": 0, "w": 1, "h": 1})
             meta = {
-                'entity_name': b.get('entity_name', ''),
-                'animation_name': b.get('animation_name', ''),
-                'animation_frame_number': int(b.get('animation_frame_number', 0)),
+                "entity_name": b.get("entity_name", ""),
+                "animation_name": b.get("animation_name", ""),
+                "animation_frame_number": int(b.get("animation_frame_number", 0)),
             }
-            box_id = int(b.get('id', self.box_counter))
+            box_id = int(b.get("id", self.box_counter))
             self.box_counter = max(self.box_counter, box_id + 1)
-            item = RectItem(r['x'], r['y'], r['w'], r['h'], box_id=box_id, meta=meta)
+            item = RectItem(r["x"], r["y"], r["w"], r["h"], box_id=box_id, meta=meta)
             self.view.add_box_item(item)
             self.box_index[item.box_id] = item
             self._add_list_item(item)
             item.signals.geometry_changed.connect(self._on_rect_geom_changed)
 
-        self.statusBar().showMessage('Loaded metadata from ' + path, 5000)
-        logging.info('[MainWindow] loaded %d boxes', len(self.box_index))
+        self.statusBar().showMessage("Loaded metadata from " + path, 5000)
+        logging.info("[MainWindow] loaded %d boxes", len(self.box_index))
         return
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -798,42 +973,44 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage("Loaded metadata from " + path, 5000)
 
     def on_path_dropped(self, path: str):
-        logging.info('[MainWindow] on_path_dropped: %s', path)
+        logging.info("[MainWindow] on_path_dropped: %s", path)
         low = path.lower()
-        if low.endswith('.json'):
+        if low.endswith(".json"):
             self.load_metadata_path(path)
-        elif low.endswith('.png'):
+        elif low.endswith(".png"):
             self.open_image_path(path)
         else:
-            QtWidgets.QMessageBox.information(self, "Unsupported File", "Drop a .png or .json file.")
+            QtWidgets.QMessageBox.information(
+                self, "Unsupported File", "Drop a .png or .json file."
+            )
 
 
 def main():
     # Basic logging setup; use LOGLEVEL env to override, e.g., LOGLEVEL=DEBUG
-    level_name = os.environ.get('LOGLEVEL', 'INFO').upper()
+    level_name = os.environ.get("LOGLEVEL", "INFO").upper()
     logging.basicConfig(
         level=getattr(logging, level_name, logging.INFO),
-        format='[%(levelname)s] %(message)s'
+        format="[%(levelname)s] %(message)s",
     )
-    logging.info('Starting Sprite Sheet Metadata Editor')
+    logging.info("Starting Sprite Sheet Metadata Editor")
 
     app = QtWidgets.QApplication(sys.argv)
-    app.setOrganizationName('SpriteTools')
-    app.setApplicationName('Sprite Sheet Metadata Editor')
+    app.setOrganizationName("SpriteTools")
+    app.setApplicationName("Sprite Sheet Metadata Editor")
     w = MainWindow()
 
     # --- CLI support ---
     args = [a for a in sys.argv[1:] if os.path.exists(a)]
-    logging.info('CLI args (existing paths): %s', args)
+    logging.info("CLI args (existing paths): %s", args)
     if len(args) == 1:
         p0 = args[0].lower()
-        if p0.endswith('.json'):
+        if p0.endswith(".json"):
             w.load_metadata_path(args[0])
-        elif p0.endswith('.png'):
+        elif p0.endswith(".png"):
             w.open_image_path(args[0])
     elif len(args) >= 2:
-        img = next((a for a in args if a.lower().endswith('.png')), None)
-        jsn = next((a for a in args if a.lower().endswith('.json')), None)
+        img = next((a for a in args if a.lower().endswith(".png")), None)
+        jsn = next((a for a in args if a.lower().endswith(".json")), None)
         if img:
             w.open_image_path(img)
         if jsn:
@@ -846,4 +1023,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
