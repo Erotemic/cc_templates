@@ -2,6 +2,7 @@ import json
 import os
 import sys
 from typing import Optional, Dict, List
+from enum import IntFlag, auto
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import logging
@@ -29,7 +30,20 @@ class RectItemSignals(QtCore.QObject):
 
 class RectItem(QtWidgets.QGraphicsRectItem):
     """QGraphicsRectItem that keeps (x,y) in item.pos() and (w,h) in rect(0,0,w,h).
-    Emits geometry_changed via a composed QObject (RectItemSignals)."""
+    Emits geometry_changed via a composed QObject (RectItemSignals).
+
+    New: Ctrl+Drag to resize from edges/corners. Hover shows size cursors.
+    """
+
+    class Edge(IntFlag):
+        NONE = 0
+        LEFT = auto()
+        RIGHT = auto()
+        TOP = auto()
+        BOTTOM = auto()
+
+    HANDLE_MARGIN = 10      # px, in item(local) coords
+    MIN_SIZE = 1            # px
 
     def __init__(
         self,
@@ -46,7 +60,7 @@ class RectItem(QtWidgets.QGraphicsRectItem):
         self.meta = meta or {
             "entity_name": "",
             "animation_name": "",
-            "animation_frame_number": 0,
+            "frame_number": 0,
         }
         self.signals = RectItemSignals()
 
@@ -63,14 +77,29 @@ class RectItem(QtWidgets.QGraphicsRectItem):
         self.setPen(self._normal_pen)
         self.setBrush(self._brush)
 
+        # --- resize state ---
+        self._resizing = False
+        self._resize_edges = RectItem.Edge.NONE
+        self._press_pos_local = QtCore.QPointF()
+        self._start_rect = QtCore.QRectF()
+        self._start_pos = QtCore.QPointF()
+
+    # ---------- Hover + cursors ----------
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent):
         self.setPen(self._hover_pen)
         super().hoverEnterEvent(event)
 
     def hoverLeaveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent):
+        self.unsetCursor()
         self.setPen(self._selected_pen if self.isSelected() else self._normal_pen)
         super().hoverLeaveEvent(event)
 
+    def hoverMoveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent):
+        edges = self._hit_test_handles(event.pos())
+        self._apply_cursor_for_edges(edges)
+        super().hoverMoveEvent(event)
+
+    # ---------- Painting ----------
     def paint(
         self,
         painter: QtGui.QPainter,
@@ -80,15 +109,127 @@ class RectItem(QtWidgets.QGraphicsRectItem):
         self.setPen(self._selected_pen if self.isSelected() else self._normal_pen)
         super().paint(painter, option, widget)
 
+    # ---------- Selection/Move change -> signal ----------
     def itemChange(self, change, value):
         if change in (
             QtWidgets.QGraphicsItem.ItemSelectedHasChanged,
             QtWidgets.QGraphicsItem.ItemPositionHasChanged,
             QtWidgets.QGraphicsItem.ItemTransformHasChanged,
         ):
-            # Emit using the composed QObject
             self.signals.geometry_changed.emit(self.box_id)
         return super().itemChange(change, value)
+
+    # ---------- Mouse for resizing ----------
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent):
+        if event.button() == QtCore.Qt.LeftButton:
+            edges = self._hit_test_handles(event.pos())
+            if edges != RectItem.Edge.NONE:
+                # Begin resize
+                self._resizing = True
+                self._resize_edges = edges
+                self._press_pos_local = event.pos()
+                self._start_rect = QtCore.QRectF(self.rect())
+                self._start_pos = QtCore.QPointF(self.pos())
+                self._apply_cursor_for_edges(edges)
+                event.accept()
+                return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent):
+        if self._resizing:
+            # delta in local coords (because event.pos() is local)
+            dx = event.pos().x() - self._press_pos_local.x()
+            dy = event.pos().y() - self._press_pos_local.y()
+
+            new_x = self._start_pos.x()
+            new_y = self._start_pos.y()
+            new_w = self._start_rect.width()
+            new_h = self._start_rect.height()
+
+            # Horizontal edges
+            if self._resize_edges & RectItem.Edge.LEFT:
+                # dragging left edge changes x and width inversely
+                new_w = max(self.MIN_SIZE, self._start_rect.width() - dx)
+                # compute how much width changed to shift pos
+                shift_x = (self._start_rect.width() - new_w)
+                new_x = self._start_pos.x() + shift_x
+            elif self._resize_edges & RectItem.Edge.RIGHT:
+                new_w = max(self.MIN_SIZE, self._start_rect.width() + dx)
+
+            # Vertical edges
+            if self._resize_edges & RectItem.Edge.TOP:
+                new_h = max(self.MIN_SIZE, self._start_rect.height() - dy)
+                shift_y = (self._start_rect.height() - new_h)
+                new_y = self._start_pos.y() + shift_y
+            elif self._resize_edges & RectItem.Edge.BOTTOM:
+                new_h = max(self.MIN_SIZE, self._start_rect.height() + dy)
+
+            # Apply (keep local rect anchored at 0,0)
+            self.setRect(0, 0, new_w, new_h)
+            self.setPos(int(round(new_x)), int(round(new_y)))
+
+            # Keep UI synced live
+            self.signals.geometry_changed.emit(self.box_id)
+            event.accept()
+            return
+
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent):
+        if self._resizing and event.button() == QtCore.Qt.LeftButton:
+            self._resizing = False
+            self._resize_edges = RectItem.Edge.NONE
+            self.unsetCursor()
+            # final sync
+            self.signals.geometry_changed.emit(self.box_id)
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    # ---------- Helpers ----------
+    def _hit_test_handles(self, p_local: QtCore.QPointF) -> "RectItem.Edge":
+        """Return which edge(s) the point is 'near'. Corners are combinations.
+        Uses a margin and allows slightly outside the rect (pen width, anti-aliasing)."""
+        r = self.rect()
+        x, y = p_local.x(), p_local.y()
+        m = self.HANDLE_MARGIN
+
+        edges = RectItem.Edge.NONE
+
+        # near vertical band spanning the rect height ± margin
+        if -m <= y <= r.height() + m:
+            if abs(x - 0) <= m:
+                edges |= RectItem.Edge.LEFT
+            if abs(x - r.width()) <= m:
+                edges |= RectItem.Edge.RIGHT
+
+        # near horizontal band spanning the rect width ± margin
+        if -m <= x <= r.width() + m:
+            if abs(y - 0) <= m:
+                edges |= RectItem.Edge.TOP
+            if abs(y - r.height()) <= m:
+                edges |= RectItem.Edge.BOTTOM
+
+        return edges
+
+    def _apply_cursor_for_edges(self, edges: "RectItem.Edge"):
+        # Choose appropriate size cursor
+        if edges in (RectItem.Edge.LEFT, RectItem.Edge.RIGHT):
+            self.setCursor(QtCore.Qt.SizeHorCursor)
+        elif edges in (RectItem.Edge.TOP, RectItem.Edge.BOTTOM):
+            self.setCursor(QtCore.Qt.SizeVerCursor)
+        elif edges in (
+            RectItem.Edge.TOP | RectItem.Edge.LEFT,
+            RectItem.Edge.BOTTOM | RectItem.Edge.RIGHT,
+        ):
+            self.setCursor(QtCore.Qt.SizeFDiagCursor)  # ↘︎↖︎
+        elif edges in (
+            RectItem.Edge.TOP | RectItem.Edge.RIGHT,
+            RectItem.Edge.BOTTOM | RectItem.Edge.LEFT,
+        ):
+            self.setCursor(QtCore.Qt.SizeBDiagCursor)  # ↗︎↙︎
+        else:
+            self.unsetCursor()
 
     def scene_rect(self) -> QtCore.QRectF:
         p = self.pos()
@@ -275,7 +416,7 @@ class MetadataPanel(QtWidgets.QWidget):
     Numeric fields are QLineEdit+validators so they can be blank for mixed values."""
 
     # Emits only the fields that actually changed, e.g. {
-    #   'entity_name': 'orc', 'rect': {'x': 12, 'h': 64}, 'animation_frame_number': 3
+    #   'entity_name': 'orc', 'rect': {'x': 12, 'h': 64}, 'frame_number': 3
     # }
     fields_changed = QtCore.pyqtSignal(dict)
 
@@ -301,7 +442,7 @@ class MetadataPanel(QtWidgets.QWidget):
             self._wire_text(e, name)
             return e
 
-        self.frame_edit = int_edit("animation_frame_number", 0, 10000)
+        self.frame_edit = int_edit("frame_number", 0, 10000)
         self.x_edit = int_edit("x")
         self.y_edit = int_edit("y")
         self.w_edit = int_edit("w", 1)
@@ -339,12 +480,12 @@ class MetadataPanel(QtWidgets.QWidget):
             if field_name in {
                 "entity_name",
                 "animation_name",
-                "animation_frame_number",
+                "frame_number",
             }:
-                if field_name == "animation_frame_number":
+                if field_name == "frame_number":
                     txt = widget.text().strip()
                     if txt != "":
-                        payload["animation_frame_number"] = int(txt)
+                        payload["frame_number"] = int(txt)
                 else:
                     payload[field_name] = widget.text().strip()
             else:
@@ -391,7 +532,7 @@ class MetadataPanel(QtWidgets.QWidget):
 
         set_or_blank(self.entity_edit, meta.get("entity_name"))
         set_or_blank(self.anim_edit, meta.get("animation_name"))
-        set_or_blank(self.frame_edit, meta.get("animation_frame_number"))
+        set_or_blank(self.frame_edit, meta.get("frame_number"))
         set_or_blank(self.x_edit, rect.get("x"))
         set_or_blank(self.y_edit, rect.get("y"))
         set_or_blank(self.w_edit, rect.get("w"))
@@ -426,11 +567,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.add_btn = QtWidgets.QPushButton("+ New Box")
         self.add_btn.setToolTip("Add a new 64x64 box at (0,0)")
         self.add_btn.clicked.connect(self.add_new_box)
+
         self.del_btn = QtWidgets.QPushButton("Delete Selected")
         self.del_btn.clicked.connect(self.delete_selected_box)
-        self.save_btn = QtWidgets.QPushButton("Save")
-        self.save_btn.setToolTip("Save metadata (Ctrl+S)")
-        self.save_btn.clicked.connect(self.save_metadata)
 
         # Batch tools
         self.distrib_h_btn = QtWidgets.QPushButton("Distribute H")
@@ -452,7 +591,6 @@ class MainWindow(QtWidgets.QMainWindow):
         tool_row.addWidget(self.distrib_h_btn)
         tool_row.addWidget(self.distrib_v_btn)
         side_lay.addLayout(tool_row)
-        side_lay.addWidget(self.save_btn)
 
         splitter = QtWidgets.QSplitter()
         splitter.addWidget(self.view)
@@ -483,15 +621,6 @@ class MainWindow(QtWidgets.QMainWindow):
         QtWidgets.QShortcut(
             QtGui.QKeySequence.Delete, self, activated=self.delete_selected_box
         )
-        QtWidgets.QShortcut(
-            QtGui.QKeySequence("Ctrl+O"), self, activated=self.open_image
-        )
-        QtWidgets.QShortcut(
-            QtGui.QKeySequence("Ctrl+S"), self, activated=self.save_metadata
-        )
-        QtWidgets.QShortcut(
-            QtGui.QKeySequence("Ctrl+L"), self, activated=self.load_metadata
-        )
         QtWidgets.QShortcut(QtGui.QKeySequence("N"), self, activated=self.add_new_box)
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
@@ -513,12 +642,19 @@ class MainWindow(QtWidgets.QMainWindow):
     def _build_menus(self):
         m = self.menuBar()
         file_menu = m.addMenu("File")
+
         a_open_img = file_menu.addAction("Open Image…")
         a_open_img.triggered.connect(self.open_image)
+        a_open_img.setShortcut(QtGui.QKeySequence("Ctrl+O"))
+
         a_load_json = file_menu.addAction("Load Metadata JSON…")
         a_load_json.triggered.connect(self.load_metadata)
+        a_load_json.setShortcut(QtGui.QKeySequence("Ctrl+L"))
+
         a_save_json = file_menu.addAction("Save Metadata JSON…")
         a_save_json.triggered.connect(self.save_metadata)
+        a_save_json.setShortcut(QtGui.QKeySequence("Ctrl+S"))
+
         file_menu.addSeparator()
         a_quit = file_menu.addAction("Quit")
         a_quit.triggered.connect(self.close)
@@ -528,21 +664,22 @@ class MainWindow(QtWidgets.QMainWindow):
         a_about.triggered.connect(self.show_about)
 
         toolbar = self.addToolBar("Main")
+
         act_new_box = QtWidgets.QAction("New Box", self)
         act_new_box.triggered.connect(self.add_new_box)
         toolbar.addAction(act_new_box)
+
         act_draw_hint = QtWidgets.QAction("Draw (Shift+Drag)", self)
         act_draw_hint.triggered.connect(self.view.start_draw_mode)
         toolbar.addAction(act_draw_hint)
-        act_save = QtWidgets.QAction("Save", self)
-        act_save.setShortcut(QtGui.QKeySequence("Ctrl+S"))
-        act_save.triggered.connect(self.save_metadata)
-        toolbar.addAction(act_save)
+
         toolbar.addSeparator()
+
         act_dh = QtWidgets.QAction("Distribute H", self)
         act_dh.setToolTip("Evenly distribute left edges of selected boxes")
         act_dh.triggered.connect(self.distribute_h)
         toolbar.addAction(act_dh)
+
         act_dv = QtWidgets.QAction("Distribute V", self)
         act_dv.setToolTip("Evenly distribute top edges of selected boxes")
         act_dv.triggered.connect(self.distribute_v)
@@ -630,7 +767,7 @@ class MainWindow(QtWidgets.QMainWindow):
         meta = rect_item.meta
         return (
             f"#{rect_item.box_id}: {meta.get('entity_name', '')} / {meta.get('animation_name', '')} "
-            f"[frame {meta.get('animation_frame_number', 0)}] -> ({r.x()},{r.y()},{r.width()}x{r.height()})"
+            f"[frame {meta.get('frame_number', 0)}] -> ({r.x()},{r.y()},{r.width()}x{r.height()})"
         )
 
     def select_box_in_list(self, box_id: int):
@@ -743,8 +880,8 @@ class MainWindow(QtWidgets.QMainWindow):
             "animation_name": self._common_or_none(
                 [m.get("animation_name", "") for m in metas]
             ),
-            "animation_frame_number": self._common_or_none(
-                [int(m.get("animation_frame_number", 0)) for m in metas]
+            "frame_number": self._common_or_none(
+                [int(m.get("frame_number", 0)) for m in metas]
             ),
         }
         rect_values = {
@@ -774,10 +911,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if "animation_name" in changes:
             for ri in items:
                 ri.meta["animation_name"] = changes["animation_name"]
-        if "animation_frame_number" in changes:
+        if "frame_number" in changes:
             for ri in items:
-                ri.meta["animation_frame_number"] = int(
-                    changes["animation_frame_number"]
+                ri.meta["frame_number"] = int(
+                    changes["frame_number"]
                 )
         # Rect keys
         rect = changes.get("rect", {})
@@ -915,7 +1052,7 @@ class MainWindow(QtWidgets.QMainWindow):
             meta = {
                 "entity_name": b.get("entity_name", ""),
                 "animation_name": b.get("animation_name", ""),
-                "animation_frame_number": int(b.get("animation_frame_number", 0)),
+                "frame_number": int(b.get("frame_number", 0)),
             }
             box_id = int(b.get("id", self.box_counter))
             self.box_counter = max(self.box_counter, box_id + 1)
@@ -960,7 +1097,7 @@ class MainWindow(QtWidgets.QMainWindow):
             meta = {
                 "entity_name": b.get("entity_name", ""),
                 "animation_name": b.get("animation_name", ""),
-                "animation_frame_number": int(b.get("animation_frame_number", 0)),
+                "frame_number": int(b.get("frame_number", 0)),
             }
             box_id = int(b.get("id", self.box_counter))
             self.box_counter = max(self.box_counter, box_id + 1)

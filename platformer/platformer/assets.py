@@ -138,7 +138,8 @@ def _build_character_sheet(tile=TILE, padding=PADDING, cols=COLS, anims=ANIMS):
     sheet = _new_canvas(cols=cols, rows=rows, tile=tile, padding=padding)
     draw = ImageDraw.Draw(sheet)
 
-    builder = SpriteSheetMetaBuilder(tile=tile, padding=padding, cols=cols)
+    builder = SpriteSheetMetaBuilder(tile=tile, padding=padding, cols=cols,
+                                     default_entity="bytebuddy")
 
     r = c = 0
     for anim_name, count in anims.items():
@@ -153,7 +154,7 @@ def _build_character_sheet(tile=TILE, padding=PADDING, cols=COLS, anims=ANIMS):
                 c = 0
                 r += 1
         builder.add_animation(anim_name, boxes)
-
+    builder.set_image_info(size=sheet.size)
     return sheet, builder.build()
 
 def _build_tileset(tile=TILE, padding=PADDING):
@@ -289,7 +290,7 @@ def generate_assets(out_dir: str | Path | None = None, *, scale: int = SCALE):
 # platformer/assets.py
 import json, os, pygame  # NOQA
 from pathlib import Path  # NOQA
-import ubelt as ub
+import ubelt as ub  # NOQA
 
 
 ASSET_DIR = Path(__file__).parent / "assets"
@@ -297,14 +298,19 @@ ASSET_DIR = ub.Path.appdir("platformer").ensuredir()
 
 
 class SpriteSheet:
-    """Loads a spritesheet + meta (with tile, padding, cols)."""
+    """Loads a spritesheet + meta."""
 
     def __init__(self, image_path, meta_path):
         self.image = pygame.image.load(image_path).convert_alpha()
         self.meta = SpriteSheetMeta.load(meta_path)
-        self.tile = self.meta.tile
-        self.cols = self.meta.cols
-        self.pad = self.meta.padding
+        # self.cols = self.meta.cols
+        # self.pad = self.meta.padding
+        # if default_entity is None:
+        try:
+            default_entity = self.meta.default_entity_name()
+        except KeyError:
+            default_entity = None
+        self.default_entity = default_entity
 
     def frame_rect(self, idx):
         return self.meta.frame_rect(idx)
@@ -315,24 +321,16 @@ class SpriteSheet:
         s.blit(self.image, (0, 0), r)
         return s
 
-    def anim_surfs(self, name):
-        return [self.frame_surf(i) for i in self.meta.animation_indices(name)]
+    def anim_surfs(self, name, *, entity_name: str | None = None):
+        entity = entity_name or self.default_entity
+        boxes = self.meta.animation_boxes(name, entity_name=entity)
+        return [self._surface_from_rect(box.rect.to_rect()) for box in boxes]
 
-def load_tileset_grid(image_path, tile, pad):
-    """Slices a uniformly padded tileset into a list of Surfaces (row-major)."""
-    img = pygame.image.load(image_path).convert_alpha()
-    w, h = img.get_size()
-    frames = []
-    y = pad
-    while y + tile <= h:
-        x = pad
-        while x + tile <= w:
-            s = pygame.Surface((tile, tile), pygame.SRCALPHA)
-            s.blit(img, (0,0), (x, y, tile, tile))
-            frames.append(s)
-            x += tile + pad
-        y += tile + pad
-    return frames
+    def _surface_from_rect(self, rect: pygame.Rect) -> pygame.Surface:
+        surf = pygame.Surface((rect.w, rect.h), pygame.SRCALPHA)
+        surf.blit(self.image, (0, 0), rect)
+        return surf
+
 
 def get_default_paths():
     paths = {
