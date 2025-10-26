@@ -1,12 +1,10 @@
-"""
-Helper GUI to add metadata to sprite sheets.
-"""
 import json
 import os
 import sys
 from typing import Optional, Dict, List
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+import logging
 
 
 # -----------------------------
@@ -105,6 +103,7 @@ class SpriteView(QtWidgets.QGraphicsView):
     image_changed = QtCore.pyqtSignal()
     box_created = QtCore.pyqtSignal(RectItem)
     selection_changed = QtCore.pyqtSignal()
+    path_dropped = QtCore.pyqtSignal(str)  # emits any dropped file path (.png or .json)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -112,7 +111,11 @@ class SpriteView(QtWidgets.QGraphicsView):
         self.setDragMode(QtWidgets.QGraphicsView.RubberBandDrag)
         self.setViewportUpdateMode(QtWidgets.QGraphicsView.BoundingRectViewportUpdate)
         self.setAcceptDrops(True)
+        # Important: the QGraphicsView uses an internal viewport widget that actually receives the DnD events
+        self.viewport().setAcceptDrops(True)
         self.setMouseTracking(True)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
         self._scene = QtWidgets.QGraphicsScene(self)
         self.setScene(self._scene)
@@ -132,7 +135,20 @@ class SpriteView(QtWidgets.QGraphicsView):
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
-                if url.toLocalFile().lower().endswith(".png"):
+                low = url.toLocalFile().lower()
+                if low.endswith('.png') or low.endswith('.json'):
+                    logging.info('[SpriteView] dragEnterEvent accept: %s', low)
+                    event.acceptProposedAction()
+                    return
+        logging.info('[SpriteView] dragEnterEvent ignore')
+        event.ignore()
+
+    def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
+        if event.mimeData().hasUrls():
+            for url in event.mimeData().urls():
+                low = url.toLocalFile().lower()
+                if low.endswith('.png') or low.endswith('.json'):
+                    # keep accepting while dragging over the view
                     event.acceptProposedAction()
                     return
         event.ignore()
@@ -140,17 +156,21 @@ class SpriteView(QtWidgets.QGraphicsView):
     def dropEvent(self, event: QtGui.QDropEvent):
         for url in event.mimeData().urls():
             local = url.toLocalFile()
-            if local.lower().endswith(".png"):
-                self.load_image(local)
-                break
+            logging.info('[SpriteView] dropEvent path: %s', local)
+            try:
+                self.path_dropped.emit(local)
+                event.acceptProposedAction()
+            except Exception as ex:
+                logging.exception('[SpriteView] path_dropped emit failed: %s', ex)
+            break
 
     # ------------- Image Handling -------------
     def load_image(self, path: str):
+        logging.info('[SpriteView] load_image: %s', path)
         pix = QtGui.QPixmap(path)
         if pix.isNull():
-            QtWidgets.QMessageBox.warning(
-                self, "Load Error", "Failed to load image: " + path
-            )
+            logging.error('[SpriteView] load_image failed: %s', path)
+            QtWidgets.QMessageBox.warning(self, 'Load Error', 'Failed to load image: ' + path)
             return
         self._scene.clear()
         self._pixmap_item = self._scene.addPixmap(pix)
@@ -160,6 +180,7 @@ class SpriteView(QtWidgets.QGraphicsView):
         self.resetTransform()
         self._zoom = 1.0
         self.image_changed.emit()
+        logging.info('[SpriteView] image loaded: %dx%d', pix.width(), pix.height())
 
     def image_loaded(self) -> bool:
         return self._pixmap_item is not None
@@ -357,6 +378,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.view.image_changed.connect(self.on_image_changed)
         self.view.box_created.connect(self.on_box_created)
         self.view.selection_changed.connect(self.sync_selection_from_scene)
+        self.view.path_dropped.connect(self.on_path_dropped)
 
         self.list_widget = QtWidgets.QListWidget()
         self.list_widget.currentRowChanged.connect(self.on_list_selection_changed)
@@ -367,6 +389,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.add_btn.clicked.connect(self.add_new_box)
         self.del_btn = QtWidgets.QPushButton("Delete Selected")
         self.del_btn.clicked.connect(self.delete_selected_box)
+        self.save_btn = QtWidgets.QPushButton("Save")
+        self.save_btn.setToolTip("Save metadata (Ctrl+S)")
+        self.save_btn.clicked.connect(self.save_metadata)
 
         side = QtWidgets.QWidget()
         side_lay = QtWidgets.QVBoxLayout(side)
@@ -376,12 +401,14 @@ class MainWindow(QtWidgets.QMainWindow):
         btn_row.addWidget(self.add_btn)
         btn_row.addWidget(self.del_btn)
         side_lay.addLayout(btn_row)
+        side_lay.addWidget(self.save_btn)
 
         splitter = QtWidgets.QSplitter()
         splitter.addWidget(self.view)
         splitter.addWidget(side)
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 1)
+        splitter.setStretchFactor(0, 5)
+        splitter.setStretchFactor(1, 2)
+        splitter.setSizes([1100, 400])
         self.setCentralWidget(splitter)
 
         self.meta_panel = MetadataPanel()
@@ -393,9 +420,7 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.meta_dock)
 
-        self.statusBar().showMessage(
-            "Drag & drop a PNG. Shift+Drag to draw a rectangle, or click '+ New Box'."
-        )
+        self.statusBar().showMessage("Drag & drop a PNG or JSON anywhere. Shift+Drag to draw a rectangle, or click '+ New Box'.")
 
         self.image_path: Optional[str] = None
         self.box_counter = 0
@@ -456,6 +481,10 @@ class MainWindow(QtWidgets.QMainWindow):
         act_draw_hint = QtWidgets.QAction("Draw (Shift+Drag)", self)
         act_draw_hint.triggered.connect(self.view.start_draw_mode)
         toolbar.addAction(act_draw_hint)
+        act_save = QtWidgets.QAction("Save", self)
+        act_save.setShortcut(QtGui.QKeySequence("Ctrl+S"))
+        act_save.triggered.connect(self.save_metadata)
+        toolbar.addAction(act_save)
 
     def show_about(self):
         msg = (
@@ -480,8 +509,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self, "Open PNG", "", "PNG Images (*.png)"
         )
         if path:
-            self.view.load_image(path)
-            self.image_path = path
+            self.open_image_path(path)
+
+    def open_image_path(self, path: str):
+        if not path:
+            return
+        logging.info('[MainWindow] open_image_path: %s', path)
+        self.view.load_image(path)
+        self.image_path = path
 
     def add_new_box(self):
         if not self.view.image_loaded():
@@ -668,6 +703,56 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         if not path:
             return
+        self.load_metadata_path(path)
+
+    def load_metadata_path(self, path: str):
+        if not path:
+            return
+        logging.info('[MainWindow] load_metadata_path: %s', path)
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception as ex:
+            logging.exception('[MainWindow] load_metadata_path failed')
+            QtWidgets.QMessageBox.warning(self, 'Load Error', 'Failed to read JSON: ' + str(ex))
+            return
+
+        img_path = data.get('image_path') or ''
+        if img_path and os.path.exists(img_path):
+            self.view.load_image(img_path)
+            self.image_path = img_path
+        elif not self.view.image_loaded():
+            QtWidgets.QMessageBox.information(
+                self,
+                'Image Required',
+                'The metadata file does not reference a valid image path. Please open the PNG first, then load the metadata again.',
+            )
+            return
+
+        for it in self.view.all_rect_items():
+            self.view._scene.removeItem(it)
+        self.list_widget.clear()
+        self.box_index.clear()
+        self.box_counter = 0
+
+        for b in data.get('boxes', []):
+            r = b.get('rect', {'x': 0, 'y': 0, 'w': 1, 'h': 1})
+            meta = {
+                'entity_name': b.get('entity_name', ''),
+                'animation_name': b.get('animation_name', ''),
+                'animation_frame_number': int(b.get('animation_frame_number', 0)),
+            }
+            box_id = int(b.get('id', self.box_counter))
+            self.box_counter = max(self.box_counter, box_id + 1)
+            item = RectItem(r['x'], r['y'], r['w'], r['h'], box_id=box_id, meta=meta)
+            self.view.add_box_item(item)
+            self.box_index[item.box_id] = item
+            self._add_list_item(item)
+            item.signals.geometry_changed.connect(self._on_rect_geom_changed)
+
+        self.statusBar().showMessage('Loaded metadata from ' + path, 5000)
+        logging.info('[MainWindow] loaded %d boxes', len(self.box_index))
+        return
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -712,15 +797,53 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.statusBar().showMessage("Loaded metadata from " + path, 5000)
 
+    def on_path_dropped(self, path: str):
+        logging.info('[MainWindow] on_path_dropped: %s', path)
+        low = path.lower()
+        if low.endswith('.json'):
+            self.load_metadata_path(path)
+        elif low.endswith('.png'):
+            self.open_image_path(path)
+        else:
+            QtWidgets.QMessageBox.information(self, "Unsupported File", "Drop a .png or .json file.")
+
 
 def main():
+    # Basic logging setup; use LOGLEVEL env to override, e.g., LOGLEVEL=DEBUG
+    level_name = os.environ.get('LOGLEVEL', 'INFO').upper()
+    logging.basicConfig(
+        level=getattr(logging, level_name, logging.INFO),
+        format='[%(levelname)s] %(message)s'
+    )
+    logging.info('Starting Sprite Sheet Metadata Editor')
+
     app = QtWidgets.QApplication(sys.argv)
-    app.setOrganizationName("SpriteTools")
-    app.setApplicationName("Sprite Sheet Metadata Editor")
+    app.setOrganizationName('SpriteTools')
+    app.setApplicationName('Sprite Sheet Metadata Editor')
     w = MainWindow()
+
+    # --- CLI support ---
+    args = [a for a in sys.argv[1:] if os.path.exists(a)]
+    logging.info('CLI args (existing paths): %s', args)
+    if len(args) == 1:
+        p0 = args[0].lower()
+        if p0.endswith('.json'):
+            w.load_metadata_path(args[0])
+        elif p0.endswith('.png'):
+            w.open_image_path(args[0])
+    elif len(args) >= 2:
+        img = next((a for a in args if a.lower().endswith('.png')), None)
+        jsn = next((a for a in args if a.lower().endswith('.json')), None)
+        if img:
+            w.open_image_path(img)
+        if jsn:
+            w.load_metadata_path(jsn)
+
+    w.resize(1500, 950)
     w.show()
     sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
     main()
+
