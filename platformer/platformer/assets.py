@@ -18,6 +18,7 @@ See Also:
     https://github.com/Erotemic/binary_content
     https://opengameart.org/
     https://kenney.nl/
+    https://www.piskelapp.com/
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from pathlib import Path
 from math import sin, pi
 
 from PIL import Image, ImageDraw
+from platformer.sheetmeta import SpriteSheetMeta, SpriteSheetMetaBuilder
 
 
 url = 'https://i.imgur.com/auhIpW7.png'
@@ -66,11 +68,6 @@ def _new_canvas(cols: int, rows: int, tile=TILE, padding=PADDING) -> Image.Image
     w = cols * tile + (cols + 1) * padding
     h = rows * tile + (rows + 1) * padding
     return Image.new("RGBA", (w, h), BG)
-
-def _place_rect(row: int, col: int, tile=TILE, padding=PADDING) -> tuple[int, int, int, int]:
-    x = padding + col * (tile + padding)
-    y = padding + row * (tile + padding)
-    return (x, y, x + tile, y + tile)
 
 def _draw_bytebuddy(draw: ImageDraw.ImageDraw, box, phase=0.0, action="idle"):
     x0, y0, x1, y1 = box
@@ -135,30 +132,29 @@ def _draw_bytebuddy(draw: ImageDraw.ImageDraw, box, phase=0.0, action="idle"):
     draw.ellipse([cx - 10, y1 - 8, cx + 10, y1 - 4], fill=C["shadow"])
 
 def _build_character_sheet(tile=TILE, padding=PADDING, cols=COLS, anims=ANIMS):
-    """Return PIL image + metadata (no file I/O)."""
+    """Return PIL image + ``SpriteSheetMeta`` (no file I/O)."""
     total_frames = sum(anims.values())
     rows = (total_frames + cols - 1) // cols
     sheet = _new_canvas(cols=cols, rows=rows, tile=tile, padding=padding)
     draw = ImageDraw.Draw(sheet)
 
-    meta = {"tile": tile, "padding": padding, "cols": cols, "anims": {}, "frames": {}}
+    builder = SpriteSheetMetaBuilder(tile=tile, padding=padding, cols=cols)
 
     r = c = 0
-    frame_index = 0
     for anim_name, count in anims.items():
-        meta["anims"][anim_name] = {"start": frame_index, "count": count}
+        boxes = []
         for i in range(count):
-            box = _place_rect(r, c, tile=tile, padding=padding)
+            box = builder.grid_box(r, c)
             phase = i / max(count, 1)
             _draw_bytebuddy(draw, box, phase=phase, action=anim_name)
-            meta["frames"][str(frame_index)] = {"x": box[0], "y": box[1], "w": tile, "h": tile}
-            frame_index += 1
+            boxes.append(box)
             c += 1
             if c >= cols:
                 c = 0
                 r += 1
+        builder.add_animation(anim_name, boxes)
 
-    return sheet, meta
+    return sheet, builder.build()
 
 def _build_tileset(tile=TILE, padding=PADDING):
     """Return PIL image (no file I/O)."""
@@ -220,18 +216,14 @@ def _build_tileset(tile=TILE, padding=PADDING):
 
     return img
 
-def _scale_image_and_meta(img: Image.Image, meta: dict | None, scale: int):
+def _scale_image_and_meta(img: Image.Image, meta: SpriteSheetMeta | None, scale: int):
     """Nearest-neighbor scale; update frame coords if meta provided."""
     if scale == 1:
-        return img, meta
+        return img, meta.copy() if meta else None
     w, h = img.size
-    img2 = img.resize((w*scale, h*scale), resample=Image.NEAREST)
+    img2 = img.resize((w * scale, h * scale), resample=Image.NEAREST)
     if meta:
-        meta = json.loads(json.dumps(meta))  # deep copy
-        meta["tile"] = meta["tile"] * scale
-        if "padding" in meta: meta["padding"] = meta["padding"] * scale
-        for f in meta["frames"].values():
-            f["x"] *= scale; f["y"] *= scale; f["w"] *= scale; f["h"] *= scale
+        meta = meta.scaled(scale)
     return img2, meta
 
 # -----------------------------
@@ -275,8 +267,11 @@ def generate_assets(out_dir: str | Path | None = None, *, scale: int = SCALE):
 
     sheet_img.save(sheet_path, "PNG")
     tiles_img.save(tiles_path, "PNG")
-    with open(meta_path, "w") as f:
-        json.dump(meta, f, indent=2)
+    if meta is not None:
+        meta.dump(meta_path)
+    else:  # pragma: no cover - defensive; generator always returns meta
+        with open(meta_path, "w") as f:
+            json.dump({}, f, indent=2)
 
     return {
         "sheet_path": str(sheet_path),
@@ -284,7 +279,7 @@ def generate_assets(out_dir: str | Path | None = None, *, scale: int = SCALE):
         "tiles_path": str(tiles_path),
         "sheet_size": sheet_img.size,
         "tiles_size": tiles_img.size,
-        "meta": meta,
+        "meta": meta.to_mapping() if meta else {},
     }
 
 # -----------------------------
@@ -303,30 +298,25 @@ ASSET_DIR = ub.Path.appdir("platformer").ensuredir()
 
 class SpriteSheet:
     """Loads a spritesheet + meta (with tile, padding, cols)."""
+
     def __init__(self, image_path, meta_path):
         self.image = pygame.image.load(image_path).convert_alpha()
-        with open(meta_path, "r") as f:
-            self.meta = json.load(f)
-        self.tile   = self.meta["tile"]
-        self.cols   = self.meta.get("cols", 8)
-        self.pad    = self.meta.get("padding", 2)
-        self.frames = self.meta["frames"]      # index->{x,y,w,h}
-        self.anims  = self.meta["anims"]       # name->{start,count}
+        self.meta = SpriteSheetMeta.load(meta_path)
+        self.tile = self.meta.tile
+        self.cols = self.meta.cols
+        self.pad = self.meta.padding
 
     def frame_rect(self, idx):
-        f = self.frames[str(idx)]
-        return pygame.Rect(f["x"], f["y"], f["w"], f["h"])
+        return self.meta.frame_rect(idx)
 
     def frame_surf(self, idx):
         r = self.frame_rect(idx)
         s = pygame.Surface((r.w, r.h), pygame.SRCALPHA)
-        s.blit(self.image, (0,0), r)
+        s.blit(self.image, (0, 0), r)
         return s
 
     def anim_surfs(self, name):
-        spec = self.anims[name]
-        start, count = spec["start"], spec["count"]
-        return [self.frame_surf(start + i) for i in range(count)]
+        return [self.frame_surf(i) for i in self.meta.animation_indices(name)]
 
 def load_tileset_grid(image_path, tile, pad):
     """Slices a uniformly padded tileset into a list of Surfaces (row-major)."""
