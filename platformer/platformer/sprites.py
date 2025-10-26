@@ -67,10 +67,15 @@ class Player(pygame.sprite.Sprite):
     def apply_gravity(self):
         self.vel.y += GRAVITY
 
+    def _ground_probe(self, solids, epsilon=1):
+        """Return True if there is solid ground immediately below the player."""
+        test_rect = self.rect.move(0, epsilon)
+        return any(test_rect.colliderect(r) for r in solids)
+
     def move_and_collide(self, solids):
-        # Horizontal
+        # ---------- Horizontal ----------
         self.pos.x += self.vel.x
-        self.rect.x = int(self.pos.x)
+        self.rect.x = int(round(self.pos.x))  # (optional) round is a bit friendlier
         hits = [r for r in solids if self.rect.colliderect(r)]
         for r in hits:
             if self.vel.x > 0:
@@ -79,20 +84,28 @@ class Player(pygame.sprite.Sprite):
                 self.rect.left = r.right
             self.pos.x = self.rect.x
 
-        # Vertical
+        # ---------- Vertical ----------
         self.pos.y += self.vel.y
-        self.rect.y = int(self.pos.y)
+        self.rect.y = int(round(self.pos.y))  # (optional) round is a bit friendlier
+
         hits = [r for r in solids if self.rect.colliderect(r)]
-        self.on_ground = False
+        landed = False  # track if we resolved a downward collision this frame
+
         for r in hits:
-            if self.vel.y > 0:
+            if self.vel.y > 0:          # moving down, hit floor
                 self.rect.bottom = r.top
-                self.on_ground = True
                 self.vel.y = 0
-            elif self.vel.y < 0:
+                landed = True
+            elif self.vel.y < 0:        # moving up, hit ceiling
                 self.rect.top = r.bottom
                 self.vel.y = 0
             self.pos.y = self.rect.y
+
+        # Decide grounded *after* resolution using a probe:
+        # - grounded if we just landed, OR if there is solid immediately below us.
+        #   The probe prevents 1-frame "air" flicker when we're resting on a tile
+        #   but didn't move enough pixels this frame to overlap it.
+        self.on_ground = landed or self._ground_probe(solids, epsilon=1)
 
         if self.on_ground:
             self.coyote_timer = COYOTE_TIME
@@ -121,6 +134,7 @@ class Player(pygame.sprite.Sprite):
                 state = "run"
             else:
                 state = "idle"
-            self.visual.set(state)
+            if not state == "fall":
+                self.visual.set(state)
             self.visual.rect.topleft = self.rect.topleft
             self.visual.update(dt, flip=(self.vel.x < 0))
