@@ -321,15 +321,48 @@ class SpriteSheet:
         s.blit(self.image, (0, 0), r)
         return s
 
+    def _representative_box_size(self, entity_name: str | None = None) -> tuple[int, int]:
+        for box in self.meta.boxes:
+            if entity_name is None or box.entity_name == entity_name:
+                rect = box.rect
+                return rect.w, rect.h
+        return (64, 64)
+
     def anim_surfs(self, name, *, entity_name: str | None = None):
         entity = entity_name or self.default_entity
-        boxes = self.meta.animation_boxes(name, entity_name=entity)
+        try:
+            boxes = self.meta.animation_boxes(name, entity_name=entity)
+        except KeyError:
+            return self._placeholder_surfaces(entity_name=entity, animation_name=name)
         return [self._surface_from_rect(box.rect.to_rect()) for box in boxes]
 
     def _surface_from_rect(self, rect: pygame.Rect) -> pygame.Surface:
         surf = pygame.Surface((rect.w, rect.h), pygame.SRCALPHA)
         surf.blit(self.image, (0, 0), rect)
         return surf
+
+    def _placeholder_surfaces(
+        self,
+        *,
+        entity_name: str | None,
+        animation_name: str,
+    ) -> list[pygame.Surface]:
+        """Return a loud magenta frame when metadata is missing."""
+        import warnings
+
+        size = self._representative_box_size(entity_name)
+        surf = pygame.Surface(size, pygame.SRCALPHA)
+        surf.fill((255, 0, 255))
+        rect = surf.get_rect()
+        pygame.draw.rect(surf, (0, 0, 0), rect, 2)
+        pygame.draw.line(surf, (0, 0, 0), rect.topleft, rect.bottomright, 2)
+        pygame.draw.line(surf, (0, 0, 0), rect.topright, rect.bottomleft, 2)
+
+        label = f"{entity_name or 'entity'}:{animation_name}"
+        warnings.warn(
+            "Missing spritesheet boxes for %s; using placeholder surface instead" % label
+        )
+        return [surf]
 
 
 def get_default_paths():
