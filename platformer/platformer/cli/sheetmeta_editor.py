@@ -985,40 +985,117 @@ class MainWindow(QtWidgets.QMainWindow):
             )
 
 
-def main():
-    # Basic logging setup; use LOGLEVEL env to override, e.g., LOGLEVEL=DEBUG
-    level_name = os.environ.get("LOGLEVEL", "INFO").upper()
+def _configure_logging(ns):
+    # Determine level: flag > -v > env > default INFO
+    if ns.log_level:
+        level_name = ns.log_level
+    elif ns.verbose >= 2:
+        level_name = "DEBUG"
+    elif ns.verbose == 1:
+        level_name = "INFO"
+    else:
+        level_name = os.environ.get("LOGLEVEL", "INFO").upper()
+
     logging.basicConfig(
         level=getattr(logging, level_name, logging.INFO),
         format="[%(levelname)s] %(message)s",
     )
+    logging.debug("Resolved log level: %s", level_name)
+
+
+def main(argv=None):
+    import argparse
+    from pathlib import Path
+    from PyQt5 import QtWidgets
+
+    parser = argparse.ArgumentParser(
+        prog="sprite-meta-editor",
+        description="Sprite Sheet Metadata Editor (Qt). Open a PNG and/or a JSON metadata file."
+    )
+    parser.add_argument(
+        "paths",
+        nargs="*",
+        help="Optional positional paths: an image (.png) and/or a metadata file (.json). "
+             "If both are given, order doesn't matter."
+    )
+    parser.add_argument(
+        "-i", "--image",
+        type=Path,
+        help="Path to a sprite sheet image (.png)."
+    )
+    parser.add_argument(
+        "-m", "--metadata",
+        type=Path,
+        help="Path to a sprite metadata file (.json)."
+    )
+    parser.add_argument(
+        "-l", "--log-level",
+        dest="log_level",
+        choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"],
+        help="Logging level (overrides LOGLEVEL env)."
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v=INFO, -vv=DEBUG). Ignored if --log-level is provided."
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="Sprite Sheet Metadata Editor 1.0.0"
+    )
+    ns =  parser.parse_args(argv)
+
+    _configure_logging(ns)
     logging.info("Starting Sprite Sheet Metadata Editor")
 
     app = QtWidgets.QApplication(sys.argv)
     app.setOrganizationName("SpriteTools")
     app.setApplicationName("Sprite Sheet Metadata Editor")
+
     w = MainWindow()
 
-    # --- CLI support ---
-    args = [a for a in sys.argv[1:] if os.path.exists(a)]
-    logging.info("CLI args (existing paths): %s", args)
-    if len(args) == 1:
-        p0 = args[0].lower()
-        if p0.endswith(".json"):
-            w.load_metadata_path(args[0])
-        elif p0.endswith(".png"):
-            w.open_image_path(args[0])
-    elif len(args) >= 2:
-        img = next((a for a in args if a.lower().endswith(".png")), None)
-        jsn = next((a for a in args if a.lower().endswith(".json")), None)
-        if img:
-            w.open_image_path(img)
-        if jsn:
-            w.load_metadata_path(jsn)
+    # Determine image_path and metadata_path with the following priority:
+    # 1) Explicit flags (--image/--metadata)
+    # 2) Positional paths (by file extension)
+    image_path = ns.image
+    metadata_path = ns.metadata
+
+    if ns.paths:
+        # Infer from positional paths (extension-based)
+        png = next((Path(p) for p in ns.paths if str(p).lower().endswith(".png")), None)
+        jsn = next((Path(p) for p in ns.paths if str(p).lower().endswith(".json")), None)
+        image_path = image_path or png
+        metadata_path = metadata_path or jsn
+
+    # Only open existing paths; warn otherwise.
+    if image_path:
+        if Path(image_path).exists():
+            logging.info("Opening image: %s", image_path)
+            w.open_image_path(str(image_path))
+        else:
+            logging.warning("Image path does not exist: %s", image_path)
+
+    if metadata_path:
+        if Path(metadata_path).exists():
+            logging.info("Loading metadata: %s", metadata_path)
+            w.load_metadata_path(str(metadata_path))
+        else:
+            logging.warning("Metadata path does not exist: %s", metadata_path)
+
+    # If the user passed paths that exist but were neither .png nor .json, log what we saw.
+    if ns.paths:
+        existing = [str(p) for p in ns.paths if Path(p).exists()]
+        if existing:
+            logging.debug("Positional args (existing paths): %s", existing)
 
     w.resize(1500, 950)
     w.show()
-    sys.exit(app.exec_())
+
+    # Qt5 uses exec_(), Qt6 uses exec()
+    exec_fn = getattr(app, "exec", None) or getattr(app, "exec_", None)
+    sys.exit(exec_fn())
 
 
 if __name__ == "__main__":
