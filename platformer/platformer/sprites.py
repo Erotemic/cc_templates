@@ -1,11 +1,12 @@
 # sprites.py (Player class)
 import pygame
 from .settings import (
-    PLAYER_COLOR, MOVE_SPEED, GRAVITY, JUMP_VEL, TILE_SIZE,
-    COYOTE_TIME, JUMP_BUFFER_TIME
+    PLAYER_COLOR, MOVE_SPEED, GRAVITY, JUMP_VEL, DASH_VEL, TILE_SIZE,
+    COYOTE_TIME, JUMP_BUFFER_TIME, DASH_BUFFER_TIME
 )
 from .anim import AnimSprite
 from .assets import SpriteSheet, get_default_paths
+from platformer.settings import WHITE, BLACK
 
 # flip to False to use colored rectangles
 # USE_SPRITES = False
@@ -22,9 +23,18 @@ class Player(pygame.sprite.Sprite):
         self.vel = pygame.Vector2(0, 0)
         self.on_ground = False
 
+        self.direction = "right"
         # jump helpers
         self.coyote_timer = 0.0
         self.jump_buffer_timer = 0.0
+        self.dash_buffer_timer = 0.0
+        self.jumps = 0
+        self.acceleration = 0
+        self.properties = vars(self)
+        self.left_button = WHITE
+        self.right_button = WHITE
+        self.jump_button = WHITE
+        self.dash_button = WHITE
 
         # visuals
         self.visual = None
@@ -51,14 +61,24 @@ class Player(pygame.sprite.Sprite):
         self.vel.x = 0
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             self.vel.x = -MOVE_SPEED
+            self.direction = "left"
+            self.left_button = BLACK
+        else:
+            self.left_button = WHITE
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             self.vel.x = MOVE_SPEED
+            self.direction = "right"
+            self.right_button = BLACK
+        else:
+            self.right_button = WHITE
+        
 
     def queue_jump(self):
         """Record a jump press; will fire when allowed (buffered)."""
         self.jump_buffer_timer = JUMP_BUFFER_TIME
 
     def _do_jump(self):
+        self.jump_button = BLACK
         self.vel.y = JUMP_VEL
         self.on_ground = False
         self.coyote_timer = 0.0
@@ -110,6 +130,17 @@ class Player(pygame.sprite.Sprite):
         if self.on_ground:
             self.coyote_timer = COYOTE_TIME
 
+    def queue_dash(self):
+        self.dash_buffer_timer = DASH_BUFFER_TIME
+
+    def _do_dash(self):
+        self.dash_button = BLACK
+        if self.direction == "right":
+            self.acceleration = DASH_VEL
+        else:
+            self.acceleration = -DASH_VEL
+        self.dash_buffer_timer = 0.0
+
     # ---------- main update ----------
     def update(self, keys, solids, dt):
         # tick timers
@@ -117,14 +148,33 @@ class Player(pygame.sprite.Sprite):
             self.coyote_timer -= dt
         if self.jump_buffer_timer > 0:
             self.jump_buffer_timer -= dt
+        if self.dash_buffer_timer > 0:
+            self.dash_buffer_timer -= dt
 
         self.handle_input(keys)
         self.apply_gravity()
+
+        self.dash_button = WHITE
+        # increase velocity by acceleration
+        self.vel.x += self.acceleration
+
         self.move_and_collide(solids)
 
+        if self.acceleration < 0:
+            self.acceleration += 5
+        if self.acceleration > 0:
+            self.acceleration -= 5
+
         # consume buffered jump if allowed
-        if (self.jump_buffer_timer > 0) and (self.on_ground or self.coyote_timer > 0):
+        if (self.jump_buffer_timer > 0) and (self.on_ground or self.coyote_timer > 0 or self.jumps < 2):
             self._do_jump()
+            self.jumps += 1
+        else:
+            self.jump_button = WHITE
+
+        # perform a dash if allowed
+        if (self.dash_buffer_timer < 0):
+            self._do_dash()
 
         # visuals
         if self.visual:
@@ -138,3 +188,5 @@ class Player(pygame.sprite.Sprite):
                 self.visual.set(state)
             self.visual.rect.topleft = self.rect.topleft
             self.visual.update(dt, flip=(self.vel.x < 0))
+        # get debug info
+        self.properties = vars(self)
