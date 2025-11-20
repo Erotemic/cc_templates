@@ -188,90 +188,6 @@ GATE_PALETTE = ["I", "H", "HC", "X", "Y", "Z", "S", "SX", "T", "CTRL"]
 # Quantum row application
 # ------------------------------
 
-# def apply_single_qubit_gate(state: np.ndarray, U: np.ndarray, target_qubit: int) -> np.ndarray:
-#     """
-#     Apply a 2x2 gate U to 'target_qubit' (0 = LSB) on the given state vector.
-
-#     Uses the LSB convention (basis order 00, 01, 10, 11 for 2 qubits).
-
-#     >>> import numpy as np
-#     >>> # 1-qubit: |0> -> |1> with X
-#     >>> state = np.array([1+0j, 0+0j])
-#     >>> result = apply_single_qubit_gate(state, Gate.X(), target_qubit=0)
-#     >>> np.allclose(result, np.array([0, 1]))
-#     True
-
-#     >>> # 2-qubits: apply X on qubit 1 (MSB) to |00> -> |10>
-#     >>> state = np.array([1, 0, 0, 0], dtype=complex)
-#     >>> result = apply_single_qubit_gate(state, Gate.X(), target_qubit=1)
-#     >>> np.allclose(result, np.array([0, 0, 1, 0]))
-#     True
-#     """
-#     dim = state.shape[0]
-#     result = state.copy()
-#     step = 1 << target_qubit
-
-#     for base in range(0, dim, step * 2):
-#         for offset in range(step):
-#             i0 = base + offset          # target bit = 0
-#             i1 = i0 + step              # target bit = 1
-
-#             v0 = state[i0]
-#             v1 = state[i1]
-#             result[i0] = U[0, 0] * v0 + U[0, 1] * v1
-#             result[i1] = U[1, 0] * v0 + U[1, 1] * v1
-
-#     return result
-
-
-# def apply_controlled_single_qubit_gate(
-#     state: np.ndarray, U: np.ndarray,
-#     target_qubit: int, control_qubits: List[int]
-# ) -> np.ndarray:
-#     """
-#     Apply a (multi-)controlled 2x2 gate U.
-#     The gate is applied to target_qubit when all control_qubits are 1.
-
-#     >>> import numpy as np
-#     >>> # 2-qubit controlled-X: control q1 (MSB), target q0 (LSB)
-#     >>> # |10> (index 2) -> |11> (index 3)
-#     >>> state = np.array([0, 0, 1, 0], dtype=complex)
-#     >>> result = apply_controlled_single_qubit_gate(
-#     ...     state, Gate.X(), target_qubit=0, control_qubits=[1]
-#     ... )
-#     >>> np.allclose(result, np.array([0, 0, 0, 1]))
-#     True
-#     """
-#     if not control_qubits:
-#         return apply_single_qubit_gate(state, U, target_qubit)
-
-#     dim = state.shape[0]
-#     result = state.copy()
-#     step = 1 << target_qubit
-
-#     # Loop over basis pairs differing at target_qubit
-#     for base in range(0, dim, step * 2):
-#         for offset in range(step):
-#             i0 = base + offset  # target bit = 0
-#             i1 = i0 + step      # target bit = 1
-
-#             # Check controls on either index; non-target bits are the same.
-#             ok = True
-#             for c in control_qubits:
-#                 if ((i0 >> c) & 1) == 0:
-#                     ok = False
-#                     break
-#             if not ok:
-#                 continue
-
-#             v0 = state[i0]
-#             v1 = state[i1]
-#             result[i0] = U[0, 0] * v0 + U[0, 1] * v1
-#             result[i1] = U[1, 0] * v0 + U[1, 1] * v1
-
-#     return result
-
-
 def apply_single_qubit_gate(state: np.ndarray, U: np.ndarray, bit_index: int) -> np.ndarray:
     """
     Apply a 2x2 gate U to the given *bit_index* (0 = LSB) of the state vector.
@@ -332,64 +248,6 @@ def apply_controlled_single_qubit_gate(
     return result
 
 
-
-# def apply_row_to_state(
-#     state: np.ndarray,
-#     row_gates: List[Optional[str]],
-# ) -> np.ndarray:
-#     """
-#     Apply one 'row' of the grid to the state.
-
-#     row_gates is a list of length num_qubits, each entry is:
-#       - None / "I" for identity
-#       - "CTRL" for control positions
-#       - other gate name from GATE_LIBRARY for the target gate
-
-#     >>> import numpy as np
-#     >>> # Single-qubit row with X
-#     >>> state = np.array([1, 0], dtype=complex)
-#     >>> out = apply_row_to_state(state, ["X"])
-#     >>> np.allclose(out, np.array([0, 1]))
-#     True
-
-#     >>> # 2-qubit controlled-X: row [CTRL, X] (q0=CTRL, q1=X)
-#     >>> # control q0 (LSB), target q1 (MSB)
-#     >>> state = np.array([0, 1, 0, 0], dtype=complex)  # |01>
-#     >>> out = apply_row_to_state(state, ["CTRL", "X"])
-#     >>> # |01> -> |11> when control is 1
-#     >>> np.allclose(out, np.array([0, 0, 0, 1]))
-#     True
-#     """
-#     num_qubits = len(row_gates)
-#     current = state.copy()
-
-#     # Identify controls and targets
-#     controls = [q for q, g in enumerate(row_gates) if g == "CTRL"]
-#     targets = [q for q, g in enumerate(row_gates) if g not in (None, "I", "CTRL")]
-
-#     if controls and len(targets) == 1:
-#         # Single controlled operation
-#         t = targets[0]
-#         gate_name = row_gates[t]
-#         U = GATE_LIBRARY[gate_name]
-#         current = apply_controlled_single_qubit_gate(current, U, t, controls)
-
-#         # If there are any other single-qubit gates, apply them ignoring CTRL
-#         for q in range(num_qubits):
-#             if q == t:
-#                 continue
-#             g = row_gates[q]
-#             if g and g not in ("I", "CTRL"):
-#                 current = apply_single_qubit_gate(current, GATE_LIBRARY[g], q)
-#     else:
-#         # No controls or ambiguous: apply all single-qubit gates independently
-#         for q, g in enumerate(row_gates):
-#             if g and g not in ("I", "CTRL"):
-#                 current = apply_single_qubit_gate(current, GATE_LIBRARY[g], q)
-
-#     return current
-
-
 def apply_row_to_state(
     state: np.ndarray,
     row_gates: List[Optional[str]],
@@ -442,7 +300,6 @@ def apply_row_to_state(
                 current = apply_single_qubit_gate(current, GATE_LIBRARY[g], b)
 
     return current
-
 
 
 def build_row_operator(
