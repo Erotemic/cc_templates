@@ -188,28 +188,97 @@ GATE_PALETTE = ["I", "H", "HC", "X", "Y", "Z", "S", "SX", "T", "CTRL"]
 # Quantum row application
 # ------------------------------
 
-def apply_single_qubit_gate(state: np.ndarray, U: np.ndarray, target_qubit: int) -> np.ndarray:
+# def apply_single_qubit_gate(state: np.ndarray, U: np.ndarray, target_qubit: int) -> np.ndarray:
+#     """
+#     Apply a 2x2 gate U to 'target_qubit' (0 = LSB) on the given state vector.
+
+#     Uses the LSB convention (basis order 00, 01, 10, 11 for 2 qubits).
+
+#     >>> import numpy as np
+#     >>> # 1-qubit: |0> -> |1> with X
+#     >>> state = np.array([1+0j, 0+0j])
+#     >>> result = apply_single_qubit_gate(state, Gate.X(), target_qubit=0)
+#     >>> np.allclose(result, np.array([0, 1]))
+#     True
+
+#     >>> # 2-qubits: apply X on qubit 1 (MSB) to |00> -> |10>
+#     >>> state = np.array([1, 0, 0, 0], dtype=complex)
+#     >>> result = apply_single_qubit_gate(state, Gate.X(), target_qubit=1)
+#     >>> np.allclose(result, np.array([0, 0, 1, 0]))
+#     True
+#     """
+#     dim = state.shape[0]
+#     result = state.copy()
+#     step = 1 << target_qubit
+
+#     for base in range(0, dim, step * 2):
+#         for offset in range(step):
+#             i0 = base + offset          # target bit = 0
+#             i1 = i0 + step              # target bit = 1
+
+#             v0 = state[i0]
+#             v1 = state[i1]
+#             result[i0] = U[0, 0] * v0 + U[0, 1] * v1
+#             result[i1] = U[1, 0] * v0 + U[1, 1] * v1
+
+#     return result
+
+
+# def apply_controlled_single_qubit_gate(
+#     state: np.ndarray, U: np.ndarray,
+#     target_qubit: int, control_qubits: List[int]
+# ) -> np.ndarray:
+#     """
+#     Apply a (multi-)controlled 2x2 gate U.
+#     The gate is applied to target_qubit when all control_qubits are 1.
+
+#     >>> import numpy as np
+#     >>> # 2-qubit controlled-X: control q1 (MSB), target q0 (LSB)
+#     >>> # |10> (index 2) -> |11> (index 3)
+#     >>> state = np.array([0, 0, 1, 0], dtype=complex)
+#     >>> result = apply_controlled_single_qubit_gate(
+#     ...     state, Gate.X(), target_qubit=0, control_qubits=[1]
+#     ... )
+#     >>> np.allclose(result, np.array([0, 0, 0, 1]))
+#     True
+#     """
+#     if not control_qubits:
+#         return apply_single_qubit_gate(state, U, target_qubit)
+
+#     dim = state.shape[0]
+#     result = state.copy()
+#     step = 1 << target_qubit
+
+#     # Loop over basis pairs differing at target_qubit
+#     for base in range(0, dim, step * 2):
+#         for offset in range(step):
+#             i0 = base + offset  # target bit = 0
+#             i1 = i0 + step      # target bit = 1
+
+#             # Check controls on either index; non-target bits are the same.
+#             ok = True
+#             for c in control_qubits:
+#                 if ((i0 >> c) & 1) == 0:
+#                     ok = False
+#                     break
+#             if not ok:
+#                 continue
+
+#             v0 = state[i0]
+#             v1 = state[i1]
+#             result[i0] = U[0, 0] * v0 + U[0, 1] * v1
+#             result[i1] = U[1, 0] * v0 + U[1, 1] * v1
+
+#     return result
+
+
+def apply_single_qubit_gate(state: np.ndarray, U: np.ndarray, bit_index: int) -> np.ndarray:
     """
-    Apply a 2x2 gate U to 'target_qubit' (0 = LSB) on the given state vector.
-
-    Uses the LSB convention (basis order 00, 01, 10, 11 for 2 qubits).
-
-    >>> import numpy as np
-    >>> # 1-qubit: |0> -> |1> with X
-    >>> state = np.array([1+0j, 0+0j])
-    >>> result = apply_single_qubit_gate(state, Gate.X(), target_qubit=0)
-    >>> np.allclose(result, np.array([0, 1]))
-    True
-
-    >>> # 2-qubits: apply X on qubit 1 (MSB) to |00> -> |10>
-    >>> state = np.array([1, 0, 0, 0], dtype=complex)
-    >>> result = apply_single_qubit_gate(state, Gate.X(), target_qubit=1)
-    >>> np.allclose(result, np.array([0, 0, 1, 0]))
-    True
+    Apply a 2x2 gate U to the given *bit_index* (0 = LSB) of the state vector.
     """
     dim = state.shape[0]
     result = state.copy()
-    step = 1 << target_qubit
+    step = 1 << bit_index
 
     for base in range(0, dim, step * 2):
         for offset in range(step):
@@ -226,38 +295,29 @@ def apply_single_qubit_gate(state: np.ndarray, U: np.ndarray, target_qubit: int)
 
 def apply_controlled_single_qubit_gate(
     state: np.ndarray, U: np.ndarray,
-    target_qubit: int, control_qubits: List[int]
+    target_bit: int, control_bits: List[int]
 ) -> np.ndarray:
     """
     Apply a (multi-)controlled 2x2 gate U.
-    The gate is applied to target_qubit when all control_qubits are 1.
 
-    >>> import numpy as np
-    >>> # 2-qubit controlled-X: control q1 (MSB), target q0 (LSB)
-    >>> # |10> (index 2) -> |11> (index 3)
-    >>> state = np.array([0, 0, 1, 0], dtype=complex)
-    >>> result = apply_controlled_single_qubit_gate(
-    ...     state, Gate.X(), target_qubit=0, control_qubits=[1]
-    ... )
-    >>> np.allclose(result, np.array([0, 0, 0, 1]))
-    True
+    The gate is applied to target_bit when all control_bits are 1.
+    Indices here are *bit indices* (0 = LSB).
     """
-    if not control_qubits:
-        return apply_single_qubit_gate(state, U, target_qubit)
+    if not control_bits:
+        return apply_single_qubit_gate(state, U, target_bit)
 
     dim = state.shape[0]
     result = state.copy()
-    step = 1 << target_qubit
+    step = 1 << target_bit
 
-    # Loop over basis pairs differing at target_qubit
     for base in range(0, dim, step * 2):
         for offset in range(step):
             i0 = base + offset  # target bit = 0
             i1 = i0 + step      # target bit = 1
 
-            # Check controls on either index; non-target bits are the same.
+            # Check controls on i0 (i1 has same non-target bits)
             ok = True
-            for c in control_qubits:
+            for c in control_bits:
                 if ((i0 >> c) & 1) == 0:
                     ok = False
                     break
@@ -272,6 +332,64 @@ def apply_controlled_single_qubit_gate(
     return result
 
 
+
+# def apply_row_to_state(
+#     state: np.ndarray,
+#     row_gates: List[Optional[str]],
+# ) -> np.ndarray:
+#     """
+#     Apply one 'row' of the grid to the state.
+
+#     row_gates is a list of length num_qubits, each entry is:
+#       - None / "I" for identity
+#       - "CTRL" for control positions
+#       - other gate name from GATE_LIBRARY for the target gate
+
+#     >>> import numpy as np
+#     >>> # Single-qubit row with X
+#     >>> state = np.array([1, 0], dtype=complex)
+#     >>> out = apply_row_to_state(state, ["X"])
+#     >>> np.allclose(out, np.array([0, 1]))
+#     True
+
+#     >>> # 2-qubit controlled-X: row [CTRL, X] (q0=CTRL, q1=X)
+#     >>> # control q0 (LSB), target q1 (MSB)
+#     >>> state = np.array([0, 1, 0, 0], dtype=complex)  # |01>
+#     >>> out = apply_row_to_state(state, ["CTRL", "X"])
+#     >>> # |01> -> |11> when control is 1
+#     >>> np.allclose(out, np.array([0, 0, 0, 1]))
+#     True
+#     """
+#     num_qubits = len(row_gates)
+#     current = state.copy()
+
+#     # Identify controls and targets
+#     controls = [q for q, g in enumerate(row_gates) if g == "CTRL"]
+#     targets = [q for q, g in enumerate(row_gates) if g not in (None, "I", "CTRL")]
+
+#     if controls and len(targets) == 1:
+#         # Single controlled operation
+#         t = targets[0]
+#         gate_name = row_gates[t]
+#         U = GATE_LIBRARY[gate_name]
+#         current = apply_controlled_single_qubit_gate(current, U, t, controls)
+
+#         # If there are any other single-qubit gates, apply them ignoring CTRL
+#         for q in range(num_qubits):
+#             if q == t:
+#                 continue
+#             g = row_gates[q]
+#             if g and g not in ("I", "CTRL"):
+#                 current = apply_single_qubit_gate(current, GATE_LIBRARY[g], q)
+#     else:
+#         # No controls or ambiguous: apply all single-qubit gates independently
+#         for q, g in enumerate(row_gates):
+#             if g and g not in ("I", "CTRL"):
+#                 current = apply_single_qubit_gate(current, GATE_LIBRARY[g], q)
+
+#     return current
+
+
 def apply_row_to_state(
     state: np.ndarray,
     row_gates: List[Optional[str]],
@@ -279,54 +397,52 @@ def apply_row_to_state(
     """
     Apply one 'row' of the grid to the state.
 
-    row_gates is a list of length num_qubits, each entry is:
-      - None / "I" for identity
-      - "CTRL" for control positions
-      - other gate name from GATE_LIBRARY for the target gate
+    row_gates is a list of length num_qubits, indexed by *qubit*:
+      index 0 -> q0 (MSB), ..., index num_qubits−1 -> q_{num_qubits−1} (LSB).
 
-    >>> import numpy as np
-    >>> # Single-qubit row with X
-    >>> state = np.array([1, 0], dtype=complex)
-    >>> out = apply_row_to_state(state, ["X"])
-    >>> np.allclose(out, np.array([0, 1]))
-    True
-
-    >>> # 2-qubit controlled-X: row [CTRL, X] (q0=CTRL, q1=X)
-    >>> # control q0 (LSB), target q1 (MSB)
-    >>> state = np.array([0, 1, 0, 0], dtype=complex)  # |01>
-    >>> out = apply_row_to_state(state, ["CTRL", "X"])
-    >>> # |01> -> |11> when control is 1
-    >>> np.allclose(out, np.array([0, 0, 0, 1]))
-    True
+    We map qubit index q to bit index:
+        bit_index = num_qubits - 1 - q
+    so q0 corresponds to the most significant bit.
     """
     num_qubits = len(row_gates)
     current = state.copy()
 
-    # Identify controls and targets
-    controls = [q for q, g in enumerate(row_gates) if g == "CTRL"]
-    targets = [q for q, g in enumerate(row_gates) if g not in (None, "I", "CTRL")]
+    # Map qubit index -> bit index (0 = LSB)
+    # q0 -> bit num_qubits-1, q1 -> num_qubits-2, ..., q_{n-1} -> bit 0
+    bit_for_qubit = [num_qubits - 1 - q for q in range(num_qubits)]
 
-    if controls and len(targets) == 1:
+    # Identify controls and targets in *qubit* index
+    control_qubits = [q for q, g in enumerate(row_gates) if g == "CTRL"]
+    target_qubits = [q for q, g in enumerate(row_gates) if g not in (None, "I", "CTRL")]
+
+    if control_qubits and len(target_qubits) == 1:
         # Single controlled operation
-        t = targets[0]
-        gate_name = row_gates[t]
+        t_q = target_qubits[0]
+        gate_name = row_gates[t_q]
         U = GATE_LIBRARY[gate_name]
-        current = apply_controlled_single_qubit_gate(current, U, t, controls)
 
-        # If there are any other single-qubit gates, apply them ignoring CTRL
+        target_bit = bit_for_qubit[t_q]
+        control_bits = [bit_for_qubit[q] for q in control_qubits]
+
+        current = apply_controlled_single_qubit_gate(current, U, target_bit, control_bits)
+
+        # Other single-qubit gates in this row (ignoring CTRL)
         for q in range(num_qubits):
-            if q == t:
+            if q == t_q:
                 continue
             g = row_gates[q]
             if g and g not in ("I", "CTRL"):
-                current = apply_single_qubit_gate(current, GATE_LIBRARY[g], q)
+                b = bit_for_qubit[q]
+                current = apply_single_qubit_gate(current, GATE_LIBRARY[g], b)
     else:
         # No controls or ambiguous: apply all single-qubit gates independently
         for q, g in enumerate(row_gates):
             if g and g not in ("I", "CTRL"):
-                current = apply_single_qubit_gate(current, GATE_LIBRARY[g], q)
+                b = bit_for_qubit[q]
+                current = apply_single_qubit_gate(current, GATE_LIBRARY[g], b)
 
     return current
+
 
 
 def build_row_operator(
@@ -1050,8 +1166,12 @@ def main():
 
     args = parser.parse_args()
 
+    num_qubits = 3
+    if args.init == 'full_adder':
+        num_qubits = 4
+
     cfg = GameConfig(
-        num_qubits=3,
+        num_qubits=num_qubits,
         num_rows=10,
         fps=120,
     )
@@ -1105,6 +1225,58 @@ def main():
                 (7, 0, "CTRL"),
                 (7, 1, "CTRL"),
                 (7, 2, "Z"),
+        ])
+
+    if args.init == 'full_adder':
+        game.set_gates([
+            # Qubit roles (MSB-first: UI/state labels are |q0 q1 q2 q3>):
+            #   q0 : carry-out bit (MSB of the result)
+            #   q1 : sum bit       (output)
+            #   q2 : input1 (a)
+            #   q3 : input2 (b)
+
+            # Row 0 – initialization:
+            # Start from |0000>, set inputs a = 1, b = 1, keep carry/sum ancillas at 0.
+            # After these two gates the state is |q0 q1 q2 q3> = |0 0 1 1>.
+            (0, 2, "X"),  # q2 = 1  (input1 = 1)
+            (0, 3, "X"),  # q3 = 1  (input2 = 1)
+
+            # TEST YOUR KNOWLEDGE:
+            # If we uncomment the following line we also flip q1 to 1, so the initial
+            # state becomes |q0 q1 q2 q3> = |0 1 1 1>.
+            # q1 is the sum ancilla, so we are no longer starting from sum = 0.
+            # How does that change the final carry/sum bits, and how should we interpret
+            # the result (carry, sum) in that case?
+            # (0, 1, "X"),  # q1 = 1  (pre-load the sum bit)
+
+            # Rows 3–7 – full-adder logic (no carry-in):
+            # Computes:
+            #   sum   = a ⊕ b      into q1
+            #   carry = a & b      into q0
+            #
+            # The specific gate sequence below is a reversible implementation of that.
+            (3, 0, "X"),
+            (3, 2, "CTRL"),
+            (3, 3, "CTRL"),
+            (4, 2, "X"),
+            (4, 3, "CTRL"),
+            (5, 0, "X"),
+            (5, 1, "CTRL"),
+            (5, 2, "CTRL"),
+            (6, 1, "X"),
+            (6, 2, "CTRL"),
+            (7, 2, "X"),
+            (7, 3, "CTRL"),
+
+            # Qubit layout recap (UI shows states as |q0 q1 q2 q3>):
+            #   q0 = carry-out (MSB of the result)
+            #   q1 = sum bit
+            #   q2 = input1
+            #   q3 = input2
+            #
+            # Inputs are prepared as input1 = q2 = 1, input2 = q3 = 1.
+            # If the final basis state is |q0 q1 q2 q3> = |1 0 1 1|,
+            # then input1=1, input2=1, sum=0, carry=1 → 1 + 1 = (carry,sum) = 10₂ = 2.
         ])
 
     game.run()
