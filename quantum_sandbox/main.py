@@ -39,6 +39,7 @@ how amplitudes move and interfere.
 This is inspired by Quantum Odyssey and we highly recommend the game on Steam:
     https://store.steampowered.com/app/2802710/Quantum_Odyssey/
 """
+
 import math
 import sys
 import argparse
@@ -53,11 +54,13 @@ import pygame
 # Config dataclasses
 # ------------------------------
 
+
 @dataclass
 class GameConfig:
     """
     Global configuration for the QuantumSandbox.
     """
+
     num_qubits: int = 3
     num_rows: int = 8
     max_qubits: int = 6
@@ -71,6 +74,7 @@ class GateSelectionConfig:
     """
     Layout configuration for the gate palette view.
     """
+
     left_margin: int = 10
     top_margin: int = 10
     height: int = 140
@@ -82,9 +86,10 @@ class CircuitViewConfig:
     """
     Layout configuration for the circuit (grid) view.
     """
+
     left_margin: int = 10
     min_height: int = 200
-    extra_top_gap: int = 70   # space between palette and grid
+    extra_top_gap: int = 70  # space between palette and grid
     bottom_margin: int = 10
 
 
@@ -94,16 +99,17 @@ class TrackViewConfig:
     Layout configuration and animation visualization tuning for the state
     evolution track.
     """
+
     top_margin: int = 60
     bottom_margin: int = 60
     left_margin: int = 60
     right_margin: int = 40
 
     # Animation visualization parameters
-    trans_frac: float = 0.2         # portion of path used for amplitude blend
-    amp_in_thresh: float = 1e-4     # ignore tiny input amplitudes
-    val_thresh: float = 0.05        # ignore tiny matrix entries
-    base_radius: int = 28           # base sigil radius
+    trans_frac: float = 0.2  # portion of path used for amplitude blend
+    amp_in_thresh: float = 1e-4  # ignore tiny input amplitudes
+    val_thresh: float = 0.05  # ignore tiny matrix entries
+    base_radius: int = 28  # base sigil radius
 
 
 @dataclass
@@ -114,6 +120,7 @@ class AnimationConfig:
     anim_speed is "rows per second"; 1.0 means we advance one circuit row
     per simulated second.
     """
+
     anim_speed: float = 0.6
     min_speed: float = 0.1
     max_speed: float = 4.0
@@ -126,8 +133,9 @@ class SandboxControlConfig:
     Layout configuration for the sandbox control panel
     (animation, dimensions, reset).
     """
+
     height: int = 60
-    top_margin: int = 34   # gap between grid bottom and controls
+    top_margin: int = 34  # gap between grid bottom and controls
 
 
 # ------------------------------
@@ -137,9 +145,9 @@ class SandboxControlConfig:
 
 class Color:
     # Sigil and track colors
-    POS_REAL = (60, 60, 255)   # blue
-    NEG_REAL = (255, 60, 60)   # red
-    POS_IMAG = (60, 255, 60)   # green
+    POS_REAL = (60, 60, 255)  # blue
+    NEG_REAL = (255, 60, 60)  # red
+    POS_IMAG = (60, 255, 60)  # green
     NEG_IMAG = (255, 255, 60)  # yellow
 
     BACKGROUND = (10, 10, 20)
@@ -156,6 +164,7 @@ class Color:
 # Gate class
 # ------------------------------
 
+
 class Gate:
     @staticmethod
     def Identity() -> np.ndarray:
@@ -166,8 +175,7 @@ class Gate:
             >>> np.allclose(G @ np.array([1, 0]), np.array([1, 0]))
             True
         """
-        return np.array([[1, 0],
-                         [0, 1]], dtype=complex)
+        return np.array([[1, 0], [0, 1]], dtype=complex)
 
     @staticmethod
     def X() -> np.ndarray:
@@ -178,8 +186,7 @@ class Gate:
             >>> np.allclose(G @ np.array([1, 0]), np.array([0, 1]))
             True
         """
-        return np.array([[0, 1],
-                         [1, 0]], dtype=complex)
+        return np.array([[0, 1], [1, 0]], dtype=complex)
 
     @staticmethod
     def Y() -> np.ndarray:
@@ -191,8 +198,7 @@ class Gate:
             >>> np.allclose(v, np.array([0, 1j]))
             True
         """
-        return np.array([[0, -1j],
-                         [1j, 0]], dtype=complex)
+        return np.array([[0, -1j], [1j, 0]], dtype=complex)
 
     @staticmethod
     def Z() -> np.ndarray:
@@ -206,8 +212,7 @@ class Gate:
             >>> np.allclose(G @ np.array([0, 1]), np.array([0, -1]))
             True
         """
-        return np.array([[1, 0],
-                         [0, -1]], dtype=complex)
+        return np.array([[1, 0], [0, -1]], dtype=complex)
 
     @staticmethod
     def H() -> np.ndarray:
@@ -219,8 +224,7 @@ class Gate:
             >>> np.allclose(v, np.array([1, 1]) / math.sqrt(2))
             True
         """
-        return (1 / math.sqrt(2)) * np.array([[1, 1],
-                                              [1, -1]], dtype=complex)
+        return (1 / math.sqrt(2)) * np.array([[1, 1], [1, -1]], dtype=complex)
 
     @staticmethod
     def S() -> np.ndarray:
@@ -232,14 +236,12 @@ class Gate:
             >>> np.allclose(v, np.array([0, 1j]))
             True
         """
-        return np.array([[1, 0],
-                         [0, 1j]], dtype=complex)
+        return np.array([[1, 0], [0, 1j]], dtype=complex)
 
     @staticmethod
     def T() -> np.ndarray:
         """T gate = diag(1, e^{i*pi/4})."""
-        return np.array([[1, 0],
-                         [0, np.exp(1j * math.pi / 4)]], dtype=complex)
+        return np.array([[1, 0], [0, np.exp(1j * math.pi / 4)]], dtype=complex)
 
     @staticmethod
     def SX() -> np.ndarray:
@@ -252,8 +254,7 @@ class Gate:
             True
         """
         # sqrt(X) = 0.5 * [[1 + i, 1 - i], [1 - i, 1 + i]]
-        return 0.5 * np.array([[1 + 1j, 1 - 1j],
-                               [1 - 1j, 1 + 1j]], dtype=complex)
+        return 0.5 * np.array([[1 + 1j, 1 - 1j], [1 - 1j, 1 + 1j]], dtype=complex)
 
     @staticmethod
     def HC() -> np.ndarray:
@@ -370,14 +371,14 @@ def apply_single_qubit_gate_with_controls(
     if control_bits:
         control_mask = 0
         for c in control_bits:
-            control_mask |= (1 << c)
+            control_mask |= 1 << c
     else:
         control_mask = None
 
     for base in range(0, dim, step * 2):
         for offset in range(step):
             i0 = base + offset  # target bit = 0
-            i1 = i0 + step      # target bit = 1
+            i1 = i0 + step  # target bit = 1
 
             # Check controls if present
             if control_mask is not None:
@@ -508,6 +509,7 @@ def build_row_operator(
 # Visualization helpers
 # ------------------------------
 
+
 def amplitude_to_color(amp: complex) -> Tuple[int, int, int]:
     """
     Map a complex amplitude to an RGB color based on phase.
@@ -559,12 +561,14 @@ def amplitude_to_color(amp: complex) -> Tuple[int, int, int]:
 
     mag = abs(amp)
     mag = max(0.0, min(1.0, mag))
-    color *= (0.3 + 0.7 * mag)
+    color *= 0.3 + 0.7 * mag
     color = np.clip(color, 0, 255)
     return tuple(int(x) for x in color)
 
 
-def amplitude_to_split_colors(amp: complex) -> Tuple[Tuple[int, int, int], Tuple[int, int, int]]:
+def amplitude_to_split_colors(
+    amp: complex,
+) -> Tuple[Tuple[int, int, int], Tuple[int, int, int]]:
     """
     Map a complex amplitude to two RGB colors:
       - one for the real part (used on the *left* side of a line)
@@ -715,6 +719,7 @@ class GateSelectionView:
         >>> isinstance(view, GateSelectionView)
         True
     """
+
     def __init__(
         self,
         sandbox: "QuantumSandbox",
@@ -821,6 +826,7 @@ class CircuitView:
         >>> isinstance(view, CircuitView)
         True
     """
+
     def __init__(
         self,
         sandbox: "QuantumSandbox",
@@ -878,14 +884,14 @@ class CircuitView:
         # Draw grid lines
         for q in range(num_qubits + 1):
             x = self.rect.x + q * cell_w
-            pygame.draw.line(screen, Color.GRID_LINE,
-                             (x, self.rect.y),
-                             (x, self.rect.bottom))
+            pygame.draw.line(
+                screen, Color.GRID_LINE, (x, self.rect.y), (x, self.rect.bottom)
+            )
         for r in range(num_rows + 1):
             y = self.rect.y + r * cell_h
-            pygame.draw.line(screen, Color.GRID_LINE,
-                             (self.rect.x, y),
-                             (self.rect.right, y))
+            pygame.draw.line(
+                screen, Color.GRID_LINE, (self.rect.x, y), (self.rect.right, y)
+            )
 
         # Draw gates in cells
         padding = 0.15
@@ -961,6 +967,7 @@ class TrackView:
         >>> isinstance(view, TrackView)
         True
     """
+
     def __init__(
         self,
         sandbox: "QuantumSandbox",
@@ -1004,7 +1011,9 @@ class TrackView:
         if num_states <= 1:
             return
 
-        state_spacing = usable_width / (num_states - 1) if num_states > 1 else usable_width
+        state_spacing = (
+            usable_width / (num_states - 1) if num_states > 1 else usable_width
+        )
         state_x_positions = [track_x0 + i * state_spacing for i in range(num_states)]
 
         # Draw top and bottom labels
@@ -1016,9 +1025,7 @@ class TrackView:
             screen.blit(label, (state_x_positions[i] - lw / 2, track_y0 - lh - 6))
             # Bottom
             screen.blit(
-                label,
-                (state_x_positions[i] - lw / 2,
-                 track_y0 + usable_height + 6)
+                label, (state_x_positions[i] - lw / 2, track_y0 + usable_height + 6)
             )
 
         # Draw row lines (horizontal)
@@ -1026,10 +1033,7 @@ class TrackView:
         for r in range(num_rows + 1):
             y = track_y0 + r * row_height
             pygame.draw.line(
-                screen, (40, 40, 80),
-                (track_x0, y),
-                (track_x0 + usable_width, y),
-                1
+                screen, (40, 40, 80), (track_x0, y), (track_x0 + usable_width, y), 1
             )
 
         # Draw mapping lines per row (static background wires)
@@ -1060,7 +1064,8 @@ class TrackView:
                     if re_mag < eps or im_mag < eps:
                         color = amplitude_to_color(val)
                         pygame.draw.line(
-                            surface=screen, color=color,
+                            surface=screen,
+                            color=color,
                             start_pos=(x_in, y0),
                             end_pos=(x_out, y1),
                             width=width,
@@ -1073,7 +1078,7 @@ class TrackView:
 
                         # Horizontal offset for side-by-side lines
                         half_width = width // 2
-                        half_width += (1 - (half_width % 2))  # make it odd
+                        half_width += 1 - (half_width % 2)  # make it odd
                         dx = half_width / 2  # a few pixels left/right
 
                         # PyGame Notes:
@@ -1098,14 +1103,16 @@ class TrackView:
 
                         # Real line (left)
                         pygame.draw.line(
-                            surface=screen, color=color_re,
+                            surface=screen,
+                            color=color_re,
                             start_pos=(x_in - dx - 0.5, y0),
                             end_pos=(x_out - dx - 0.5, y1),
                             width=half_width,
                         )
                         # Imag line (right)
                         pygame.draw.line(
-                            surface=screen, color=color_im,
+                            surface=screen,
+                            color=color_im,
                             start_pos=(x_in + dx + 0.5, y0),
                             end_pos=(x_out + dx + 0.5, y1),
                             width=half_width,
@@ -1223,8 +1230,7 @@ class TrackView:
             max_dy = int(math.sqrt(max_dy_sq))
             x = cx + dx
             color = real_color if dx <= split_x_local else imag_color
-            pygame.draw.line(screen, color,
-                             (x, cy - max_dy), (x, cy + max_dy))
+            pygame.draw.line(screen, color, (x, cy - max_dy), (x, cy + max_dy))
 
     @classmethod
     def demo(cls, outfile: Optional[str] = None) -> "TrackView":
@@ -1269,9 +1275,12 @@ class TrackView:
         stub.anim_t = 1.5
 
         view = cls(stub)
-        view.update_layout(left=10, top=10,
-                           width=surface.get_width() - 20,
-                           height=surface.get_height() - 20)
+        view.update_layout(
+            left=10,
+            top=10,
+            width=surface.get_width() - 20,
+            height=surface.get_height() - 20,
+        )
 
         surface.fill(Color.BACKGROUND)
         view.draw()
@@ -1295,6 +1304,7 @@ class SandboxControlView:
         >>> isinstance(view, SandboxControlView)
         True
     """
+
     def __init__(
         self,
         sandbox: "QuantumSandbox",
@@ -1337,7 +1347,9 @@ class SandboxControlView:
         self._btn_faster = pygame.Rect(row1.x + 2 * w1, row1.y, w1 - 4, row1.height)
 
         # Second row: -Q, +Q, -Row, +Row, Reset
-        row2 = pygame.Rect(inner.x, inner.y + row_height + row_gap, inner.width, row_height)
+        row2 = pygame.Rect(
+            inner.x, inner.y + row_height + row_gap, inner.width, row_height
+        )
         w2 = row2.width // 5
         self._btn_qubits_dec = pygame.Rect(row2.x, row2.y, w2 - 4, row2.height)
         self._btn_qubits_inc = pygame.Rect(row2.x + w2, row2.y, w2 - 4, row2.height)
@@ -1375,8 +1387,10 @@ class SandboxControlView:
             pygame.draw.rect(screen, border, rect, 2, border_radius=6)
             txt = font_mid.render(label, True, Color.TEXT)
             tw_, th_ = txt.get_size()
-            screen.blit(txt, (rect.x + (rect.width - tw_) // 2,
-                              rect.y + (rect.height - th_) // 2))
+            screen.blit(
+                txt,
+                (rect.x + (rect.width - tw_) // 2, rect.y + (rect.height - th_) // 2),
+            )
 
         playing = not getattr(self.sandbox, "anim_paused", False)
 
@@ -1472,7 +1486,9 @@ class SandboxControlView:
         stub.num_qubits = 3
         stub.num_rows = 8
 
-        anim_cfg = AnimationConfig(anim_speed=1.0, min_speed=0.0, max_speed=2.0, speed_step=0.2)
+        anim_cfg = AnimationConfig(
+            anim_speed=1.0, min_speed=0.0, max_speed=2.0, speed_step=0.2
+        )
         control_cfg = SandboxControlConfig(height=110, top_margin=10)
         view = cls(stub, anim_cfg, control_cfg)
 
@@ -1508,6 +1524,7 @@ class QuantumSandbox:
         >>> isinstance(game, QuantumSandbox)
         True
     """
+
     def __init__(self, config: Optional[GameConfig] = None):
         self.config = config or GameConfig()
         assert 1 <= self.config.num_qubits <= self.config.max_qubits
@@ -1547,8 +1564,7 @@ class QuantumSandbox:
 
         # Grid data: [row][qubit] -> gate name or None
         self.grid: List[List[Optional[str]]] = [
-            [None for _ in range(self.num_qubits)]
-            for _ in range(self.num_rows)
+            [None for _ in range(self.num_qubits)] for _ in range(self.num_rows)
         ]
 
         # Quantum state data
@@ -1635,8 +1651,7 @@ class QuantumSandbox:
         Clear all gates and reset the quantum state to |000...0>.
         """
         self.grid = [
-            [None for _ in range(self.num_qubits)]
-            for _ in range(self.num_rows)
+            [None for _ in range(self.num_qubits)] for _ in range(self.num_rows)
         ]
         self.initial_state = np.zeros(self.dim, dtype=complex)
         self.initial_state[0] = 1.0
@@ -1778,7 +1793,11 @@ class QuantumSandbox:
 
                     # If we were dragging from the grid and we didn't place it,
                     # restore it to original cell.
-                    if (not placed and self.drag_source == "grid" and self.drag_source_cell):
+                    if (
+                        not placed
+                        and self.drag_source == "grid"
+                        and self.drag_source_cell
+                    ):
                         r0, q0 = self.drag_source_cell
                         self.set_gates([(r0, q0, self.dragging_gate)])
 
@@ -1792,7 +1811,9 @@ class QuantumSandbox:
 
             elif event.type == pygame.KEYDOWN:
                 # Secret debug: Ctrl+P dumps grid as set_gates snippet
-                if event.key == pygame.K_p and (pygame.key.get_mods() & pygame.KMOD_CTRL):
+                if event.key == pygame.K_p and (
+                    pygame.key.get_mods() & pygame.KMOD_CTRL
+                ):
                     self.debug_print_gates()
 
         return True
@@ -1899,28 +1920,30 @@ class QuantumSandbox:
         game = cls(cfg)
 
         # A small "showcase" arrangement to exercise sigils & controls.
-        game.set_gates([
-            (0, 0, "H"),
-            (0, 1, "H"),
-            (0, 2, "H"),
-            (1, 0, "T"),
-            (1, 1, "S"),
-            (1, 2, "Z"),
-            (2, 0, "CTRL"),
-            (2, 1, "Y"),
-            (3, 0, "CTRL"),
-            (3, 1, "T"),
-            (4, 1, "CTRL"),
-            (4, 2, "Z"),
-            (5, 0, "S"),
-            (5, 2, "T"),
-            (6, 0, "CTRL"),
-            (6, 1, "CTRL"),
-            (6, 2, "HC"),
-            (7, 0, "CTRL"),
-            (7, 1, "CTRL"),
-            (7, 2, "Z"),
-        ])
+        game.set_gates(
+            [
+                (0, 0, "H"),
+                (0, 1, "H"),
+                (0, 2, "H"),
+                (1, 0, "T"),
+                (1, 1, "S"),
+                (1, 2, "Z"),
+                (2, 0, "CTRL"),
+                (2, 1, "Y"),
+                (3, 0, "CTRL"),
+                (3, 1, "T"),
+                (4, 1, "CTRL"),
+                (4, 2, "Z"),
+                (5, 0, "S"),
+                (5, 2, "T"),
+                (6, 0, "CTRL"),
+                (6, 1, "CTRL"),
+                (6, 2, "HC"),
+                (7, 0, "CTRL"),
+                (7, 1, "CTRL"),
+                (7, 2, "Z"),
+            ]
+        )
 
         game.animation_config.anim_speed = 0.8
         game.anim_paused = False
@@ -1936,14 +1959,15 @@ class QuantumSandbox:
 # Entry point
 # ------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--init', default=None, help='initial setup')
+    parser.add_argument("--init", default=None, help="initial setup")
 
     args = parser.parse_args()
 
     num_qubits = 3
-    if args.init == 'full_adder':
+    if args.init == "full_adder":
         num_qubits = 4
 
     cfg = GameConfig(
@@ -1953,111 +1977,119 @@ def main():
     )
     game = QuantumSandbox(cfg)
 
-    if args.init == 'grover':
-        game.set_gates([
-            (0, 0, "H"),
-            (0, 1, "H"),
-            (0, 2, "H"),
-            (1, 0, "CTRL"),
-            (1, 1, "CTRL"),
-            (1, 2, "Z"),
-            (3, 0, "H"),
-            (3, 1, "H"),
-            (3, 2, "H"),
-            (4, 0, "X"),
-            (4, 1, "X"),
-            (4, 2, "X"),
-            (5, 0, "CTRL"),
-            (5, 1, "CTRL"),
-            (5, 2, "Z"),
-            (6, 0, "X"),
-            (6, 1, "X"),
-            (6, 2, "X"),
-            (7, 0, "H"),
-            (7, 1, "H"),
-            (7, 2, "H"),
-        ])
+    if args.init == "grover":
+        game.set_gates(
+            [
+                (0, 0, "H"),
+                (0, 1, "H"),
+                (0, 2, "H"),
+                (1, 0, "CTRL"),
+                (1, 1, "CTRL"),
+                (1, 2, "Z"),
+                (3, 0, "H"),
+                (3, 1, "H"),
+                (3, 2, "H"),
+                (4, 0, "X"),
+                (4, 1, "X"),
+                (4, 2, "X"),
+                (5, 0, "CTRL"),
+                (5, 1, "CTRL"),
+                (5, 2, "Z"),
+                (6, 0, "X"),
+                (6, 1, "X"),
+                (6, 2, "X"),
+                (7, 0, "H"),
+                (7, 1, "H"),
+                (7, 2, "H"),
+            ]
+        )
 
-    if args.init == 'showcase':
+    if args.init == "showcase":
         # Creates all sigil types
-        game.set_gates([
-            (0, 0, "H"),
-            (0, 1, "H"),
-            (0, 2, "H"),
-            (1, 0, "T"),
-            (1, 1, "S"),
-            (1, 2, "Z"),
-            (2, 0, "CTRL"),
-            (2, 1, "Y"),
-            (3, 0, "CTRL"),
-            (3, 1, "T"),
-            (4, 1, "CTRL"),
-            (4, 2, "Z"),
-            (5, 0, "S"),
-            (5, 2, "T"),
-            (6, 0, "CTRL"),
-            (6, 1, "CTRL"),
-            (6, 2, "HC"),
-            (7, 0, "CTRL"),
-            (7, 1, "CTRL"),
-            (7, 2, "Z"),
-        ])
+        game.set_gates(
+            [
+                (0, 0, "H"),
+                (0, 1, "H"),
+                (0, 2, "H"),
+                (1, 0, "T"),
+                (1, 1, "S"),
+                (1, 2, "Z"),
+                (2, 0, "CTRL"),
+                (2, 1, "Y"),
+                (3, 0, "CTRL"),
+                (3, 1, "T"),
+                (4, 1, "CTRL"),
+                (4, 2, "Z"),
+                (5, 0, "S"),
+                (5, 2, "T"),
+                (6, 0, "CTRL"),
+                (6, 1, "CTRL"),
+                (6, 2, "HC"),
+                (7, 0, "CTRL"),
+                (7, 1, "CTRL"),
+                (7, 2, "Z"),
+            ]
+        )
 
-    if args.init == 'full_adder':
-        game.set_gates([
-            # Qubit roles (MSB-first: UI/state labels are |q0 q1 q2 q3>):
-            #   q0 : carry-out bit (MSB of the result)
-            #   q1 : sum bit       (output)
-            #   q2 : input1 (a)
-            #   q3 : input2 (b)
+    if args.init == "full_adder":
+        game.set_gates(
+            [
+                # Qubit roles (MSB-first: UI/state labels are |q0 q1 q2 q3>):
+                #   q0 : carry-out bit (MSB of the result)
+                #   q1 : sum bit       (output)
+                #   q2 : input1 (a)
+                #   q3 : input2 (b)
+                # Row 0 – initialization:
+                # Start from |0000>, set inputs a = 1, b = 1, keep carry/sum ancillas at 0.
+                # After these two gates the state is |q0 q1 q2 q3> = |0 0 1 1>.
+                (0, 2, "X"),  # q2 = 1  (input1 = 1)
+                (0, 3, "X"),  # q3 = 1  (input2 = 1)
+                # Rows 3–7 – full-adder logic (no carry-in):
+                # Computes:
+                #   sum   = a ⊕ b      into q1
+                #   carry = a & b      into q0
+                (3, 0, "X"),
+                (3, 2, "CTRL"),
+                (3, 3, "CTRL"),
+                (4, 2, "X"),
+                (4, 3, "CTRL"),
+                (5, 0, "X"),
+                (5, 1, "CTRL"),
+                (5, 2, "CTRL"),
+                (6, 1, "X"),
+                (6, 2, "CTRL"),
+                (7, 2, "X"),
+                (7, 3, "CTRL"),
+            ]
+        )
 
-            # Row 0 – initialization:
-            # Start from |0000>, set inputs a = 1, b = 1, keep carry/sum ancillas at 0.
-            # After these two gates the state is |q0 q1 q2 q3> = |0 0 1 1>.
-            (0, 2, "X"),  # q2 = 1  (input1 = 1)
-            (0, 3, "X"),  # q3 = 1  (input2 = 1)
-
-            # Rows 3–7 – full-adder logic (no carry-in):
-            # Computes:
-            #   sum   = a ⊕ b      into q1
-            #   carry = a & b      into q0
-            (3, 0, "X"),
-            (3, 2, "CTRL"),
-            (3, 3, "CTRL"),
-            (4, 2, "X"),
-            (4, 3, "CTRL"),
-            (5, 0, "X"),
-            (5, 1, "CTRL"),
-            (5, 2, "CTRL"),
-            (6, 1, "X"),
-            (6, 2, "CTRL"),
-            (7, 2, "X"),
-            (7, 3, "CTRL"),
-        ])
-
-    if args.init == 'test_t':
+    if args.init == "test_t":
         cfg = GameConfig(
             num_qubits=1,
             num_rows=2,
             fps=120,
         )
         game = QuantumSandbox(cfg)
-        game.set_gates([
-            (0, 0, "T"),
-        ])
+        game.set_gates(
+            [
+                (0, 0, "T"),
+            ]
+        )
 
-    if args.init == 'entangle':
+    if args.init == "entangle":
         cfg = GameConfig(
             num_qubits=2,
             num_rows=3,
             fps=120,
         )
         game = QuantumSandbox(cfg)
-        game.set_gates([
-            (0, 0, "H"),
-            (1, 0, "CTRL"),
-            (1, 1, "X"),
-        ])
+        game.set_gates(
+            [
+                (0, 0, "H"),
+                (1, 0, "CTRL"),
+                (1, 1, "X"),
+            ]
+        )
 
     game.run()
 
