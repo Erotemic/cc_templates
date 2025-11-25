@@ -628,17 +628,20 @@ def draw_yinyang(
     outline_color: Optional[Tuple[int, int, int]] = None,
     outline_width: int = 2,
 ):
-    r"""
-    Draw a yin–yang-like symbol with a smooth S-shaped divider.
+    """
+    Draw two interlocking spirals (like a yin–yang-like symbol without dots)
 
-    The circle is split LEFT/RIGHT by a sine-wave-like curve:
+    No inner dots, just the smooth divider made by overlapping circles.
 
-      x_mid(y) = cx + (radius / 2) * sin(pi * (y - cy) / radius)
+    The construction is:
 
-    Pixels inside the circle and LEFT  of x_mid are `color_left`.
-    Pixels inside the circle and RIGHT of x_mid are `color_right`.
-
-    No inner dots, just the smooth divider.
+    1. Draw a full circle using `color_right`.
+    2. Draw a half-circle on the *left* using `color_left` (by clipping a full circle).
+    3. Draw the top lobe as a smaller circle of `color_right` centered above the middle.
+       (radius is half, center moved up by that half-radius).
+    4. Draw the bottom lobe as a smaller circle of `color_left` centered below the middle
+       (same radius, center moved down by that half-radius).
+    5. Optionally draw outlines around the outer circle and both lobes.
 
     Visual doctest (opens a pygame window for 1 second):
 
@@ -654,35 +657,38 @@ def draw_yinyang(
         >>> pygame.quit()
     """
     cx, cy = center
-    r = int(radius)
-    r2 = r * r
+    r = radius
 
-    # Scanline fill horizontally for each y inside the circle
-    for dy in range(-r, r + 1):
-        max_dx_sq = r2 - dy * dy
-        if max_dx_sq < 0:
-            continue
-        max_dx = int(math.sqrt(max_dx_sq))
-        y = cy + dy
+    # 1. Full base circle (right color)
+    pygame.draw.circle(surface, color_right, center, r)
 
-        # S-shaped divider as a function of y
-        x_mid = cx + (r / 2.0) * math.sin(math.pi * dy / r)
+    # 2. Left half circle (left color) using clipping
+    left_rect = pygame.Rect(cx - r, cy - r, r, 2 * r)
+    prev_clip = surface.get_clip()
+    try:
+        surface.set_clip(left_rect)
+        pygame.draw.circle(surface, color_left, center, r)
+    finally:
+        surface.set_clip(prev_clip)
 
-        x_left = cx - max_dx
-        x_right = cx + max_dx
-        x_mid_int = int(round(x_mid))
+    # 3 & 4. Lobes: smaller circles (radius / 2)
+    lobe_r = r // 2
+    top_center = (cx, cy - lobe_r)
+    bottom_center = (cx, cy + lobe_r)
 
-        # Left segment: color_left
-        if x_mid_int > x_left:
-            pygame.draw.line(surface, color_left, (x_left, y), (x_mid_int, y))
+    # Top lobe in color_right
+    pygame.draw.circle(surface, color_right, top_center, lobe_r)
 
-        # Right segment: color_right
-        if x_mid_int <= x_right:
-            pygame.draw.line(surface, color_right, (x_mid_int, y), (x_right, y))
+    # Bottom lobe in color_left
+    pygame.draw.circle(surface, color_left, bottom_center, lobe_r)
 
-    # Optional outline around the circle
+    # 5. Optional outline
     if outline_color is not None and outline_width > 0:
-        pygame.draw.circle(surface, outline_color, (cx, cy), r, outline_width)
+        # Outer circle outline
+        pygame.draw.circle(surface, outline_color, center, r, outline_width)
+        # Lobe outlines
+        pygame.draw.circle(surface, outline_color, top_center, lobe_r, outline_width)
+        pygame.draw.circle(surface, outline_color, bottom_center, lobe_r, outline_width)
 
 
 # ------------------------------
@@ -2037,7 +2043,7 @@ def main():
         )
         game = QuantumSandbox(cfg)
         game.set_gates([
-                (0, 0, "T"),
+            (0, 0, "T"),
         ])
 
     if args.init == 'entangle':
@@ -2048,9 +2054,9 @@ def main():
         )
         game = QuantumSandbox(cfg)
         game.set_gates([
-                (0, 0, "H"),
-                (1, 0, "CTRL"),
-                (1, 1, "X"),
+            (0, 0, "H"),
+            (1, 0, "CTRL"),
+            (1, 1, "X"),
         ])
 
     game.run()
