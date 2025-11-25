@@ -73,7 +73,7 @@ class GateSelectionConfig:
     """
     left_margin: int = 10
     top_margin: int = 10
-    height: int = 170
+    height: int = 140
     left_panel_width: int = 420
 
 
@@ -85,7 +85,7 @@ class CircuitViewConfig:
     left_margin: int = 10
     min_height: int = 200
     extra_top_gap: int = 70   # space between palette and grid
-    bottom_margin: int = 20
+    bottom_margin: int = 10
 
 
 @dataclass
@@ -115,8 +115,8 @@ class AnimationConfig:
     per simulated second.
     """
     anim_speed: float = 0.6
-    min_speed: float = 0.0
-    max_speed: float = 2.0
+    min_speed: float = 0.1
+    max_speed: float = 4.0
     speed_step: float = 0.2
 
 
@@ -126,8 +126,8 @@ class SandboxControlConfig:
     Layout configuration for the sandbox control panel
     (animation, dimensions, reset).
     """
-    height: int = 110
-    top_margin: int = 16   # gap between grid bottom and controls
+    height: int = 60
+    top_margin: int = 34   # gap between grid bottom and controls
 
 
 # ------------------------------
@@ -161,10 +161,10 @@ class Gate:
     def Identity() -> np.ndarray:
         """Identity gate.
 
-        >>> import numpy as np
-        >>> G = Gate.Identity()
-        >>> np.allclose(G @ np.array([1, 0]), np.array([1, 0]))
-        True
+        Example:
+            >>> G = Gate.Identity()
+            >>> np.allclose(G @ np.array([1, 0]), np.array([1, 0]))
+            True
         """
         return np.array([[1, 0],
                          [0, 1]], dtype=complex)
@@ -173,10 +173,10 @@ class Gate:
     def X() -> np.ndarray:
         """Pauli-X gate.
 
-        >>> import numpy as np
-        >>> G = Gate.X()
-        >>> np.allclose(G @ np.array([1, 0]), np.array([0, 1]))
-        True
+        Example:
+            >>> G = Gate.X()
+            >>> np.allclose(G @ np.array([1, 0]), np.array([0, 1]))
+            True
         """
         return np.array([[0, 1],
                          [1, 0]], dtype=complex)
@@ -185,11 +185,11 @@ class Gate:
     def Y() -> np.ndarray:
         """Pauli-Y gate.
 
-        >>> import numpy as np
-        >>> G = Gate.Y()
-        >>> v = G @ np.array([1, 0])
-        >>> np.allclose(v, np.array([0, 1j]))
-        True
+        Example:
+            >>> G = Gate.Y()
+            >>> v = G @ np.array([1, 0])
+            >>> np.allclose(v, np.array([0, 1j]))
+            True
         """
         return np.array([[0, -1j],
                          [1j, 0]], dtype=complex)
@@ -198,12 +198,13 @@ class Gate:
     def Z() -> np.ndarray:
         """Pauli-Z gate.
 
-        >>> import numpy as np
-        >>> G = Gate.Z()
-        >>> np.allclose(G @ np.array([1, 0]), np.array([1, 0]))
-        True
-        >>> np.allclose(G @ np.array([0, 1]), np.array([0, -1]))
-        True
+        Example:
+            >>> import numpy as np
+            >>> G = Gate.Z()
+            >>> np.allclose(G @ np.array([1, 0]), np.array([1, 0]))
+            True
+            >>> np.allclose(G @ np.array([0, 1]), np.array([0, -1]))
+            True
         """
         return np.array([[1, 0],
                          [0, -1]], dtype=complex)
@@ -212,24 +213,24 @@ class Gate:
     def H() -> np.ndarray:
         """Hadamard gate.
 
-        >>> import numpy as np, math
-        >>> G = Gate.H()
-        >>> v = G @ np.array([1, 0])
-        >>> np.allclose(v, np.array([1, 1]) / math.sqrt(2))
-        True
+        Example:
+            >>> G = Gate.H()
+            >>> v = G @ np.array([1, 0])
+            >>> np.allclose(v, np.array([1, 1]) / math.sqrt(2))
+            True
         """
         return (1 / math.sqrt(2)) * np.array([[1, 1],
-                                               [1, -1]], dtype=complex)
+                                              [1, -1]], dtype=complex)
 
     @staticmethod
     def S() -> np.ndarray:
         """Phase gate S = diag(1, i).
 
-        >>> import numpy as np
-        >>> G = Gate.S()
-        >>> v = G @ np.array([0, 1])
-        >>> np.allclose(v, np.array([0, 1j]))
-        True
+        Example:
+            >>> G = Gate.S()
+            >>> v = G @ np.array([0, 1])
+            >>> np.allclose(v, np.array([0, 1j]))
+            True
         """
         return np.array([[1, 0],
                          [0, 1j]], dtype=complex)
@@ -244,11 +245,11 @@ class Gate:
     def SX() -> np.ndarray:
         """sqrt(X) gate.
 
-        >>> import numpy as np
-        >>> G = Gate.SX()
-        >>> # SX^2 ≈ X
-        >>> np.allclose(G @ G, Gate.X())
-        True
+        Example:
+            >>> G = Gate.SX()
+            >>> # SX^2 ≈ X
+            >>> np.allclose(G @ G, Gate.X())
+            True
         """
         # sqrt(X) = 0.5 * [[1 + i, 1 - i], [1 - i, 1 + i]]
         return 0.5 * np.array([[1 + 1j, 1 - 1j],
@@ -259,11 +260,11 @@ class Gate:
         """
         'HC' gate. Here defined as S ∘ H (apply H then S).
 
-        >>> import numpy as np
-        >>> G = Gate.HC()
-        >>> U = G.conj().T @ G
-        >>> np.allclose(U, np.eye(2))
-        True
+        Example:
+            >>> G = Gate.HC()
+            >>> U = G.conj().T @ G
+            >>> np.allclose(U, np.eye(2))
+            True
         """
         return Gate.S() @ Gate.H()
 
@@ -289,57 +290,99 @@ GATE_PALETTE = ["I", "H", "HC", "X", "Y", "Z", "S", "SX", "T", "CTRL"]
 # Quantum row application
 # ------------------------------
 
-def apply_single_qubit_gate(state: np.ndarray, U: np.ndarray, bit_index: int) -> np.ndarray:
-    """
-    Apply a 2x2 gate U to the given *bit_index* (0 = LSB) of the state vector.
-    """
-    dim = state.shape[0]
-    result = state.copy()
-    step = 1 << bit_index
 
-    for base in range(0, dim, step * 2):
-        for offset in range(step):
-            i0 = base + offset          # target bit = 0
-            i1 = i0 + step              # target bit = 1
-
-            v0 = state[i0]
-            v1 = state[i1]
-            result[i0] = U[0, 0] * v0 + U[0, 1] * v1
-            result[i1] = U[1, 0] * v0 + U[1, 1] * v1
-
-    return result
-
-
-def apply_controlled_single_qubit_gate(
-    state: np.ndarray, U: np.ndarray,
-    target_bit: int, control_bits: List[int]
+def apply_single_qubit_gate_with_controls(
+    state: np.ndarray,
+    U: np.ndarray,
+    target_bit: int,
+    control_bits: Optional[List[int]] = None,
 ) -> np.ndarray:
     """
-    Apply a (multi-)controlled 2x2 gate U.
+    Apply a single-qubit gate to a target bit, optionally conditioned on control bits.
 
-    The gate is applied to target_bit when all control_bits are 1.
-    Indices here are *bit indices* (0 = LSB).
+    This function operates directly on the state vector of an ``n``-qubit system.
+    It applies a 2×2 unitary matrix ``U`` to the amplitudes associated with
+    ``target_bit`` (bit index: 0 = LSB). If ``control_bits`` is provided, the gate
+    is applied only when all control bits are equal to ``1`` in the computational
+    basis index.
+
+    The operation is performed by iterating over contiguous blocks of amplitudes
+    where the target bit is ``0`` or ``1`` and applying ``U`` to each corresponding
+    amplitude pair.
+
+    Args:
+        state (np.ndarray):
+            Complex state vector of size ``2**n``.
+
+        U (np.ndarray):
+            A 2×2 complex unitary matrix representing the single-qubit gate.
+
+        target_bit (int):
+            Bit index (0 = least significant bit) on which to apply ``U``.
+
+        control_bits (Optional[List[int]]):
+            A list of bit indices that must all be ``1`` for the gate to be applied,
+            or ``None`` / empty for an unconditional gate.
+
+    Returns:
+        np.ndarray: The updated state vector after applying the gate.
+
+    Example:
+        >>> import numpy as np
+        >>> from math import sqrt
+        >>> X = np.array([[0, 1], [1, 0]], dtype=complex)
+
+        Uncontrolled X on bit 0 of a 2-qubit state:
+
+        >>> # |00> → |01>
+        >>> psi = np.zeros(4, dtype=complex)
+        >>> psi[0] = 1.0
+        >>> psi2 = apply_single_qubit_gate_with_controls(psi, X, target_bit=0)
+        >>> np.allclose(psi2, [0, 1, 0, 0])
+        True
+
+        Controlled-X on bit 0 with control on bit 1:
+
+        >>> # Apply CX(|10>) = |11>, but leave |00> unchanged
+        >>> psi = np.zeros(4, dtype=complex)
+        >>> psi[0] = 1.0   # |00>
+        >>> psi[2] = 1.0   # |10>
+        >>> psi2 = apply_single_qubit_gate_with_controls(psi, X, 0, control_bits=[1])
+        >>> # Expected: |00> + |11>
+        >>> np.allclose(psi2, [1, 0, 0, 1])
+        True
+
+        Hadamard on bit 1 of a 2-qubit state:
+
+        >>> H = (1/sqrt(2)) * np.array([[1, 1], [1, -1]], dtype=complex)
+        >>> psi = np.array([1, 0, 0, 0], dtype=complex)   # |00>
+        >>> psi2 = apply_single_qubit_gate_with_controls(psi, H, target_bit=1)
+        >>> # Result should be (|00> + |10>) / sqrt(2)
+        >>> np.allclose(psi2, [1/sqrt(2), 0, 1/sqrt(2), 0])
+        True
     """
-    if not control_bits:
-        return apply_single_qubit_gate(state, U, target_bit)
-
     dim = state.shape[0]
     result = state.copy()
     step = 1 << target_bit
+
+    # Precompute a bitmask for all control bits for faster checking:
+    # require (i0 & control_mask) == control_mask
+    if control_bits:
+        control_mask = 0
+        for c in control_bits:
+            control_mask |= (1 << c)
+    else:
+        control_mask = None
 
     for base in range(0, dim, step * 2):
         for offset in range(step):
             i0 = base + offset  # target bit = 0
             i1 = i0 + step      # target bit = 1
 
-            # Check controls on i0 (i1 has same non-target bits)
-            ok = True
-            for c in control_bits:
-                if ((i0 >> c) & 1) == 0:
-                    ok = False
-                    break
-            if not ok:
-                continue
+            # Check controls if present
+            if control_mask is not None:
+                if (i0 & control_mask) != control_mask:
+                    continue
 
             v0 = state[i0]
             v1 = state[i1]
@@ -381,9 +424,15 @@ def apply_row_to_state(
       - Double controlled gate (two targets):
           ["X", "X", "CTRL"]   # X on q0 and q1, both controlled by q2
 
-    (3-qubit GHZ-like state):
+    NOTE:
+        We apply gates directly to the state vector instead of constructing a
+        full 2^n x 2^n matrix for this row.  A dense row operator would require
+        O(4^n) time and memory, which is infeasible beyond a few qubits. The
+        per-gate state-vector sweep here is O(2^n) and is the standard
+        efficient approach for state-vector simulation.
 
     Example:
+        >>> # (3-qubit GHZ-like state):
         >>> import numpy as np
         >>> num_qubits = 3
         >>> dim = 1 << num_qubits
@@ -414,20 +463,16 @@ def apply_row_to_state(
         # Multi-controlled operations: every non-CTRL, non-I gate in this row
         # uses the same set of control bits.
         control_bits = [bit_for_qubit[q] for q in control_qubits]
-
-        for q, g in enumerate(row_gates):
-            if g and g not in ("I", "CTRL"):
-                target_bit = bit_for_qubit[q]
-                U = GATE_LIBRARY[g]
-                current = apply_controlled_single_qubit_gate(
-                    current, U, target_bit, control_bits
-                )
     else:
-        # No controls: apply all single-qubit gates independently
-        for q, g in enumerate(row_gates):
-            if g and g not in ("I", "CTRL"):
-                b = bit_for_qubit[q]
-                current = apply_single_qubit_gate(current, GATE_LIBRARY[g], b)
+        control_bits = None
+
+    for q, g in enumerate(row_gates):
+        if g and g not in ("I", "CTRL"):
+            target_bit = bit_for_qubit[q]
+            U = GATE_LIBRARY[g]
+            current = apply_single_qubit_gate_with_controls(
+                current, U, target_bit, control_bits
+            )
 
     return current
 
@@ -440,11 +485,12 @@ def build_row_operator(
     Construct the explicit 2^n x 2^n matrix for this row
     by acting on each basis vector.
 
-    >>> import numpy as np
-    >>> # 1-qubit X row
-    >>> U = build_row_operator(1, ["X"])
-    >>> np.allclose(U, Gate.X())
-    True
+    Example:
+        >>> import numpy as np
+        >>> # 1-qubit X row
+        >>> U = build_row_operator(1, ["X"])
+        >>> np.allclose(U, Gate.X())
+        True
     """
     dim = 1 << num_qubits
     U = np.zeros((dim, dim), dtype=complex)
@@ -472,13 +518,14 @@ def amplitude_to_color(amp: complex) -> Tuple[int, int, int]:
       +i  -> near green
       -i  -> near yellow
 
-    >>> c = amplitude_to_color(1+0j)
-    >>> isinstance(c, tuple) and len(c) == 3
-    True
+    Example:
+        >>> c = amplitude_to_color(1+0j)
+        >>> isinstance(c, tuple) and len(c) == 3
+        True
 
-    >>> c = amplitude_to_color(0+0j)
-    >>> isinstance(c, tuple) and len(c) == 3
-    True
+        >>> c = amplitude_to_color(0+0j)
+        >>> isinstance(c, tuple) and len(c) == 3
+        True
     """
     if amp == 0:
         return (40, 40, 60)
@@ -563,10 +610,11 @@ def state_label(index: int, num_qubits: int) -> str:
     """
     Binary string label |q_{n-1} ... q_0> using LSB convention.
 
-    >>> state_label(0, 3)
-    '000'
-    >>> state_label(5, 3)
-    '101'
+    Example:
+        >>> state_label(0, 3)
+        '000'
+        >>> state_label(5, 3)
+        '101'
     """
     return format(index, f"0{num_qubits}b")
 
@@ -594,15 +642,16 @@ def draw_yinyang(
 
     Visual doctest (opens a pygame window for 1 second):
 
-    >>> # xdoctest: +SKIP
-    >>> import pygame
-    >>> pygame.init()
-    >>> screen = pygame.display.set_mode((200, 200))
-    >>> screen.fill((30, 30, 30))
-    >>> draw_yinyang(screen, (100, 100), 80, (0, 0, 255), (0, 255, 0))
-    >>> pygame.display.flip()
-    >>> pygame.time.wait(1000)
-    >>> pygame.quit()
+    Example:
+        >>> # xdoctest: +SKIP
+        >>> import pygame
+        >>> pygame.init()
+        >>> screen = pygame.display.set_mode((200, 200))
+        >>> screen.fill((30, 30, 30))
+        >>> draw_yinyang(screen, (100, 100), 80, (0, 0, 255), (0, 255, 0))
+        >>> pygame.display.flip()
+        >>> pygame.time.wait(1000)
+        >>> pygame.quit()
     """
     cx, cy = center
     r = int(radius)
@@ -655,9 +704,10 @@ class GateSelectionView:
     classmethod, which creates a small off-screen surface and optionally
     renders one JPEG frame to disk.
 
-    >>> view = GateSelectionView.demo("gate_palette_demo.jpg")  # doctest: +ELLIPSIS
-    >>> isinstance(view, GateSelectionView)
-    True
+    Example:
+        >>> view = GateSelectionView.demo("gate_palette_demo.jpg")  # doctest: +ELLIPSIS
+        >>> isinstance(view, GateSelectionView)
+        True
     """
     def __init__(
         self,
@@ -727,9 +777,10 @@ class GateSelectionView:
         Build a minimal GateSelectionView in isolation and optionally save
         a single frame as a JPEG image.
 
-        >>> view = GateSelectionView.demo("gate_palette_demo.jpg")  # doctest: +ELLIPSIS
-        >>> isinstance(view, GateSelectionView)
-        True
+        Example:
+            >>> view = GateSelectionView.demo("gate_palette_demo.jpg")  # doctest: +ELLIPSIS
+            >>> isinstance(view, GateSelectionView)
+            True
         """
         pygame.init()
         surface = pygame.Surface((480, 220))
@@ -759,9 +810,10 @@ class CircuitView:
     The CircuitView can be exercised without spinning up the full sandbox
     using the `demo` helper:
 
-    >>> view = CircuitView.demo("circuit_view_demo.jpg")  # doctest: +ELLIPSIS
-    >>> isinstance(view, CircuitView)
-    True
+    Example:
+        >>> view = CircuitView.demo("circuit_view_demo.jpg")  # doctest: +ELLIPSIS
+        >>> isinstance(view, CircuitView)
+        True
     """
     def __init__(
         self,
@@ -803,7 +855,7 @@ class CircuitView:
         pygame.draw.rect(screen, Color.GRID_LINE, self.rect, 1, border_radius=6)
 
         # Grid title above labels, with extra spacing
-        title = font_medium.render("Gate Circuit Grid", True, Color.TEXT)
+        title = font_medium.render("Circuit Grid", True, Color.TEXT)
         screen.blit(title, (self.rect.x + 10, self.rect.y - 64))
 
         cell_w = self.rect.width / num_qubits
@@ -854,9 +906,10 @@ class CircuitView:
         Build a minimal CircuitView with a tiny hard-coded circuit and
         optionally save a single frame as a JPEG image.
 
-        >>> view = CircuitView.demo("circuit_view_demo.jpg")  # doctest: +ELLIPSIS
-        >>> isinstance(view, CircuitView)
-        True
+        Example:
+            >>> view = CircuitView.demo("circuit_view_demo.jpg")  # doctest: +ELLIPSIS
+            >>> isinstance(view, CircuitView)
+            True
         """
         pygame.init()
         surface = pygame.Surface((520, 360))
@@ -897,9 +950,10 @@ class TrackView:
     Like the other views, TrackView can be built and exercised on its own
     using a tiny in-memory stub:
 
-    >>> view = TrackView.demo("track_view_demo.jpg")  # doctest: +ELLIPSIS
-    >>> isinstance(view, TrackView)
-    True
+    Example:
+        >>> view = TrackView.demo("track_view_demo.jpg")  # doctest: +ELLIPSIS
+        >>> isinstance(view, TrackView)
+        True
     """
     def __init__(
         self,
@@ -1000,9 +1054,10 @@ class TrackView:
                     if re_mag < eps or im_mag < eps:
                         color = amplitude_to_color(val)
                         pygame.draw.line(
-                            screen, color,
-                            (x_in, y0), (x_out, y1),
-                            width,
+                            surface=screen, color=color,
+                            start_pos=(x_in, y0),
+                            end_pos=(x_out, y1),
+                            width=width,
                         )
                     else:
                         # Mixed: draw *two parallel lines* side-by-side in X:
@@ -1011,19 +1066,43 @@ class TrackView:
                         color_re, color_im = amplitude_to_split_colors(val)
 
                         # Horizontal offset for side-by-side lines
-                        dx = max(3, width)  # a few pixels left/right
+                        half_width = width // 2
+                        half_width += (1 - (half_width % 2))  # make it odd
+                        dx = half_width / 2  # a few pixels left/right
+
+                        # PyGame Notes:
+                        #
+                        # When using width values > 1, lines will grow as
+                        # follows.  For odd width values, the thickness of each
+                        # line grows with the original line being in the
+                        # center.
+                        #
+                        # For even width values, the thickness of each line
+                        # grows with the original line being offset from the
+                        # center (as there is no exact center line drawn).  As
+                        # a result, lines with a slope < 1 (horizontal-ish)
+                        # will have 1 more pixel of thickness below the
+                        # original line (in the y direction). Lines with a
+                        # slope >= 1 (vertical-ish) will have 1 more pixel of
+                        # thickness to the right of the original line (in the x
+                        # direction).
+                        #
+                        # Reference:
+                        #     https://www.pygame.org/docs/ref/draw.html#pygame.draw.line
 
                         # Real line (left)
                         pygame.draw.line(
-                            screen, color_re,
-                            (x_in - dx, y0), (x_out - dx, y1),
-                            width,
+                            surface=screen, color=color_re,
+                            start_pos=(x_in - dx - 0.5, y0),
+                            end_pos=(x_out - dx - 0.5, y1),
+                            width=half_width,
                         )
                         # Imag line (right)
                         pygame.draw.line(
-                            screen, color_im,
-                            (x_in + dx, y0), (x_out + dx, y1),
-                            width,
+                            surface=screen, color=color_im,
+                            start_pos=(x_in + dx + 0.5, y0),
+                            end_pos=(x_out + dx + 0.5, y1),
+                            width=half_width,
                         )
 
         # Animated sigils following paths for the current row
@@ -1119,8 +1198,8 @@ class TrackView:
                 radius,
                 color_left=real_color,
                 color_right=imag_color,
-                outline_color=(10, 10, 20),
-                outline_width=1,
+                outline_color=None,
+                outline_width=0,
             )
             return
 
@@ -1205,9 +1284,10 @@ class SandboxControlView:
 
     It lives under the Gate Grid on the left side.
 
-    >>> view = SandboxControlView.demo("sandbox_control_demo.jpg")  # doctest: +ELLIPSIS
-    >>> isinstance(view, SandboxControlView)
-    True
+    Example:
+        >>> view = SandboxControlView.demo("sandbox_control_demo.jpg")  # doctest: +ELLIPSIS
+        >>> isinstance(view, SandboxControlView)
+        True
     """
     def __init__(
         self,
@@ -1238,9 +1318,10 @@ class SandboxControlView:
         self.config.height = height
         self.rect = pygame.Rect(left, top, width, height)
 
-        padding = 10
+        padding = 8
         inner = self.rect.inflate(-2 * padding, -2 * padding)
-        row_height = inner.height // 2
+        row_height = int(inner.height / 2.1)
+        row_gap = int(inner.height - (2 * row_height))
 
         # First row: slower / play-pause / faster
         row1 = pygame.Rect(inner.x, inner.y, inner.width, row_height)
@@ -1250,7 +1331,7 @@ class SandboxControlView:
         self._btn_faster = pygame.Rect(row1.x + 2 * w1, row1.y, w1 - 4, row1.height)
 
         # Second row: -Q, +Q, -Row, +Row, Reset
-        row2 = pygame.Rect(inner.x, inner.y + row_height, inner.width, row_height)
+        row2 = pygame.Rect(inner.x, inner.y + row_height + row_gap, inner.width, row_height)
         w2 = row2.width // 5
         self._btn_qubits_dec = pygame.Rect(row2.x, row2.y, w2 - 4, row2.height)
         self._btn_qubits_inc = pygame.Rect(row2.x + w2, row2.y, w2 - 4, row2.height)
@@ -1261,22 +1342,25 @@ class SandboxControlView:
     def draw(self) -> None:
         screen = self.sandbox.screen
         font_mid = self.sandbox.font_medium
-        # font_small = self.sandbox.font_small
+        font_small = self.sandbox.font_small
 
         pygame.draw.rect(screen, Color.PANEL_BG, self.rect, border_radius=6)
         pygame.draw.rect(screen, Color.GRID_LINE, self.rect, 1, border_radius=6)
 
-        title = font_mid.render("Sandbox Controls", True, Color.TEXT)
+        title = font_mid.render("Controls", True, Color.TEXT)
         tw, th = title.get_size()
         screen.blit(title, (self.rect.x + 8, self.rect.y - th - 4))
 
         # Show current animation speed and dimensions
-        # info_text = (
-        #     f"speed={self.anim_config.anim_speed:.1f}x  "
-        #     f"qubits={self.sandbox.num_qubits}  rows={self.sandbox.num_rows}"
-        # )
-        # info_surf = font_small.render(info_text, True, Color.HILITE)
-        # screen.blit(info_surf, (self.rect.x + 8, self.rect.y + 4))
+        info_text = (
+            # FIXME: the internal unit is rows per second, but we should
+            # normalize that so the default appears as 1.0 here.
+            f"speed={self.anim_config.anim_speed:.1f}x  "
+            # TODO: should probably show circuit status in some dialog.
+            # f"qubits={self.sandbox.num_qubits}  rows={self.sandbox.num_rows}"
+        )
+        info_surf = font_small.render(info_text, True, Color.HILITE)
+        screen.blit(info_surf, (self.rect.x + 24 + tw, self.rect.y - th - 2))
 
         def draw_button(rect: pygame.Rect, label: str, highlighted: bool = False):
             bg = Color.GATE_BG
@@ -1363,9 +1447,10 @@ class SandboxControlView:
         Build a minimal SandboxControlView in isolation and optionally save
         a single frame as a JPEG.
 
-        >>> view = SandboxControlView.demo("sandbox_control_demo.jpg")  # doctest: +ELLIPSIS
-        >>> isinstance(view, SandboxControlView)
-        True
+        Example:
+            >>> view = SandboxControlView.demo("sandbox_control_demo.jpg")  # doctest: +ELLIPSIS
+            >>> isinstance(view, SandboxControlView)
+            True
         """
         pygame.init()
         surface = pygame.Surface((460, 180))
@@ -1381,7 +1466,7 @@ class SandboxControlView:
         stub.num_qubits = 3
         stub.num_rows = 8
 
-        anim_cfg = AnimationConfig(anim_speed=0.8, min_speed=0.0, max_speed=2.0, speed_step=0.2)
+        anim_cfg = AnimationConfig(anim_speed=1.0, min_speed=0.0, max_speed=2.0, speed_step=0.2)
         control_cfg = SandboxControlConfig(height=110, top_margin=10)
         view = cls(stub, anim_cfg, control_cfg)
 
@@ -1412,9 +1497,10 @@ class QuantumSandbox:
     classmethod which constructs a tiny non-interactive instance and
     renders a single frame to disk:
 
-    >>> game = QuantumSandbox.demo("sandbox_demo.jpg")  # doctest: +ELLIPSIS
-    >>> isinstance(game, QuantumSandbox)
-    True
+    Example:
+        >>> game = QuantumSandbox.demo("sandbox_demo.jpg")  # doctest: +ELLIPSIS
+        >>> isinstance(game, QuantumSandbox)
+        True
     """
     def __init__(self, config: Optional[GameConfig] = None):
         self.config = config or GameConfig()
@@ -1686,9 +1772,7 @@ class QuantumSandbox:
 
                     # If we were dragging from the grid and we didn't place it,
                     # restore it to original cell.
-                    if (not placed and
-                        self.drag_source == "grid" and
-                        self.drag_source_cell):
+                    if (not placed and self.drag_source == "grid" and self.drag_source_cell):
                         r0, q0 = self.drag_source_cell
                         self.set_gates([(r0, q0, self.dragging_gate)])
 
@@ -1948,7 +2032,7 @@ def main():
     if args.init == 'test_t':
         cfg = GameConfig(
             num_qubits=1,
-            num_rows=1,
+            num_rows=2,
             fps=120,
         )
         game = QuantumSandbox(cfg)
