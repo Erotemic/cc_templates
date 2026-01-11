@@ -8,8 +8,8 @@ from .anim import AnimSprite
 from .assets import SpriteSheet, get_default_paths
 
 # flip to False to use colored rectangles
-# USE_SPRITES = False
-USE_SPRITES = True
+USE_SPRITES = False
+# USE_SPRITES = True
 
 
 class Player(pygame.sprite.Sprite):
