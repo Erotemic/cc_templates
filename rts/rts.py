@@ -4,6 +4,7 @@ import random
 from typing import List, Optional, Tuple, Type
 
 import pygame
+from functools import cache
 
 # ------------------------------------------------------------
 # Single-file pygame port of the original Swing RTS.
@@ -47,6 +48,7 @@ def load_image(path: str) -> Optional[pygame.Surface]:
         return None
 
 
+@cache
 def make_placeholder(
     size: Tuple[int, int],
     label: str,
@@ -194,64 +196,64 @@ class Assets:
 
     def init_images(self):
         scalar_files = {
-            "backBut": "Images/backbut.png",
-            "swordUpgrade": "Images/swordupgrade.png",
-            "moveBut": "Images/movebut.png",
-            "attackBut": "Images/attackbut.png",
-            "supplyDepotAvatar": "Images/supplydepotavatar.png",
-            "comandCenterAvatar": "Images/comandcenteravatar.png",
-            "stablesAvatar": "Images/stablesavatar.png",
-            "barracksAvatar": "Images/barracksavatar.png",
-            "spearmanAvatar": "Images/spearmanavatar.png",
-            "swordsmanAvatar": "Images/swordsmanavatar.png",
-            "horsemanAvatar": "Images/horsemanavatar.png",
-            "builderAvatar": "Images/builderavatar.png",
-            "meter": "Images/meter.png",
-            "control": "Images/controller.png",
-            "comandCenter": "Images/comandcenter.png",
-            "supplyDepot": "Images/supplydepot.png",
-            "barracks": "Images/barracks.png",
-            "stables": "Images/stables.png",
-            "brianBoruAvatar": "Images/brianboruavatar.png",
-            "sigurdAvatar": "Images/sigurdavatar.png",
-            "startSelected": "Images/startselected.png",
-            "start": "Images/start.png",
-            "heartTile": "Images/hearttile.jpg",
-            "grassTile": "Images/grasstile.jpg",
-            "win": "Images/youwin.png",
-            "lose": "Images/youlose.png",
-            "info": "Images/info.png",
-            "victoryInfo": "Images/victoryinfo.png",
-            "menuForground": "Images/titlemiddleground.png",
-            "loadingScreen": "Images/loading.png",
+            "backBut": "assets/Images/backbut.png",
+            "swordUpgrade": "assets/Images/swordupgrade.png",
+            "moveBut": "assets/Images/movebut.png",
+            "attackBut": "assets/Images/attackbut.png",
+            "supplyDepotAvatar": "assets/Images/supplydepotavatar.png",
+            "comandCenterAvatar": "assets/Images/comandcenteravatar.png",
+            "stablesAvatar": "assets/Images/stablesavatar.png",
+            "barracksAvatar": "assets/Images/barracksavatar.png",
+            "spearmanAvatar": "assets/Images/spearmanavatar.png",
+            "swordsmanAvatar": "assets/Images/swordsmanavatar.png",
+            "horsemanAvatar": "assets/Images/horsemanavatar.png",
+            "builderAvatar": "assets/Images/builderavatar.png",
+            "meter": "assets/Images/meter.png",
+            "control": "assets/Images/controller.png",
+            "comandCenter": "assets/Images/comandcenter.png",
+            "supplyDepot": "assets/Images/supplydepot.png",
+            "barracks": "assets/Images/barracks.png",
+            "stables": "assets/Images/stables.png",
+            "brianBoruAvatar": "assets/Images/brianboruavatar.png",
+            "sigurdAvatar": "assets/Images/sigurdavatar.png",
+            "startSelected": "assets/Images/startselected.png",
+            "start": "assets/Images/start.png",
+            "heartTile": "assets/Images/hearttile.jpg",
+            "grassTile": "assets/Images/grasstile.jpg",
+            "win": "assets/Images/youwin.png",
+            "lose": "assets/Images/youlose.png",
+            "info": "assets/Images/info.png",
+            "victoryInfo": "assets/Images/victoryinfo.png",
+            "menuForground": "assets/Images/titlemiddleground.png",
+            "loadingScreen": "assets/Images/loading.png",
         }
         for k, f in scalar_files.items():
             self.images[k] = load_image(f)
 
-        self.images["celticCross"] = [load_image(f"Images/celticknot{i}.png") for i in range(4)]
+        self.images["celticCross"] = [load_image(f"assets/Images/celticknot{i}.png") for i in range(4)]
 
         def dir_files(base: str) -> List[str]:
             return [
-                f"Images/{base}-front.png",
-                f"Images/{base}-frontleft.png",
-                f"Images/{base}-left.png",
-                f"Images/{base}-backleft.png",
-                f"Images/{base}-back.png",
-                f"Images/{base}-backright.png",
-                f"Images/{base}-right.png",
-                f"Images/{base}-frontright.png",
+                f"assets/Images/{base}-front.png",
+                f"assets/Images/{base}-frontleft.png",
+                f"assets/Images/{base}-left.png",
+                f"assets/Images/{base}-backleft.png",
+                f"assets/Images/{base}-back.png",
+                f"assets/Images/{base}-backright.png",
+                f"assets/Images/{base}-right.png",
+                f"assets/Images/{base}-frontright.png",
             ]
 
         def dir_files_suffix(base: str, suffix: str) -> List[str]:
             return [
-                f"Images/{base}-front{suffix}.png",
-                f"Images/{base}-frontleft{suffix}.png",
-                f"Images/{base}-left{suffix}.png",
-                f"Images/{base}-backleft{suffix}.png",
-                f"Images/{base}-back{suffix}.png",
-                f"Images/{base}-backright{suffix}.png",
-                f"Images/{base}-right{suffix}.png",
-                f"Images/{base}-frontright{suffix}.png",
+                f"assets/Images/{base}-front{suffix}.png",
+                f"assets/Images/{base}-frontleft{suffix}.png",
+                f"assets/Images/{base}-left{suffix}.png",
+                f"assets/Images/{base}-backleft{suffix}.png",
+                f"assets/Images/{base}-back{suffix}.png",
+                f"assets/Images/{base}-backright{suffix}.png",
+                f"assets/Images/{base}-right{suffix}.png",
+                f"assets/Images/{base}-frontright{suffix}.png",
             ]
 
         def load_dir_list(prefix: str, names: List[str]):
@@ -276,16 +278,16 @@ class Assets:
 
     def init_sounds(self):
         sound_files = {
-            "battle": "Sounds/battle.wav",
-            "error": "Sounds/error.wav",
-            "enable": "Sounds/enable.wav",
-            "selectUnit": "Sounds/selectunit.wav",
-            "setDestination": "Sounds/setdestination.wav",
-            "selectBeep": "Sounds/selectbeep.wav",
-            "moveBeep": "Sounds/movebeep.wav",
-            "hammer": "Sounds/hammer.wav",
-            "spear": "Sounds/spear.wav",
-            "sword": "Sounds/sword.wav",
+            "battle": "assets/Sounds/battle.wav",
+            "error": "assets/Sounds/error.wav",
+            "enable": "assets/Sounds/enable.wav",
+            "selectUnit": "assets/Sounds/selectunit.wav",
+            "setDestination": "assets/Sounds/setdestination.wav",
+            "selectBeep": "assets/Sounds/selectbeep.wav",
+            "moveBeep": "assets/Sounds/movebeep.wav",
+            "hammer": "assets/Sounds/hammer.wav",
+            "spear": "assets/Sounds/spear.wav",
+            "sword": "assets/Sounds/sword.wav",
         }
         for k, f in sound_files.items():
             self.sounds[k] = load_sound(f)
@@ -2524,7 +2526,8 @@ class LoadingScreen:
         self.next_state = next_state
         self.time_count = 0.0
         self.degree = 0
-        self.displacement = 0
+        self.displacement = 0.0   # animation phase (in "frames")
+        self.spin_speed = 0.1    # frames per nominal tick (tweak to taste)
         self.fact = LOADING_FACTS[0]
 
     def reset(self, load_time_ticks: int, next_state: str):
@@ -2532,15 +2535,15 @@ class LoadingScreen:
         self.next_state = next_state
         self.time_count = 0.0
         self.degree = 0
-        self.displacement = 0
+        self.displacement = 0.0
         self.fact = LOADING_FACTS[0]
 
     def update(self, dt: float) -> Optional[str]:
         self.time_count += tick_scale(dt)
         if int(self.time_count) % 80 == 0:
             self.fact = random.choice(LOADING_FACTS)
-        if int(self.time_count) % (random.randint(1, 10)) == 0:
-            self.degree += 1
+        # Advance the cross animation every update
+        self.displacement += self.spin_speed * tick_scale(dt)
         if self.time_count > self.load_time_ticks:
             return self.next_state
         return None
@@ -2559,14 +2562,14 @@ class LoadingScreen:
         h = BU.h // 9
 
         frames = self.assets.images.get("celticCross", [None] * 4)
-        frame = frames[int(self.displacement) % 4] if frames else None
+        n = max(1, len(frames))
+        frame = frames[int(self.displacement) % n] if frames else None
+
         if frame is None:
             frame = make_placeholder((w, h), "cross", bg=(200, 200, 200))
         else:
             frame = pygame.transform.smoothscale(frame, (w, h))
-        self.displacement += self.degree
         surf.blit(frame, (x, y))
-        self.displacement -= self.degree
 
         font = pygame.font.SysFont("timesnewroman", 20)
         max_width = BU.w - 50
@@ -2806,8 +2809,8 @@ def main():
 
     clock = pygame.time.Clock()
 
-    # FAKE_LOAD_TIME = 200
-    FAKE_LOAD_TIME = 2
+    FAKE_LOAD_TIME = 200
+    # FAKE_LOAD_TIME = 2
 
     loading = LoadingScreen(assets, load_time_ticks=FAKE_LOAD_TIME, next_state="title")
     title = TitleFrame(assets)
