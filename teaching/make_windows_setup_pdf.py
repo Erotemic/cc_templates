@@ -45,22 +45,25 @@ Footer = ParagraphStyle(
 
 
 def bullet_list(items, level=0):
-    # Keep bullets aligned under the section text (not hanging into the margin)
-    left = 18 + 12 * level
-    bullet_indent = left - 10
-    lst = ListFlowable(
-        [ListItem(Paragraph(i, Body), leftIndent=0) for i in items],
+    # Where the bullet should start (relative to the normal text block)
+    level_indent = 14 * level          # extra indent for nested lists
+    bullet_gap = 12                    # distance between bullet and text
+
+    # In ReportLab: bullet x-position = leftIndent - bulletDedent
+    left_indent = level_indent + bullet_gap
+
+    return ListFlowable(
+        [ListItem(Paragraph(i, Body)) for i in items],
         bulletType='bullet',
-        start='*',
-        leftIndent=left,
-        bulletIndent=bullet_indent,
+        leftIndent=left_indent,
+        bulletDedent=bullet_gap,       # <-- this is the key (NOT bulletIndent)
         bulletFontName='Helvetica',
-        bulletFontSize=8,
+        bulletFontSize=Body.fontSize,  # match body text
         bulletOffsetY=1,
         spaceBefore=0,
         spaceAfter=6,
     )
-    return lst
+
 
 
 def code_block(text):
@@ -159,7 +162,7 @@ steps = [
     ('1) Open a folder in VS Code', [
         'Open VS Code.',
         'Go to <b>File - Open Folder...</b>',
-        'Choose (or create) a folder like <font face="Courier">Documents\\coding</font>.',
+        'Choose (or create) a folder like <font face="Courier">Documents/coding</font>.',
     ]),
     ('2) Open the terminal in VS Code', None),
     ('3) Download the starter code', None),
@@ -184,7 +187,7 @@ story.insert(-5, Paragraph('This creates a folder named <font face="Courier">cc_
 
 # Step 4 body
 story.insert(-4, Paragraph('Type:', Body))
-story.insert(-4, code_block('cd cc_templates\\platformer'))
+story.insert(-4, code_block('cd cc_templates/platformer'))
 story.insert(-4, Paragraph('Tip: <font face="Courier">cd</font> means "change directory" (go into a folder).', BodySmall))
 
 # Step 5 body
