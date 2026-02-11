@@ -1,8 +1,6 @@
 Challenge Problem:
 * Given an array of numbers `arr` and a target number `target`, determine if there exist any two numbers in the array that can sum to `target`.
 
-
-
 The challenge is to write a program can solve this problem. 
 In other words, decide if for a specific instance of `arr` and `target` if the
 proposition is true or false.
