@@ -1,0 +1,6 @@
+pip install manim-studio
+PYTHONPATH=. manim-studio --file desmos_scene.py --scene DesmosTemplate
+
+
+# Vscode extension
+https://marketplace.visualstudio.com/items?itemName=Rickaym.manim-sideview&utm_source=chatgpt.com
