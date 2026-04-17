@@ -4,21 +4,29 @@ from __future__ import annotations
 
 from rpg_battle.core.models import TeamSpec
 
-DEFAULT_PLAYER_TEAM = TeamSpec(
+TEAMS: dict[str, TeamSpec] = {}
+
+TEAMS["default_player"] = TeamSpec(
     name="Player Party",
     members=("knight", "druid", "runesage"),
     controller_type="human",
     starting_active=("knight", "druid"),
 )
-DEFAULT_ENEMY_TEAM = TeamSpec(
+
+TEAMS["default_enemy"] = TeamSpec(
     name="Wild Company",
     members=("ai_slop", "spirit", "guardian"),
     controller_type="ai",
     starting_active=("ai_slop", "spirit"),
 )
-EXTRA_TEAM = TeamSpec(
+
+TEAMS["extra"] = TeamSpec(
     name="Arcane Circle",
     members=("mage", "runesage", "druid"),
     controller_type="human",
     starting_active=("mage", "runesage"),
 )
+
+DEFAULT_PLAYER_TEAM = TEAMS["default_player"]
+DEFAULT_ENEMY_TEAM = TEAMS["default_enemy"]
+EXTRA_TEAM = TEAMS["extra"]

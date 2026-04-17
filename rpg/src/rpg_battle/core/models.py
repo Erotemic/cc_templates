@@ -111,7 +111,12 @@ class StatusState:
 
 @dataclass
 class CombatantState:
-    """Mutable runtime battler instance created from a ``CharacterSpec``."""
+    """Mutable runtime battler instance created from a ``CharacterSpec``.
+
+    ``slot_index`` records the battler's fixed battlefield position while active.
+    The scene uses that value to keep units anchored to stable formation slots
+    instead of collapsing the remaining party inward when someone is defeated.
+    """
 
     combatant_id: str
     spec: CharacterSpec
@@ -124,6 +129,7 @@ class CombatantState:
     defending: bool = False
     active: bool = False
     fainted: bool = False
+    slot_index: int | None = None
 
     def __post_init__(self) -> None:
         if self.current_hp is None:

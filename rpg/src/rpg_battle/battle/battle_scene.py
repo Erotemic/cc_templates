@@ -167,11 +167,15 @@ class BattleScene(SceneBase):
         for team_index, region in enumerate((left_region, right_region)):
             team = self.controller.state.teams[team_index]
             side = "left" if team_index == 0 else "right"
-            slots = formation_slots(region, side, len(team.active_ids))
-            team_mapping = {
-                combatant_id: (slot.x, slot.y, slot.scale)
-                for combatant_id, slot in zip(team.active_ids, slots, strict=True)
-            }
+            slots = formation_slots(region, side, team.active_limit)
+            team_mapping: dict[str, tuple[float, float, float]] = {}
+            for combatant_id in team.active_ids:
+                combatant = get_combatant(self.controller.state, combatant_id)
+                slot_index = combatant.slot_index
+                if slot_index is None or slot_index >= len(slots):
+                    continue
+                slot = slots[slot_index]
+                team_mapping[combatant_id] = (slot.x, slot.y, slot.scale)
             computed_by_team[team_index] = team_mapping
             frozen_mapping = self.frozen_team_positions.get(team_index)
             mapping.update(frozen_mapping or team_mapping)
@@ -290,14 +294,6 @@ class BattleScene(SceneBase):
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type != pygame.KEYDOWN:
-            return
-        if event.key == pygame.K_q:
-            logger.info("Quit hotkey pressed")
-            self.should_quit = True
-            return
-        if event.key == pygame.K_r:
-            logger.info("Restart hotkey pressed")
-            self.reset()
             return
         if self.event_queue or self.event_timer > 0 or self.current_event_timer > 0:
             return
@@ -641,7 +637,6 @@ class BattleScene(SceneBase):
         self._draw_hud(surface, layout)
         self._draw_menu(surface, layout.menu_rect)
         self._draw_log(surface, layout.log_rect)
-        self._draw_controls(surface, layout.controls_anchor)
         self._draw_turn_banner(surface, layout)
         for effect in self.effects:
             effect.draw(surface)
@@ -803,15 +798,6 @@ class BattleScene(SceneBase):
             line_text = self._fit_text(option_font, option, rect.width - 60, prefix=prefix)
             line = option_font.render(line_text, True, color)
             surface.blit(line, (rect.x + 26, y + 1))
-
-    def _draw_controls(self, surface: pygame.Surface, controls_anchor: tuple[int, int]) -> None:
-        footer = self.small_font.render(
-            "Arrow keys move   Enter confirm   Esc back   R restart   Q quit",
-            True,
-            (190, 196, 214),
-        )
-        footer_rect = footer.get_rect(midtop=controls_anchor)
-        surface.blit(footer, footer_rect)
 
     def _draw_log(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
         title = self.title_font.render("Battle Log", True, TEXT_COLOR)

@@ -45,8 +45,6 @@ Start in these files:
 - Arrow keys: move through menus
 - Enter / Space: confirm
 - Escape / Backspace: cancel
-- R: restart battle
-- Q: quit
 
 ## What students can change quickly
 - colors and shapes

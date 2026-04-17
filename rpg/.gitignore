@@ -28,4 +28,5 @@ dist/
 
 # Generated screenshots or temporary output
 *.log
+
 *.png
