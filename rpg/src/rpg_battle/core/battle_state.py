@@ -15,6 +15,7 @@ from rpg_battle.core.models import (
     ReplacementRequest,
     TeamBattleState,
     TeamSpec,
+    InventoryEntry,
 )
 
 
@@ -41,6 +42,10 @@ def _build_team_state(
         name=team_spec.name,
         controller_type=team_spec.controller_type,
         active_limit=active_limit,
+        inventory=[
+            InventoryEntry(item_id=entry.item_id, quantity=entry.quantity)
+            for entry in team_spec.inventory
+        ],
     )
     combatants: dict[str, CombatantState] = {}
 

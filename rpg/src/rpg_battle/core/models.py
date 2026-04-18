@@ -20,7 +20,7 @@ TargetMode = Literal[
     "all_allies",
     "none",
 ]
-ActionKind = Literal["attack", "skill", "defend", "switch"]
+ActionKind = Literal["attack", "skill", "defend", "switch", "item"]
 ControllerType = Literal["human", "ai"]
 
 
@@ -75,6 +75,20 @@ class CharacterSpec:
 
 
 @dataclass(frozen=True)
+class InventoryEntry:
+    """Describe one stack of items owned by a team.
+
+    The current classroom project does not expose items in the battle UI yet,
+    but the runtime model already knows how to carry team inventory data. A
+    future item system can add item definitions in ``content/`` and thread them
+    through the same action pipeline used for moves.
+    """
+
+    item_id: str
+    quantity: int = 1
+
+
+@dataclass(frozen=True)
 class TeamSpec:
     """Describe a team roster and its preferred starting frontline.
 
@@ -87,6 +101,7 @@ class TeamSpec:
     members: tuple[str, ...]
     controller_type: ControllerType = "human"
     starting_active: tuple[str, ...] | None = None
+    inventory: tuple[InventoryEntry, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -153,6 +168,7 @@ class TeamBattleState:
     active_limit: int
     active_ids: list[str] = field(default_factory=list)
     reserve_ids: list[str] = field(default_factory=list)
+    inventory: list[InventoryEntry] = field(default_factory=list)
 
     def defeated(self) -> bool:
         return not self.active_ids and not self.reserve_ids
@@ -186,3 +202,4 @@ class BattleAction:
     move_id: str | None = None
     target_ids: tuple[str, ...] = ()
     switch_in_id: str | None = None
+    item_id: str | None = None

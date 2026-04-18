@@ -23,3 +23,13 @@ def skill_action(
 
 def switch_action(actor_id: str, switch_in_id: str) -> BattleAction:
     return BattleAction(actor_id=actor_id, kind="switch", switch_in_id=switch_in_id)
+
+
+def item_action(actor_id: str, item_id: str, target_ids: tuple[str, ...] = ()) -> BattleAction:
+    """Build an item action.
+
+    Inventory is not exposed in the classroom UI yet, but this helper shows the
+    shape a future item-use command should take. Students can call this from the
+    battle scene once they add an "Item" menu branch.
+    """
+    return BattleAction(actor_id=actor_id, kind="item", item_id=item_id, target_ids=target_ids)

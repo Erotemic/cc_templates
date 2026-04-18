@@ -140,6 +140,10 @@ class BattleController:
             return [make_turn_start_event(self.state, actor_id)]
         return []
 
+    # Inventory note: item use should eventually flow through the same
+    # `BattleAction` pipeline as moves. Once the UI grows an Item branch, it can
+    # build `BattleAction(kind="item", item_id=..., target_ids=...)` objects and
+    # hand them to these same resolve methods without redesigning the controller.
     def resolve_current_player_action(self, player_action: BattleAction) -> list[dict]:
         if not self.player_can_act() or self.current_actor_id is None:
             return []

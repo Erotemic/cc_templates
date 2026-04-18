@@ -428,6 +428,12 @@ def resolve_action(
         _process_switch(state, action, events)
     elif action.kind == "defend":
         _process_defend(actor, events)
+    elif action.kind == "item":
+        # Inventory has not been surfaced in the classroom UI yet. When
+        # students add item support, route their new action kind through a
+        # `_process_item(...)` helper here so items share the same event flow as
+        # moves: declaration -> animation -> consequences.
+        raise NotImplementedError("Item actions are scaffolded but not implemented yet.")
     else:
         _process_move(state, action, events, rng)
     _collect_faints(state, events)

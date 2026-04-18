@@ -14,6 +14,8 @@ PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 AUDIO_ASSET_DIR = PACKAGE_ROOT / "assets" / "audio"
 
 DEFAULT_BATTLE_TRACK = "bluesy_overhaul"
+DEFAULT_VICTORY_TRACK = "victory_fanfare"
+DEFAULT_DEFEAT_TRACK = "defeat_lament"
 
 MUSIC_TRACKS: dict[str, GeneratedTrackSpec] = {}
 
@@ -47,6 +49,17 @@ d_minor_jam: dict[str, object] = {}
 d_minor_jam["builder"] = "d_minor_jam"
 d_minor_jam["volume"] = 0.19
 MUSIC_TRACKS["d_minor_jam"] = GeneratedTrackSpec(**d_minor_jam)
+
+
+victory_fanfare: dict[str, object] = {}
+victory_fanfare["builder"] = "victory_fanfare"
+victory_fanfare["volume"] = 0.24
+MUSIC_TRACKS["victory_fanfare"] = GeneratedTrackSpec(**victory_fanfare)
+
+defeat_lament: dict[str, object] = {}
+defeat_lament["builder"] = "defeat_lament"
+defeat_lament["volume"] = 0.22
+MUSIC_TRACKS["defeat_lament"] = GeneratedTrackSpec(**defeat_lament)
 
 
 SOUND_EFFECTS: dict[str, SynthSoundSpec] = {}

@@ -8,7 +8,11 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
 
 from rpg_battle.battle.battle_scene import BattleScene
-from rpg_battle.content.audio import DEFAULT_BATTLE_TRACK
+from rpg_battle.content.audio import (
+    DEFAULT_BATTLE_TRACK,
+    DEFAULT_DEFEAT_TRACK,
+    DEFAULT_VICTORY_TRACK,
+)
 from rpg_battle.content.encounters import ENCOUNTERS
 
 
@@ -40,5 +44,33 @@ def test_battle_scene_plays_only_encounter_track_when_present() -> None:
         assert all(
             track != DEFAULT_BATTLE_TRACK for kind, track in audio.calls if kind == "play_music"
         )
+    finally:
+        pygame.quit()
+
+
+def test_battle_end_plays_victory_music_for_player_win() -> None:
+    pygame.init()
+    try:
+        audio = StubAudio()
+        scene = BattleScene(
+            pygame.Rect(0, 0, 1280, 720), audio=audio, encounter=ENCOUNTERS["default"]
+        )
+        audio.calls.clear()
+        scene._handle_battle_event({"type": "battle_end", "winner": 0, "text": "Player wins!"})
+        assert ("play_music", DEFAULT_VICTORY_TRACK) in audio.calls
+    finally:
+        pygame.quit()
+
+
+def test_battle_end_plays_defeat_music_for_player_loss() -> None:
+    pygame.init()
+    try:
+        audio = StubAudio()
+        scene = BattleScene(
+            pygame.Rect(0, 0, 1280, 720), audio=audio, encounter=ENCOUNTERS["default"]
+        )
+        audio.calls.clear()
+        scene._handle_battle_event({"type": "battle_end", "winner": 1, "text": "Enemy wins!"})
+        assert ("play_music", DEFAULT_DEFEAT_TRACK) in audio.calls
     finally:
         pygame.quit()

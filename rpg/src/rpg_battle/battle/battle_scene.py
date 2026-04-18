@@ -6,7 +6,11 @@ import pygame
 from loguru import logger
 
 from rpg_battle.audio.engine import AudioEngine
-from rpg_battle.content.audio import DEFAULT_BATTLE_TRACK
+from rpg_battle.content.audio import (
+    DEFAULT_BATTLE_TRACK,
+    DEFAULT_DEFEAT_TRACK,
+    DEFAULT_VICTORY_TRACK,
+)
 from rpg_battle.battle.battle_controller import BattleController
 from rpg_battle.battle.combat_log import CombatLog
 from rpg_battle.battle.menu_state import MenuState
@@ -281,6 +285,8 @@ class BattleScene:
             MenuState(
                 title=f"{actor.spec.name}: Choose Action",
                 options=["Attack", "Skill", "Defend", "Switch"],
+                # Future extension point: add "Item" here and branch to a
+                # "Choose Item" submenu that constructs `item_action(...)`.
             )
         ]
 
@@ -427,6 +433,9 @@ class BattleScene:
                     actor_id=actor_id, move_id=None, action_kind="defend"
                 )
             elif choice == "Switch":
+                # Future inventory hook: add an `elif choice == "Item"` branch
+                # here that opens an item selection menu using the acting team
+                # inventory stored in `BattleState`.
                 targets = self.controller.switch_targets_for_current_actor()
                 if not targets:
                     self.log.add("No one in reserve can switch in.", color=NEUTRAL_EVENT_COLOR)
@@ -574,6 +583,10 @@ class BattleScene:
         elif event_type == "defend":
             self.audio.play_sfx("defend")
         elif event_type == "battle_end":
+            winner = event.get("winner")
+            track_id = DEFAULT_VICTORY_TRACK if winner == 0 else DEFAULT_DEFEAT_TRACK
+            if track_id:
+                self.audio.play_music(track_id, loops=0)
             self.menu_stack = [MenuState(title="Battle Over", options=["Restart", "Quit"])]
             self.current_menu_actor_id = None
 

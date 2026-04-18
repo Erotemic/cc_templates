@@ -1578,6 +1578,108 @@ class DMinorJamTrack(TrackBuilder):
         return TrackArrangement(tuple(notes), tuple(drums), tuple(chords))
 
 
+class VictoryFanfareTrack(TrackBuilder):
+    """Short bright fanfare played after the player wins."""
+
+    track_id = "victory_fanfare"
+    bpm = 132
+    total_bars = 4
+    master_gain = 0.24
+
+    def build(self) -> TrackArrangement:
+        notes: list[NoteEvent] = []
+        drums: list[DrumEvent] = []
+        chords: list[ChordEvent] = []
+
+        chords.extend(
+            [
+                self.chord(0, ["C4", "E4", "G4"], 8, 0.10, pan=-0.10),
+                self.chord(8, ["F4", "A4", "C5"], 8, 0.10, pan=0.10),
+                self.chord(16, ["G4", "B4", "D5"], 8, 0.11, pan=-0.08),
+                self.chord(24, ["C4", "E4", "G4", "C5"], 8, 0.12, pan=0.08),
+                self.chord(32, ["A4", "C5", "E5"], 4, 0.09, voice="pluck", pan=-0.06),
+                self.chord(36, ["B4", "D5", "G5"], 4, 0.09, voice="pluck", pan=0.06),
+                self.chord(40, ["C5", "E5", "G5", "C6"], 8, 0.13, voice="pluck", pan=0.00),
+                self.chord(48, ["C4", "E4", "G4", "C5"], 16, 0.10, pan=0.00),
+            ]
+        )
+
+        notes.extend(
+            [
+                self.note(0, "E5", 2, 0.12, pan=-0.04),
+                self.note(2, "G5", 2, 0.13, pan=-0.02),
+                self.note(4, "C6", 4, 0.16, pan=0.02),
+                self.note(8, "A5", 2, 0.12, pan=0.00),
+                self.note(10, "C6", 2, 0.13, pan=0.02),
+                self.note(12, "F6", 4, 0.16, pan=0.05),
+                self.note(16, "G5", 2, 0.12, pan=-0.02),
+                self.note(18, "B5", 2, 0.13, pan=0.00),
+                self.note(20, "D6", 2, 0.14, pan=0.02),
+                self.note(22, "G6", 2, 0.18, pan=0.06),
+                self.note(24, "E6", 2, 0.14, pan=-0.02),
+                self.note(26, "G6", 2, 0.15, pan=0.00),
+                self.note(28, "C7", 4, 0.20, pan=0.04),
+                self.note(32, "A5", 2, 0.12, pan=0.00),
+                self.note(34, "B5", 2, 0.12, pan=0.02),
+                self.note(36, "C6", 4, 0.16, pan=0.04),
+                self.note(40, "G5", 2, 0.12, pan=-0.02),
+                self.note(42, "C6", 2, 0.14, pan=0.02),
+                self.note(44, "E6", 4, 0.18, pan=0.06),
+                self.note(48, "C6", 8, 0.14, pan=0.00),
+                self.note(56, "C7", 8, 0.18, pan=0.04),
+            ]
+        )
+
+        for bar_start in range(0, self.total_bars * self.bar_steps, self.bar_steps):
+            drums.extend(
+                [
+                    self.drum(bar_start + 0, "kick", 1, 0.040),
+                    self.drum(bar_start + 4, "hat", 1, 0.020, 0.10),
+                    self.drum(bar_start + 8, "kick", 1, 0.035),
+                    self.drum(bar_start + 12, "hat", 1, 0.018, -0.10),
+                ]
+            )
+        return TrackArrangement(tuple(notes), tuple(drums), tuple(chords))
+
+
+class DefeatLamentTrack(TrackBuilder):
+    """Short subdued cue played when the player loses."""
+
+    track_id = "defeat_lament"
+    bpm = 72
+    total_bars = 4
+    master_gain = 0.20
+
+    def build(self) -> TrackArrangement:
+        notes: list[NoteEvent] = []
+        drums: list[DrumEvent] = []
+        chords: list[ChordEvent] = []
+
+        chords.extend(
+            [
+                self.chord(0, ["A3", "C4", "E4"], 16, 0.09, pan=-0.08),
+                self.chord(16, ["F3", "A3", "C4"], 16, 0.08, pan=0.08),
+                self.chord(32, ["D3", "F3", "A3"], 16, 0.09, pan=-0.06),
+                self.chord(48, ["E3", "G3", "B3"], 16, 0.08, pan=0.06),
+            ]
+        )
+
+        notes.extend(
+            [
+                self.note(0, "E4", 8, 0.08, voice="pad", pan=0.00),
+                self.note(8, "C4", 8, 0.08, voice="pad", pan=-0.02),
+                self.note(16, "C4", 8, 0.08, voice="pad", pan=0.02),
+                self.note(24, "A3", 8, 0.08, voice="pad", pan=0.00),
+                self.note(32, "A3", 8, 0.08, voice="pad", pan=-0.02),
+                self.note(40, "F3", 8, 0.08, voice="pad", pan=0.00),
+                self.note(48, "G3", 8, 0.07, voice="pad", pan=0.02),
+                self.note(56, "E3", 8, 0.07, voice="pad", pan=0.00),
+            ]
+        )
+
+        return TrackArrangement(tuple(notes), tuple(drums), tuple(chords))
+
+
 TRACK_BUILDERS = {
     TrainingBattleTrack.track_id: TrainingBattleTrack,
     SoftDungeonCrawlTrack.track_id: SoftDungeonCrawlTrack,
@@ -1585,4 +1687,6 @@ TRACK_BUILDERS = {
     BluesyOverhaulTrack.track_id: BluesyOverhaulTrack,
     ChillExplorationTrack.track_id: ChillExplorationTrack,
     DMinorJamTrack.track_id: DMinorJamTrack,
+    VictoryFanfareTrack.track_id: VictoryFanfareTrack,
+    DefeatLamentTrack.track_id: DefeatLamentTrack,
 }
