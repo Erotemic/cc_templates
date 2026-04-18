@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import pygame
 
 from rpg_battle.content.effects import EFFECTS
-from rpg_battle.render.effect_builder import EffectSpec, PathProfile
+from rpg_battle.render.effect_builder import EffectSpec, sample_path_points
 
 
 @dataclass
@@ -83,31 +83,6 @@ class VisualEffect:
                 )
 
 
-def _build_path_points(profile: PathProfile) -> list[tuple[float, float]]:
-    """Sample a named path profile into normalized line points."""
-
-    points: list[tuple[float, float]] = []
-    denominator = max(1, profile.steps - 1)
-    for index in range(profile.steps):
-        x = index / denominator
-        if profile.mode == "sine":
-            y = math.sin(x * math.pi * profile.cycles) * profile.amplitude
-        elif profile.mode == "square":
-            y = (1 if math.sin(x * math.pi * profile.cycles) >= 0 else -1) * profile.amplitude
-        elif profile.mode == "stairs":
-            step_index = int(x * profile.stair_steps)
-            step_size = (profile.amplitude * 2) / max(1, profile.stair_steps)
-            y = profile.amplitude - step_index * step_size
-        elif profile.mode == "zigzag":
-            phase = (x * profile.cycles) % 1.0
-            y = (4.0 * abs(phase - 0.5) - 1.0) * profile.amplitude
-        else:
-            phase = (x * profile.cycles) % 1.0
-            y = (4.0 * abs(phase - 0.5) - 1.0) * profile.amplitude
-        points.append((x, y))
-    return points
-
-
 def make_effect(
     animation: str,
     start: tuple[float, float],
@@ -118,5 +93,5 @@ def make_effect(
     spec = EFFECTS.get(animation)
     if spec is None:
         spec = EffectSpec(effect_id=animation, style="ring")
-    points = _build_path_points(spec.path) if spec.path else None
+    points = sample_path_points(spec.path) if spec.path else None
     return VisualEffect(spec=spec, start=start, end=end, timer=spec.duration, points=points)

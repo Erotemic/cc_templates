@@ -11,6 +11,7 @@ This module is intentionally the small public surface for the rest of the game:
 from array import array
 from dataclasses import dataclass
 from hashlib import sha256
+import inspect
 from pathlib import Path
 import json
 import math
@@ -144,14 +145,35 @@ def render_generated_track(spec: GeneratedTrackSpec, sample_rate: int = SAMPLE_R
     return pcm
 
 
-def get_track_cache_key(spec: GeneratedTrackSpec, sample_rate: int = SAMPLE_RATE) -> str:
-    """Return a stable cache key for a generated track spec."""
+def _safe_source_hash(obj: object) -> str:
+    """Return a short hash of source text for cache invalidation.
 
+    This makes generated-track caches robust when students tweak the builder
+    implementation but forget to manually bump a cache version.
+    """
+
+    try:
+        source = inspect.getsource(obj)
+    except (OSError, TypeError):
+        source = repr(obj)
+    return sha256(source.encode("utf8")).hexdigest()[:16]
+
+
+def get_track_cache_key(spec: GeneratedTrackSpec, sample_rate: int = SAMPLE_RATE) -> str:
+    """Return a stable cache key for a generated track spec.
+
+    The key intentionally includes builder source hashes so stale cached WAVs do
+    not survive after students change track code.
+    """
+
+    builder_cls = TRACK_BUILDERS[spec.builder]
     payload = {
         "builder": spec.builder,
         "volume": spec.volume,
         "sample_rate": sample_rate,
-        "builder_version": TRACK_BUILDERS[spec.builder].cache_version,
+        "builder_version": builder_cls.cache_version,
+        "builder_source": _safe_source_hash(builder_cls),
+        "builder_base_source": _safe_source_hash(builder_cls.__mro__[1]),
     }
     return sha256(json.dumps(payload, sort_keys=True).encode("utf8")).hexdigest()[:16]
 

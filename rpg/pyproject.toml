@@ -15,6 +15,7 @@ rpg-battle = "rpg_battle.__main__:main"
 rpg-battle-render-character = "rpg_battle.cli.render_character:main"
 rpg-battle-render-state = "rpg_battle.cli.render_battle_state:main"
 rpg-battle-render-audio = "rpg_battle.cli.render_audio:main"
+rpg-battle-render-effect = "rpg_battle.cli.render_effect:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

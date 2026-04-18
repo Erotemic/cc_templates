@@ -2,8 +2,6 @@ from __future__ import annotations
 
 """Battle scene for the general active-frontline plus reserve battle system."""
 
-from statistics import mean
-
 import pygame
 from loguru import logger
 
@@ -483,8 +481,10 @@ class BattleScene:
             actor_x, actor_y, _ = self._position_for(event["actor_id"])
             return actor_x, actor_y
         positions = [self._position_for(target_id) for target_id in target_ids]
-        return mean(position[0] for position in positions), mean(
-            position[1] for position in positions
+        count = max(1, len(positions))
+        return (
+            sum(position[0] for position in positions) / count,
+            sum(position[1] for position in positions) / count,
         )
 
     def _handle_battle_event(self, event: dict) -> None:
@@ -734,7 +734,8 @@ class BattleScene:
             True,
             TEXT_COLOR,
         )
-        hp_rect = hp_text.get_rect(center=(int(x), int(y + 92 * scale)))
+        hp_slot = pygame.Rect(bar_rect.left, bar_rect.bottom + 3, bar_rect.width, 16)
+        hp_rect = hp_text.get_rect(topright=(hp_slot.right, hp_slot.top))
         surface.blit(hp_text, hp_rect)
 
     def _team_roster(self, team_index: int) -> list[str]:
@@ -774,7 +775,9 @@ class BattleScene:
             hp_text = self.small_font.render(
                 str(int(round(self.displayed_hp_current[combatant_id]))), True, TEXT_COLOR
             )
-            surface.blit(hp_text, (rect.right - 56, y))
+            hp_value_slot = pygame.Rect(rect.right - 64, y, 44, 16)
+            hp_value_rect = hp_text.get_rect(topright=(hp_value_slot.right, hp_value_slot.top))
+            surface.blit(hp_text, hp_value_rect)
 
     def _draw_hud(self, surface: pygame.Surface, layout) -> None:
         player_rect = layout.player_panel

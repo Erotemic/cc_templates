@@ -9,6 +9,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 from rpg_battle.cli.render_audio import build_parser as build_audio_parser
 from rpg_battle.cli.render_battle_state import build_parser as build_state_parser
 from rpg_battle.cli.render_character import build_parser as build_character_parser
+from rpg_battle.cli.render_effect import build_parser as build_effect_parser
 from rpg_battle.__main__ import build_parser as build_game_parser, build_encounter_from_args
 from rpg_battle.content.teams import TEAMS
 from rpg_battle.content.audio import MUSIC_TRACKS, SOUND_EFFECTS
@@ -47,6 +48,7 @@ def test_root_dev_scripts_exist() -> None:
     assert Path("render_character.py").exists()
     assert Path("render_battle_state.py").exists()
     assert Path("render_audio.py").exists()
+    assert Path("render_effect.py").exists()
 
 
 def test_render_character_parser_accepts_no_show() -> None:
@@ -104,3 +106,10 @@ def test_preview_parsers_show_by_default() -> None:
 
 def test_new_track_is_registered() -> None:
     assert "bluesy_overhaul" in MUSIC_TRACKS
+
+
+def test_render_effect_parser_accepts_no_show() -> None:
+    parser = build_effect_parser()
+    args = parser.parse_args(["sine_wave", "--no-show"])
+    assert args.effect_id == "sine_wave"
+    assert args.no_show is True

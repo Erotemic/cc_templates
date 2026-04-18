@@ -113,3 +113,13 @@ python run_game.py --encounter boss_ai_slop
 python run_game.py --encounter default --music-track bluesy_overhaul
 python run_game.py --player-team extra --enemy-team duel_enemy --player-limit 2 --enemy-limit 1
 ```
+
+
+## Effect previews
+
+Preview a registered effect and its underlying graph math with:
+
+```bash
+./render_effect.py sine_wave
+./render_effect.py gradient_descent --no-show
+```

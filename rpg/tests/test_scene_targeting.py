@@ -41,3 +41,18 @@ def test_confirm_menu_choice_with_no_menu_does_not_crash() -> None:
         scene._confirm_menu_choice()
     finally:
         pygame.quit()
+
+
+def test_make_effect_target_averages_multiple_target_positions() -> None:
+    pygame.init()
+    try:
+        scene = BattleScene(pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+        scene._position_for = lambda cid: {
+            "a": (100.0, 200.0, 1.0),
+            "b": (300.0, 100.0, 1.0),
+        }[cid]
+        x, y = scene._make_effect_target({"actor_id": "a", "target_ids": ["a", "b"]})
+        assert x == 200.0
+        assert y == 150.0
+    finally:
+        pygame.quit()

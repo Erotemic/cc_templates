@@ -13,7 +13,7 @@ from rpg_battle.audio.library import GeneratedTrackSpec, SynthSoundSpec
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 AUDIO_ASSET_DIR = PACKAGE_ROOT / "assets" / "audio"
 
-DEFAULT_BATTLE_TRACK = "soft_dungeon_crawl"
+DEFAULT_BATTLE_TRACK = "bluesy_overhaul"
 
 MUSIC_TRACKS: dict[str, GeneratedTrackSpec] = {}
 
@@ -36,6 +36,17 @@ bluesy_overhaul: dict[str, object] = {}
 bluesy_overhaul["builder"] = "bluesy_overhaul"
 bluesy_overhaul["volume"] = 0.22
 MUSIC_TRACKS["bluesy_overhaul"] = GeneratedTrackSpec(**bluesy_overhaul)
+
+chill_exploration: dict[str, object] = {}
+chill_exploration["builder"] = "chill_exploration"
+chill_exploration["volume"] = 0.21
+MUSIC_TRACKS["chill_exploration"] = GeneratedTrackSpec(**chill_exploration)
+
+
+d_minor_jam: dict[str, object] = {}
+d_minor_jam["builder"] = "d_minor_jam"
+d_minor_jam["volume"] = 0.19
+MUSIC_TRACKS["d_minor_jam"] = GeneratedTrackSpec(**d_minor_jam)
 
 
 SOUND_EFFECTS: dict[str, SynthSoundSpec] = {}
