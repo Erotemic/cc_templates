@@ -170,3 +170,38 @@ artifact_burst["animation"] = "artifact_burst"
 artifact_burst["sound_id"] = "artifact_burst"
 artifact_burst["effects"] = (MoveEffect(status="burn", chance=0.2, duration=2),)
 MOVES["artifact_burst"] = MoveSpec(**artifact_burst)
+
+singularity_coil: dict[str, object] = {}
+singularity_coil["move_id"] = "singularity_coil"
+singularity_coil["name"] = "Singularity Coil"
+singularity_coil["kind"] = "magical"
+singularity_coil["power"] = 15
+singularity_coil["target_mode"] = "single_enemy"
+singularity_coil["animation"] = "chaos_zigzag"
+singularity_coil["sound_id"] = "arc_bolt"
+MOVES["singularity_coil"] = MoveSpec(**singularity_coil)
+
+pixel_storm: dict[str, object] = {}
+pixel_storm["move_id"] = "pixel_storm"
+pixel_storm["name"] = "Pixel Storm"
+pixel_storm["kind"] = "magical"
+pixel_storm["power"] = 10
+pixel_storm["target_mode"] = "all_enemies"
+pixel_storm["animation"] = "pixel_storm"
+pixel_storm["sound_id"] = "artifact_burst"
+pixel_storm["effects"] = (MoveEffect(status="burn", chance=0.25, duration=2),)
+MOVES["pixel_storm"] = MoveSpec(**pixel_storm)
+
+entropy_shield: dict[str, object] = {}
+entropy_shield["move_id"] = "entropy_shield"
+entropy_shield["name"] = "Entropy Shield"
+entropy_shield["kind"] = "buff"
+entropy_shield["target_mode"] = "self"
+entropy_shield["animation"] = "entropy_shield"
+entropy_shield["sound_id"] = "regularization"
+entropy_shield["effects"] = (
+    MoveEffect(status="guarded", duration=2),
+    MoveEffect(status="focus", duration=2),
+    MoveEffect(stat="defense", stages=1),
+)
+MOVES["entropy_shield"] = MoveSpec(**entropy_shield)

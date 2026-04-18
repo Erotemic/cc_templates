@@ -86,3 +86,30 @@ These helpers are useful when students are changing `content/sprites.py`, `conte
 - Terminal logging now uses `loguru` so students can watch the higher-level architecture: battle setup, round queues, turn starts, menu flow, action resolution, and audio lookup.
 - Set `RPG_BATTLE_LOG_LEVEL=DEBUG` before launch to get more detailed logs without flooding the terminal with per-frame game-loop noise.
 - Run `ruff format .` after edits to keep the code layout consistent.
+
+
+## Preview tools
+
+The preview tools now **show or play their result by default**. Use `--no-show` when you only want to save the artifact.
+
+Examples:
+
+```bash
+./render_character.py knight
+./render_battle_state.py --encounter blues_night
+./render_audio.py bluesy_overhaul --kind music
+
+./render_character.py knight --no-show
+./render_battle_state.py --encounter boss_ai_slop --no-show
+./render_audio.py boss_battle_frenzy --kind music --no-show
+```
+
+## Game launcher
+
+The main game is configurable from the command line:
+
+```bash
+python run_game.py --encounter boss_ai_slop
+python run_game.py --encounter default --music-track bluesy_overhaul
+python run_game.py --player-team extra --enemy-team duel_enemy --player-limit 2 --enemy-limit 1
+```

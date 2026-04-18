@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pygame
 
-from rpg_battle.engine.timing import approach
+from rpg_battle.render.tween import approach
 
 
 class HPBar:

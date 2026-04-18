@@ -8,6 +8,7 @@ import pygame
 from loguru import logger
 
 from rpg_battle.audio.engine import AudioEngine
+from rpg_battle.content.audio import DEFAULT_BATTLE_TRACK
 from rpg_battle.battle.battle_controller import BattleController
 from rpg_battle.battle.combat_log import CombatLog
 from rpg_battle.battle.menu_state import MenuState
@@ -16,7 +17,7 @@ from rpg_battle.core.actions import attack_action, defend_action, skill_action, 
 from rpg_battle.core.models import EncounterSpec
 from rpg_battle.core.battle_state import get_combatant
 from rpg_battle.core.targeting import get_valid_target_groups
-from rpg_battle.engine.input import (
+from rpg_battle.battle.controls import (
     CANCEL_KEYS,
     CONFIRM_KEYS,
     DOWN_KEYS,
@@ -24,8 +25,7 @@ from rpg_battle.engine.input import (
     RIGHT_KEYS,
     UP_KEYS,
 )
-from rpg_battle.engine.scene_manager import SceneBase
-from rpg_battle.engine.timing import approach
+from rpg_battle.render.tween import approach
 from rpg_battle.render.effect_factory import make_effect
 from rpg_battle.render.floating_text import FloatingText
 from rpg_battle.render.formation import formation_slots
@@ -50,7 +50,7 @@ ENEMY_GLOW = (255, 145, 145)
 TARGET_GLOW = (255, 240, 150)
 
 
-class BattleScene(SceneBase):
+class BattleScene:
     """Drive the classroom battle UI with explicit actor turns and targeting."""
 
     def __init__(
@@ -61,13 +61,13 @@ class BattleScene(SceneBase):
     ) -> None:
         self.rect = rect
         self.audio = audio or AudioEngine()
-        self.audio.play_default_music()
         if encounter is None:
             self.controller = BattleController(seed=5)
         else:
             self.controller = BattleController(encounter=encounter, seed=5)
-        if self.controller.encounter.music_track_id:
-            self.audio.play_music(self.controller.encounter.music_track_id)
+        track_id = self.controller.encounter.music_track_id or DEFAULT_BATTLE_TRACK
+        if track_id:
+            self.audio.play_music(track_id)
         self.log = CombatLog(max_lines=18)
         self.log.add(
             f"{self.controller.encounter.title} begins.",
@@ -104,8 +104,9 @@ class BattleScene(SceneBase):
 
     def reset(self) -> None:
         self.controller.restart()
-        if self.controller.encounter.music_track_id:
-            self.audio.play_music(self.controller.encounter.music_track_id)
+        track_id = self.controller.encounter.music_track_id or DEFAULT_BATTLE_TRACK
+        if track_id:
+            self.audio.play_music(track_id)
         self.log = CombatLog(max_lines=18)
         self.log.add(
             f"{self.controller.encounter.title} begins again.",
@@ -391,6 +392,9 @@ class BattleScene(SceneBase):
         )
 
     def _confirm_menu_choice(self) -> None:
+        if not self.menu_stack:
+            logger.debug("Ignoring confirm because no menu is active")
+            return
         menu = self._active_menu()
         logger.debug("Confirming menu choice for {}", menu.title)
         if self.controller.state.winner is not None:

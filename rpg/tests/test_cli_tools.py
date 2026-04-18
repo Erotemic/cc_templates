@@ -91,3 +91,16 @@ def test_game_parser_overrides_encounter_fields() -> None:
     assert encounter.enemy_team is TEAMS["default_enemy"]
     assert encounter.music_track_id == "boss_battle_frenzy"
     assert encounter.active_limits == (2, 1)
+
+
+def test_preview_parsers_show_by_default() -> None:
+    char_args = build_character_parser().parse_args(["knight"])
+    state_args = build_state_parser().parse_args([])
+    audio_args = build_audio_parser().parse_args(["bluesy_overhaul", "--kind", "music"])
+    assert char_args.no_show is False
+    assert state_args.no_show is False
+    assert audio_args.no_show is False
+
+
+def test_new_track_is_registered() -> None:
+    assert "bluesy_overhaul" in MUSIC_TRACKS

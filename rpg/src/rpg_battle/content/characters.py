@@ -121,3 +121,33 @@ ai_slop["sprite_id"] = "ai_slop"
 ai_slop["move_ids"] = ("gradient_descent", "regularization", "artifact_burst")
 ai_slop["description"] = "A strange synthetic ooze with mismatched hands and unstable artifacts."
 CHARACTERS["ai_slop"] = CharacterSpec(**ai_slop)
+
+ai_slop_prime: dict[str, object] = {}
+ai_slop_prime["char_id"] = "ai_slop_prime"
+ai_slop_prime["name"] = "AI Slop Prime"
+ai_slop_prime["role"] = "boss"
+ai_slop_prime["max_hp"] = 96
+ai_slop_prime["attack"] = 9
+ai_slop_prime["defense"] = 8
+ai_slop_prime["magic"] = 13
+ai_slop_prime["speed"] = 3
+ai_slop_prime["sprite_id"] = "ai_slop_prime"
+ai_slop_prime["move_ids"] = ("gradient_descent", "regularization", "artifact_burst")
+ai_slop_prime["description"] = (
+    "A swollen, overtrained version of AI Slop that floods the screen with artifacts."
+)
+CHARACTERS["ai_slop_prime"] = CharacterSpec(**ai_slop_prime)
+
+null_hydra: dict[str, object] = {}
+null_hydra["char_id"] = "null_hydra"
+null_hydra["name"] = "Null Hydra"
+null_hydra["role"] = "boss"
+null_hydra["max_hp"] = 104
+null_hydra["attack"] = 8
+null_hydra["defense"] = 9
+null_hydra["magic"] = 14
+null_hydra["speed"] = 4
+null_hydra["sprite_id"] = "null_hydra"
+null_hydra["move_ids"] = ("singularity_coil", "pixel_storm", "entropy_shield")
+null_hydra["description"] = "A many-eyed glitch serpent that spits zigzags and pixel storms."
+CHARACTERS["null_hydra"] = CharacterSpec(**null_hydra)

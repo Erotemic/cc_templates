@@ -31,3 +31,13 @@ def test_single_enemy_still_opens_target_menu() -> None:
         assert scene.menu_stack[-1].options == ["AI Slop"]
     finally:
         pygame.quit()
+
+
+def test_confirm_menu_choice_with_no_menu_does_not_crash() -> None:
+    pygame.init()
+    try:
+        scene = BattleScene(pygame.Rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+        scene.menu_stack = []
+        scene._confirm_menu_choice()
+    finally:
+        pygame.quit()

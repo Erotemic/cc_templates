@@ -111,3 +111,48 @@ ai_slop["shapes"].append(line([(-30, 22), (-2, 32), (18, 18), (30, 34)], color="
 ai_slop["shapes"].append(rect((-12, -34), (10, 10), fill="accent", border_radius=2))
 ai_slop["shapes"].append(rect((32, 24), (12, 12), fill="accent", border_radius=2))
 SPRITES["ai_slop"] = ai_slop
+
+ai_slop_prime: dict[str, object] = {}
+ai_slop_prime["palette"] = "slop"
+ai_slop_prime["shapes"] = []
+ai_slop_prime["shapes"].append(ellipse((0, 0), (112, 104), fill="body"))
+ai_slop_prime["shapes"].append(
+    polygon([(-34, -66), (22, -60), (48, -18), (-42, -24)], fill="accent")
+)
+ai_slop_prime["shapes"].append(rect((-62, 10), (20, 54), fill="accent", border_radius=4))
+ai_slop_prime["shapes"].append(rect((58, -8), (22, 62), fill="accent", border_radius=4))
+ai_slop_prime["shapes"].append(
+    line([(-60, 8), (-104, -10), (-84, 34), (-116, 44)], color="detail", width=4)
+)
+ai_slop_prime["shapes"].append(
+    line([(58, -4), (104, -30), (84, 14), (122, 8)], color="detail", width=4)
+)
+ai_slop_prime["shapes"].append(circle((-30, -12), 7, fill="eye", outline="detail", width=1))
+ai_slop_prime["shapes"].append(circle((10, -6), 8, fill="eye", outline="detail", width=1))
+ai_slop_prime["shapes"].append(circle((38, 10), 6, fill="eye", outline="detail", width=1))
+ai_slop_prime["shapes"].append(
+    line([(-36, 30), (-6, 42), (18, 26), (36, 44)], color="detail", width=4)
+)
+ai_slop_prime["shapes"].append(rect((-16, -40), (12, 12), fill="accent", border_radius=2))
+ai_slop_prime["shapes"].append(rect((36, 28), (14, 14), fill="accent", border_radius=2))
+SPRITES["ai_slop_prime"] = ai_slop_prime
+
+null_hydra: dict[str, object] = {}
+null_hydra["palette"] = "rune"
+null_hydra["shapes"] = []
+null_hydra["shapes"].append(ellipse((0, 8), (108, 96), fill="body"))
+null_hydra["shapes"].append(polygon([(-58, -8), (-30, -54), (-8, -6)], fill="accent"))
+null_hydra["shapes"].append(polygon([(0, -18), (18, -70), (32, -10)], fill="accent"))
+null_hydra["shapes"].append(polygon([(50, -4), (72, -50), (88, 6)], fill="accent"))
+null_hydra["shapes"].append(line([(-48, 14), (-82, 44), (-66, 72)], color="detail", width=4))
+null_hydra["shapes"].append(line([(0, 20), (-10, 64), (12, 90)], color="detail", width=4))
+null_hydra["shapes"].append(line([(52, 18), (92, 54), (72, 84)], color="detail", width=4))
+null_hydra["shapes"].append(circle((-28, -18), 6, fill="eye", outline="detail", width=1))
+null_hydra["shapes"].append(circle((18, -26), 7, fill="eye", outline="detail", width=1))
+null_hydra["shapes"].append(circle((58, -12), 6, fill="eye", outline="detail", width=1))
+null_hydra["shapes"].append(
+    polyline([(-34, 30), (-12, 40), (8, 24), (28, 42), (48, 28)], color="detail", width=3)
+)
+null_hydra["shapes"].append(circle((-60, 36), 8, fill="accent"))
+null_hydra["shapes"].append(circle((62, 42), 10, fill="accent"))
+SPRITES["null_hydra"] = null_hydra

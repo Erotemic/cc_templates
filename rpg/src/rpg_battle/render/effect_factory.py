@@ -1,20 +1,29 @@
 from __future__ import annotations
 
+"""Runtime visual effects built from declarative effect specifications."""
+
 import math
 from dataclasses import dataclass
 
 import pygame
 
+from rpg_battle.content.effects import EFFECTS
+from rpg_battle.render.effect_builder import EffectSpec, PathProfile
+
 
 @dataclass
 class VisualEffect:
-    kind: str
+    """Animated effect instance traveling between two battlefield points."""
+
+    spec: EffectSpec
     start: tuple[float, float]
     end: tuple[float, float]
-    color: tuple[int, int, int]
-    duration: float
     timer: float
     points: list[tuple[float, float]] | None = None
+
+    @property
+    def duration(self) -> float:
+        return self.spec.duration
 
     def update(self, dt: float) -> None:
         self.timer -= dt
@@ -24,39 +33,49 @@ class VisualEffect:
 
     def draw(self, surface: pygame.Surface) -> None:
         progress = 1.0 - max(0.0, self.timer) / self.duration
-        if self.kind in {"impact", "shield", "heal_pulse", "mist", "fractal", "regularization"}:
+        if self.spec.style == "ring":
             cx = self.end[0]
             cy = self.end[1]
-            radius = 18 + int(42 * progress)
-            pygame.draw.circle(surface, self.color, (int(cx), int(cy)), radius, 3)
-        elif self.kind in {"bolt", "ember", "vine"}:
+            radius = int(
+                self.spec.radius_start + (self.spec.radius_end - self.spec.radius_start) * progress
+            )
+            pygame.draw.circle(surface, self.spec.color, (int(cx), int(cy)), radius, 3)
+        elif self.spec.style == "projectile":
             x = self.start[0] + (self.end[0] - self.start[0]) * progress
             y = self.start[1] + (self.end[1] - self.start[1]) * progress
-            pygame.draw.circle(surface, self.color, (int(x), int(y)), 12)
-        elif self.kind in {"sine_wave", "square_pulse", "gradient_descent"} and self.points:
+            pygame.draw.circle(
+                surface,
+                self.spec.color,
+                (int(x), int(y)),
+                self.spec.projectile_radius,
+            )
+        elif self.spec.style == "path" and self.points:
             interp = []
+            line_width = self.spec.path.width if self.spec.path else 4
             for px, py in self.points:
                 x = self.start[0] + (self.end[0] - self.start[0]) * px
                 y = self.start[1] + (self.end[1] - self.start[1]) * px + py
                 interp.append((int(x), int(y)))
-            pygame.draw.lines(surface, self.color, False, interp, 4)
-        elif self.kind == "artifact_burst":
+            pygame.draw.lines(surface, self.spec.color, False, interp, line_width)
+        elif self.spec.style == "burst_rect":
             x = self.start[0] + (self.end[0] - self.start[0]) * progress
             y = self.start[1] + (self.end[1] - self.start[1]) * progress
-            size = 10 + int(8 * progress)
+            size = int(
+                self.spec.size_start + (self.spec.size_end - self.spec.size_start) * progress
+            )
             pygame.draw.rect(
                 surface,
-                self.color,
+                self.spec.color,
                 pygame.Rect(int(x) - size, int(y) - size, size * 2, size * 2),
                 3,
                 border_radius=4,
             )
-        elif self.kind == "wind":
-            for i in range(3):
-                y = self.start[1] - 24 + i * 22
+        elif self.spec.style == "wind_arcs":
+            for index in range(self.spec.arc_count):
+                y = self.start[1] - 24 + index * 22
                 pygame.draw.arc(
                     surface,
-                    self.color,
+                    self.spec.color,
                     pygame.Rect(self.start[0] - 30, y - 20, 80, 40),
                     0.3,
                     2.8,
@@ -64,46 +83,40 @@ class VisualEffect:
                 )
 
 
-def _wave_points(mode: str) -> list[tuple[float, float]]:
-    pts: list[tuple[float, float]] = []
-    for i in range(40):
-        x = i / 39
-        if mode == "sine_wave":
-            y = math.sin(x * math.pi * 4) * 28
-        elif mode == "gradient_descent":
-            step = int(x * 6)
-            y = 34 - step * 11
+def _build_path_points(profile: PathProfile) -> list[tuple[float, float]]:
+    """Sample a named path profile into normalized line points."""
+
+    points: list[tuple[float, float]] = []
+    denominator = max(1, profile.steps - 1)
+    for index in range(profile.steps):
+        x = index / denominator
+        if profile.mode == "sine":
+            y = math.sin(x * math.pi * profile.cycles) * profile.amplitude
+        elif profile.mode == "square":
+            y = (1 if math.sin(x * math.pi * profile.cycles) >= 0 else -1) * profile.amplitude
+        elif profile.mode == "stairs":
+            step_index = int(x * profile.stair_steps)
+            step_size = (profile.amplitude * 2) / max(1, profile.stair_steps)
+            y = profile.amplitude - step_index * step_size
+        elif profile.mode == "zigzag":
+            phase = (x * profile.cycles) % 1.0
+            y = (4.0 * abs(phase - 0.5) - 1.0) * profile.amplitude
         else:
-            y = (1 if math.sin(x * math.pi * 4) >= 0 else -1) * 24
-        pts.append((x, y))
-    return pts
+            phase = (x * profile.cycles) % 1.0
+            y = (4.0 * abs(phase - 0.5) - 1.0) * profile.amplitude
+        points.append((x, y))
+    return points
 
 
 def make_effect(
-    animation: str, start: tuple[float, float], end: tuple[float, float]
+    animation: str,
+    start: tuple[float, float],
+    end: tuple[float, float],
 ) -> VisualEffect:
-    color_map = {
-        "impact": (255, 224, 145),
-        "shield": (160, 230, 255),
-        "heal_pulse": (120, 245, 170),
-        "mist": (214, 220, 255),
-        "fractal": (250, 210, 150),
-        "bolt": (175, 235, 255),
-        "ember": (255, 145, 90),
-        "vine": (135, 210, 120),
-        "wind": (215, 240, 255),
-        "sine_wave": (245, 210, 120),
-        "square_pulse": (245, 190, 120),
-        "gradient_descent": (194, 255, 138),
-        "regularization": (198, 210, 255),
-        "artifact_burst": (255, 148, 218),
-    }
-    duration = 0.5 if animation not in {"sine_wave", "square_pulse", "gradient_descent"} else 0.7
-    points = (
-        _wave_points(animation)
-        if animation in {"sine_wave", "square_pulse", "gradient_descent"}
-        else None
-    )
-    return VisualEffect(
-        animation, start, end, color_map.get(animation, (255, 255, 255)), duration, duration, points
-    )
+    """Create a runtime effect from the declarative effect catalog."""
+
+    spec = EFFECTS.get(animation)
+    if spec is None:
+        spec = EffectSpec(effect_id=animation, style="ring")
+    points = _build_path_points(spec.path) if spec.path else None
+    return VisualEffect(spec=spec, start=start, end=end, timer=spec.duration, points=points)
