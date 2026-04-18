@@ -151,3 +151,90 @@ null_hydra["sprite_id"] = "null_hydra"
 null_hydra["move_ids"] = ("singularity_coil", "pixel_storm", "entropy_shield")
 null_hydra["description"] = "A many-eyed glitch serpent that spits zigzags and pixel storms."
 CHARACTERS["null_hydra"] = CharacterSpec(**null_hydra)
+
+
+star_corsair: dict[str, object] = {}
+star_corsair["char_id"] = "star_corsair"
+star_corsair["name"] = "Star Corsair"
+star_corsair["role"] = "striker"
+star_corsair["max_hp"] = 48
+star_corsair["attack"] = 10
+star_corsair["defense"] = 5
+star_corsair["magic"] = 6
+star_corsair["speed"] = 9
+star_corsair["sprite_id"] = "star_corsair"
+star_corsair["move_ids"] = ("strike", "wind_step", "shield_bash")
+star_corsair["description"] = "A swaggering duelist who looks dangerous on purpose."
+CHARACTERS["star_corsair"] = CharacterSpec(**star_corsair)
+
+velvet_hexer: dict[str, object] = {}
+velvet_hexer["char_id"] = "velvet_hexer"
+velvet_hexer["name"] = "Velvet Hexer"
+velvet_hexer["role"] = "controller"
+velvet_hexer["max_hp"] = 46
+velvet_hexer["attack"] = 4
+velvet_hexer["defense"] = 5
+velvet_hexer["magic"] = 12
+velvet_hexer["speed"] = 7
+velvet_hexer["sprite_id"] = "velvet_hexer"
+velvet_hexer["move_ids"] = ("arc_bolt", "thorn_bind", "mist_veil")
+velvet_hexer["description"] = "An elegant moon-and-thorn caster with a perfectly composed stare."
+CHARACTERS["velvet_hexer"] = CharacterSpec(**velvet_hexer)
+
+siren_engine: dict[str, object] = {}
+siren_engine["char_id"] = "siren_engine"
+siren_engine["name"] = "Siren Engine"
+siren_engine["role"] = "support"
+siren_engine["max_hp"] = 50
+siren_engine["attack"] = 5
+siren_engine["defense"] = 6
+siren_engine["magic"] = 10
+siren_engine["speed"] = 6
+siren_engine["sprite_id"] = "siren_engine"
+siren_engine["move_ids"] = ("arc_bolt", "healing_light", "mist_veil")
+siren_engine["description"] = "A machine singer that feels graceful and uncanny at the same time."
+CHARACTERS["siren_engine"] = CharacterSpec(**siren_engine)
+
+space_pirate: dict[str, object] = {}
+space_pirate["char_id"] = "space_pirate"
+space_pirate["name"] = "Space Pirate"
+space_pirate["role"] = "raider"
+space_pirate["max_hp"] = 52
+space_pirate["attack"] = 9
+space_pirate["defense"] = 6
+space_pirate["magic"] = 5
+space_pirate["speed"] = 8
+space_pirate["sprite_id"] = "space_pirate"
+space_pirate["move_ids"] = ("strike", "shield_bash", "artifact_burst")
+space_pirate["description"] = "A rough outlaw draped in scavenged star-tech and trophies."
+CHARACTERS["space_pirate"] = CharacterSpec(**space_pirate)
+
+tiny_ancient_menace: dict[str, object] = {}
+tiny_ancient_menace["char_id"] = "tiny_ancient_menace"
+tiny_ancient_menace["name"] = "Tiny Ancient Menace"
+tiny_ancient_menace["role"] = "trickster"
+tiny_ancient_menace["max_hp"] = 40
+tiny_ancient_menace["attack"] = 5
+tiny_ancient_menace["defense"] = 6
+tiny_ancient_menace["magic"] = 11
+tiny_ancient_menace["speed"] = 8
+tiny_ancient_menace["sprite_id"] = "tiny_ancient_menace"
+tiny_ancient_menace["move_ids"] = ("square_pulse", "entropy_shield", "gradient_descent")
+tiny_ancient_menace["description"] = (
+    "A pocket ruin-lord with an ancient glare and a terrible attitude."
+)
+CHARACTERS["tiny_ancient_menace"] = CharacterSpec(**tiny_ancient_menace)
+
+cryptid_friend: dict[str, object] = {}
+cryptid_friend["char_id"] = "cryptid_friend"
+cryptid_friend["name"] = "Cryptid Friend"
+cryptid_friend["role"] = "support"
+cryptid_friend["max_hp"] = 47
+cryptid_friend["attack"] = 5
+cryptid_friend["defense"] = 6
+cryptid_friend["magic"] = 9
+cryptid_friend["speed"] = 7
+cryptid_friend["sprite_id"] = "cryptid_friend"
+cryptid_friend["move_ids"] = ("healing_light", "thorn_bind", "mist_veil")
+cryptid_friend["description"] = "A warm, watchful companion that nobody can quite classify."
+CHARACTERS["cryptid_friend"] = CharacterSpec(**cryptid_friend)

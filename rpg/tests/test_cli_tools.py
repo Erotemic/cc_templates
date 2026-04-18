@@ -113,3 +113,22 @@ def test_render_effect_parser_accepts_no_show() -> None:
     args = parser.parse_args(["sine_wave", "--no-show"])
     assert args.effect_id == "sine_wave"
     assert args.no_show is True
+
+
+def test_render_character_parser_accepts_all() -> None:
+    parser = build_character_parser()
+    args = parser.parse_args(["--all", "--no-show"])
+    assert args.all is True
+    assert args.no_show is True
+
+
+def test_new_character_options_are_registered() -> None:
+    for character_id in (
+        "star_corsair",
+        "velvet_hexer",
+        "siren_engine",
+        "space_pirate",
+        "tiny_ancient_menace",
+        "cryptid_friend",
+    ):
+        assert character_id in CHARACTERS

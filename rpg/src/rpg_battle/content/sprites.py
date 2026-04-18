@@ -156,3 +156,99 @@ null_hydra["shapes"].append(
 null_hydra["shapes"].append(circle((-60, 36), 8, fill="accent"))
 null_hydra["shapes"].append(circle((62, 42), 10, fill="accent"))
 SPRITES["null_hydra"] = null_hydra
+
+
+star_corsair: dict[str, object] = {}
+star_corsair["palette"] = "corsair"
+star_corsair["shapes"] = []
+star_corsair["shapes"].append(ellipse((0, 10), (78, 88), fill="body"))
+star_corsair["shapes"].append(
+    polyline([(-52, -34), (-14, -54), (24, -48), (52, -30)], color="accent", width=5)
+)
+star_corsair["shapes"].append(polygon([(-8, -60), (0, -82), (12, -56)], fill="accent"))
+star_corsair["shapes"].append(line([(28, -8), (64, 8)], color="accent", width=4))
+star_corsair["shapes"].append(line([(-22, 36), (12, 46), (34, 28)], color="detail", width=3))
+star_corsair["shapes"].append(rect((-34, 18), (18, 42), fill="accent", border_radius=4))
+star_corsair["shapes"].extend(simple_face(-14))
+SPRITES["star_corsair"] = star_corsair
+
+velvet_hexer: dict[str, object] = {}
+velvet_hexer["palette"] = "velvet"
+velvet_hexer["shapes"] = []
+velvet_hexer["shapes"].append(ellipse((0, 12), (70, 96), fill="body"))
+velvet_hexer["shapes"].append(polyline([(-24, -50), (0, -68), (24, -50)], color="accent", width=4))
+velvet_hexer["shapes"].append(
+    polyline([(-40, -6), (-22, 46), (0, 28), (22, 50), (40, -6)], color="accent", width=3)
+)
+velvet_hexer["shapes"].append(circle((-36, -18), 6, fill="accent"))
+velvet_hexer["shapes"].append(circle((36, -4), 6, fill="accent"))
+velvet_hexer["shapes"].append(
+    polyline([(-20, 24), (-4, 8), (12, 24), (28, 8)], color="detail", width=3)
+)
+velvet_hexer["shapes"].extend(simple_face(-16))
+SPRITES["velvet_hexer"] = velvet_hexer
+
+siren_engine: dict[str, object] = {}
+siren_engine["palette"] = "siren"
+siren_engine["shapes"] = []
+siren_engine["shapes"].append(ellipse((0, 6), (74, 94), fill="body"))
+siren_engine["shapes"].append(circle((0, -40), 20, fill="accent"))
+siren_engine["shapes"].append(
+    polyline([(-34, -22), (-20, -48), (-8, -22)], color="detail", width=3)
+)
+siren_engine["shapes"].append(polyline([(34, -22), (20, -48), (8, -22)], color="detail", width=3))
+siren_engine["shapes"].append(circle((-34, 6), 8, fill="accent"))
+siren_engine["shapes"].append(circle((34, 6), 8, fill="accent"))
+siren_engine["shapes"].append(polyline([(-18, 44), (0, 64), (18, 44)], color="accent", width=4))
+siren_engine["shapes"].append(line([(-10, -18), (-10, 38)], color="detail", width=2))
+siren_engine["shapes"].append(line([(10, -18), (10, 38)], color="detail", width=2))
+siren_engine["shapes"].extend(simple_face(-12))
+SPRITES["siren_engine"] = siren_engine
+
+space_pirate: dict[str, object] = {}
+space_pirate["palette"] = "raider"
+space_pirate["shapes"] = []
+space_pirate["shapes"].append(ellipse((0, 10), (80, 92), fill="body"))
+space_pirate["shapes"].append(polygon([(-40, -24), (-10, -60), (20, -18)], fill="accent"))
+space_pirate["shapes"].append(line([(-34, 34), (-10, 54), (18, 24)], color="detail", width=3))
+space_pirate["shapes"].append(rect((34, 12), (20, 52), fill="accent", border_radius=3))
+space_pirate["shapes"].append(circle((16, -16), 8, fill="accent"))
+space_pirate["shapes"].append(line([(44, -10), (58, 28), (74, 18)], color="detail", width=3))
+space_pirate["shapes"].append(line([(-28, -8), (-50, 6), (-40, 42)], color="accent", width=3))
+space_pirate["shapes"].extend(simple_face(-14))
+SPRITES["space_pirate"] = space_pirate
+
+tiny_ancient_menace: dict[str, object] = {}
+tiny_ancient_menace["palette"] = "menace"
+tiny_ancient_menace["shapes"] = []
+tiny_ancient_menace["shapes"].append(circle((0, 18), 30, fill="body"))
+tiny_ancient_menace["shapes"].append(
+    polyline([(-20, -12), (-8, -36), (0, -18), (8, -36), (20, -12)], color="accent", width=4)
+)
+tiny_ancient_menace["shapes"].append(circle((-28, -6), 6, fill="accent"))
+tiny_ancient_menace["shapes"].append(circle((28, -2), 6, fill="accent"))
+tiny_ancient_menace["shapes"].append(
+    polyline([(-18, 44), (-8, 24), (0, 44), (8, 24), (18, 44)], color="detail", width=3)
+)
+tiny_ancient_menace["shapes"].append(line([(-20, 20), (-36, 34)], color="detail", width=3))
+tiny_ancient_menace["shapes"].append(line([(20, 20), (36, 34)], color="detail", width=3))
+tiny_ancient_menace["shapes"].extend(simple_face(2))
+SPRITES["tiny_ancient_menace"] = tiny_ancient_menace
+
+cryptid_friend: dict[str, object] = {}
+cryptid_friend["palette"] = "cryptid"
+cryptid_friend["shapes"] = []
+cryptid_friend["shapes"].append(ellipse((0, 14), (82, 92), fill="body"))
+cryptid_friend["shapes"].append(
+    polyline([(-24, -40), (-16, -60), (-8, -40)], color="accent", width=3)
+)
+cryptid_friend["shapes"].append(polyline([(24, -40), (16, -60), (8, -40)], color="accent", width=3))
+cryptid_friend["shapes"].append(polygon([(-36, 12), (-56, -8), (-46, 30)], fill="accent"))
+cryptid_friend["shapes"].append(polygon([(36, 12), (56, -8), (46, 30)], fill="accent"))
+cryptid_friend["shapes"].append(
+    polyline([(-28, 34), (-10, 54), (10, 54), (28, 34)], color="accent", width=4)
+)
+cryptid_friend["shapes"].append(circle((-30, -12), 5, fill="accent"))
+cryptid_friend["shapes"].append(circle((30, -8), 5, fill="accent"))
+cryptid_friend["shapes"].extend(simple_face(-10))
+SPRITES["cryptid_friend"] = cryptid_friend

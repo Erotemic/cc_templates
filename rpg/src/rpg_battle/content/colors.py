@@ -61,3 +61,46 @@ slop["accent"] = (228, 133, 186)
 slop["eye"] = (245, 255, 214)
 slop["detail"] = (76, 62, 95)
 PALETTES["slop"] = slop
+
+
+corsair: dict[str, tuple[int, int, int]] = {}
+corsair["body"] = (94, 92, 165)
+corsair["accent"] = (246, 204, 118)
+corsair["eye"] = (250, 246, 255)
+corsair["detail"] = (49, 42, 91)
+PALETTES["corsair"] = corsair
+
+velvet: dict[str, tuple[int, int, int]] = {}
+velvet["body"] = (98, 66, 112)
+velvet["accent"] = (205, 179, 232)
+velvet["eye"] = (252, 245, 255)
+velvet["detail"] = (55, 32, 68)
+PALETTES["velvet"] = velvet
+
+siren: dict[str, tuple[int, int, int]] = {}
+siren["body"] = (123, 164, 184)
+siren["accent"] = (220, 236, 244)
+siren["eye"] = (246, 252, 255)
+siren["detail"] = (62, 88, 104)
+PALETTES["siren"] = siren
+
+raider: dict[str, tuple[int, int, int]] = {}
+raider["body"] = (123, 92, 82)
+raider["accent"] = (236, 162, 107)
+raider["eye"] = (250, 243, 236)
+raider["detail"] = (63, 44, 40)
+PALETTES["raider"] = raider
+
+menace: dict[str, tuple[int, int, int]] = {}
+menace["body"] = (123, 111, 79)
+menace["accent"] = (241, 202, 98)
+menace["eye"] = (250, 243, 220)
+menace["detail"] = (69, 58, 33)
+PALETTES["menace"] = menace
+
+cryptid: dict[str, tuple[int, int, int]] = {}
+cryptid["body"] = (115, 154, 137)
+cryptid["accent"] = (203, 234, 216)
+cryptid["eye"] = (246, 255, 248)
+cryptid["detail"] = (54, 84, 70)
+PALETTES["cryptid"] = cryptid
