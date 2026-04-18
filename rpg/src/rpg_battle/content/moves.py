@@ -116,6 +116,17 @@ sine_wave["animation"] = "sine_wave"
 sine_wave["sound_id"] = "sine_wave"
 MOVES["sine_wave"] = MoveSpec(**sine_wave)
 
+fourier_transform: dict[str, object] = {}
+fourier_transform["move_id"] = "fourier_transform"
+fourier_transform["name"] = "Fourier Transform"
+fourier_transform["kind"] = "magical"
+fourier_transform["power"] = 9
+fourier_transform["target_mode"] = "single_enemy"
+fourier_transform["animation"] = "fourier_transform"
+fourier_transform["sound_id"] = "sine_wave"
+fourier_transform["effects"] = (MoveEffect(status="transform:fourier"),)
+MOVES["fourier_transform"] = MoveSpec(**fourier_transform)
+
 square_pulse: dict[str, object] = {}
 square_pulse["move_id"] = "square_pulse"
 square_pulse["name"] = "Square Pulse"

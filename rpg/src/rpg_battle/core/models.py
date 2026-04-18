@@ -141,6 +141,7 @@ class CombatantState:
     temp_bonuses: dict[str, int] = field(
         default_factory=lambda: {"attack": 0, "defense": 0, "magic": 0, "speed": 0}
     )
+    render_transforms: dict[str, int] = field(default_factory=dict)
     defending: bool = False
     active: bool = False
     fainted: bool = False

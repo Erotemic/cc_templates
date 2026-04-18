@@ -98,13 +98,13 @@ runesage: dict[str, object] = {}
 runesage["char_id"] = "runesage"
 runesage["name"] = "Runesage"
 runesage["role"] = "arcane"
-runesage["max_hp"] = 45
+runesage["max_hp"] = 4500
 runesage["attack"] = 4
 runesage["defense"] = 5
 runesage["magic"] = 12
 runesage["speed"] = 8
 runesage["sprite_id"] = "runesage"
-runesage["move_ids"] = ("sine_wave", "square_pulse", "fractal_veil")
+runesage["move_ids"] = ("sine_wave", "square_pulse", "fractal_veil", "fourier_transform")
 runesage["description"] = "A pattern mage whose spells are built from geometry."
 CHARACTERS["runesage"] = CharacterSpec(**runesage)
 

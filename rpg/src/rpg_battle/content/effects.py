@@ -71,6 +71,12 @@ add_effect(
     .build(),
 )
 add_effect(
+    "fourier_transform",
+    EffectBuilder("fourier_transform")
+    .path(color=(150, 225, 255), mode="sine", duration=0.78, amplitude=36, cycles=6)
+    .build(),
+)
+add_effect(
     "square_pulse",
     EffectBuilder("square_pulse")
     .path(color=(245, 190, 120), mode="square", duration=0.70, amplitude=24, cycles=4)

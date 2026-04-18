@@ -20,6 +20,7 @@ from rpg_battle.core.battle_state import (
 from rpg_battle.core.effects import effective_stat
 from rpg_battle.core.events import make_event
 from rpg_battle.core.models import BattleAction, BattleState, CombatantState, StatusState
+from rpg_battle.core.transforms import get_transform_spec, is_transform_status, transform_status_names
 from rpg_battle.core.targeting import get_valid_target_groups
 
 ACTION_PRIORITY = {"switch": 2, "defend": 1, "attack": 0, "skill": 0}
@@ -75,6 +76,38 @@ def _target_display_name(state: BattleState, target_ids: list[str]) -> str:
     return ", ".join(names)
 
 
+def _apply_transform_effect(
+    target: CombatantState,
+    effect_token: str,
+    events: list[dict],
+) -> None:
+    spec = get_transform_spec(effect_token)
+    if spec is None:
+        return
+    current_phase = target.render_transforms.get(spec.transform_id, 0)
+    new_phase = (current_phase + 1) % spec.cycle_length
+    if new_phase == 0:
+        target.render_transforms.pop(spec.transform_id, None)
+    else:
+        target.render_transforms[spec.transform_id] = new_phase
+    for status_name in transform_status_names(spec):
+        target.statuses.pop(status_name, None)
+    for status_name in spec.state_statuses[new_phase]:
+        target.statuses[status_name] = StatusState(status_name, -1)
+    events.append(
+        make_event(
+            "status",
+            team=target.team_index,
+            target_id=target.combatant_id,
+            target_name=target.spec.name,
+            status=spec.transform_id,
+            transform_id=spec.transform_id,
+            transform_phase=new_phase,
+            text=f"{target.spec.name} {spec.state_text[new_phase]}",
+        )
+    )
+
+
 def _apply_effects(
     target: CombatantState,
     move_id: str,
@@ -84,17 +117,21 @@ def _apply_effects(
     move = MOVES[move_id]
     for effect in move.effects:
         if effect.status and rng.random() <= effect.chance:
-            target.statuses[effect.status] = StatusState(effect.status, effect.duration)
-            events.append(
-                make_event(
-                    "status",
-                    team=target.team_index,
-                    target_id=target.combatant_id,
-                    target_name=target.spec.name,
-                    status=effect.status,
-                    text=f"{target.spec.name} is affected by {effect.status.title()}!",
+            transform_spec = get_transform_spec(effect.status)
+            if transform_spec is not None:
+                _apply_transform_effect(target, effect.status, events)
+            else:
+                target.statuses[effect.status] = StatusState(effect.status, effect.duration)
+                events.append(
+                    make_event(
+                        "status",
+                        team=target.team_index,
+                        target_id=target.combatant_id,
+                        target_name=target.spec.name,
+                        status=effect.status,
+                        text=f"{target.spec.name} is affected by {effect.status.title()}!",
+                    )
                 )
-            )
         if effect.stat and rng.random() <= effect.chance:
             target.temp_bonuses[effect.stat] = (
                 target.temp_bonuses.get(effect.stat, 0) + effect.stages
@@ -387,6 +424,8 @@ def _status_tick(battler: CombatantState, events: list[dict]) -> None:
                     text=f"{battler.spec.name} is singed by burn.",
                 )
             )
+        if is_transform_status(name):
+            continue
         status.duration -= 1
         if status.duration <= 0:
             expired.append(name)

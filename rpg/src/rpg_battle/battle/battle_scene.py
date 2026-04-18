@@ -17,6 +17,7 @@ from rpg_battle.battle.menu_state import MenuState
 from rpg_battle.content.moves import MOVES
 from rpg_battle.core.actions import attack_action, defend_action, skill_action, switch_action
 from rpg_battle.core.models import EncounterSpec
+from rpg_battle.core.transforms import TRANSFORM_STATUS_INFO
 from rpg_battle.core.battle_state import get_combatant
 from rpg_battle.core.targeting import get_valid_target_groups
 from rpg_battle.battle.controls import (
@@ -50,6 +51,13 @@ NEUTRAL_EVENT_COLOR = TEXT_COLOR
 PLAYER_GLOW = (120, 195, 255)
 ENEMY_GLOW = (255, 145, 145)
 TARGET_GLOW = (255, 240, 150)
+STATUS_BADGE_COLORS = {
+    "burn": (255, 145, 95),
+    "slow": (172, 214, 255),
+    "stun": (255, 225, 125),
+    "guarded": (190, 230, 255),
+    "focus": (235, 200, 255),
+}
 
 
 class BattleScene:
@@ -706,7 +714,11 @@ class BattleScene:
                 pygame.draw.ellipse(surface, TARGET_GLOW, shadow.inflate(40, 20), 4)
             combatant = get_combatant(self.controller.state, combatant_id)
             self.sprite_actors[combatant_id].draw(
-                surface, combatant.spec.sprite_id, (int(x), int(y)), scale=scale
+                surface,
+                combatant.spec.sprite_id,
+                (int(x), int(y)),
+                scale=scale,
+                render_transforms=combatant.render_transforms,
             )
             self._draw_battler_overlay(surface, combatant_id, x, y, scale)
 
@@ -735,11 +747,49 @@ class BattleScene:
             surface.blit(word_surface, (x, y))
             x += word_surface.get_width() + gap
 
+    def _draw_status_badges(
+        self,
+        surface: pygame.Surface,
+        combatant_id: str,
+        center_x: float,
+        top_y: float,
+    ) -> None:
+        combatant = get_combatant(self.controller.state, combatant_id)
+        badge_specs: list[tuple[str, tuple[int, int, int]]] = []
+        for status_name in combatant.statuses:
+            transform_info = TRANSFORM_STATUS_INFO.get(status_name)
+            if transform_info is not None:
+                badge_specs.append((transform_info.label, transform_info.color))
+                continue
+            label = status_name.replace("_", " ").title()[:6]
+            badge_specs.append((label, STATUS_BADGE_COLORS.get(status_name, (210, 210, 220))))
+        if not badge_specs:
+            return
+        padding_x = 8
+        gap = 6
+        rendered = []
+        total_width = 0
+        for label, color in badge_specs:
+            text_surface = self.small_font.render(label, True, (24, 24, 30))
+            badge_width = text_surface.get_width() + padding_x * 2
+            rendered.append((label, color, text_surface, badge_width))
+            total_width += badge_width
+        total_width += gap * (len(rendered) - 1)
+        cursor_x = int(center_x - total_width / 2)
+        for _label, color, text_surface, badge_width in rendered:
+            badge_rect = pygame.Rect(cursor_x, int(top_y), badge_width, text_surface.get_height() + 6)
+            pygame.draw.rect(surface, color, badge_rect, border_radius=8)
+            pygame.draw.rect(surface, (26, 26, 34), badge_rect, 1, border_radius=8)
+            text_rect = text_surface.get_rect(center=badge_rect.center)
+            surface.blit(text_surface, text_rect)
+            cursor_x += badge_width + gap
+
     def _draw_battler_overlay(
         self, surface: pygame.Surface, combatant_id: str, x: float, y: float, scale: float
     ) -> None:
         combatant = get_combatant(self.controller.state, combatant_id)
         self._draw_name_label(surface, combatant.spec.name, x, y - 96 * scale)
+        self._draw_status_badges(surface, combatant_id, x, y - 120 * scale)
         bar_rect = pygame.Rect(int(x - 50), int(y + 70 * scale), 100, 14)
         self.hp_bars[combatant_id].draw(surface, bar_rect)
         hp_text = self.small_font.render(

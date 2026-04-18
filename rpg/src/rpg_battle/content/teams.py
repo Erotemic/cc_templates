@@ -14,7 +14,7 @@ default_player: dict[str, object] = {}
 default_player["name"] = "Player Party"
 default_player["members"] = ("knight", "druid", "runesage")
 default_player["controller_type"] = "human"
-default_player["starting_active"] = ("knight", "druid")
+default_player["starting_active"] = ("knight", "runesage")
 TEAMS["default_player"] = TeamSpec(**default_player)
 
 default_enemy: dict[str, object] = {}

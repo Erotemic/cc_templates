@@ -7,6 +7,7 @@ import pygame
 from rpg_battle.content.colors import PALETTES
 from rpg_battle.content.sprites import SPRITES
 from rpg_battle.render.primitives import draw_shape
+from rpg_battle.render.signal_transform import apply_signal_transforms
 
 
 class SpriteActor:
@@ -85,7 +86,12 @@ class SpriteActor:
             )
 
     def draw(
-        self, surface: pygame.Surface, sprite_id: str, pos: tuple[int, int], scale: float = 1.0
+        self,
+        surface: pygame.Surface,
+        sprite_id: str,
+        pos: tuple[int, int],
+        scale: float = 1.0,
+        render_transforms: dict[str, int] | None = None,
     ) -> None:
         recipe = SPRITES[sprite_id]
         palette = PALETTES[recipe["palette"]]
@@ -111,6 +117,7 @@ class SpriteActor:
                 facing=facing,
                 offset=(0.0, 0.0),
             )
+        sprite_surface = apply_signal_transforms(sprite_surface, render_transforms)
         if self.faint:
             self._draw_x_eyes(sprite_surface, local_center, scale)
             angle = min(180.0, (self.faint_elapsed / 0.24) * 180.0)
