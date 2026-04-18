@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Named key groups used by menu-heavy scenes."""
+
 import pygame
 
 CONFIRM_KEYS = {pygame.K_RETURN, pygame.K_SPACE}

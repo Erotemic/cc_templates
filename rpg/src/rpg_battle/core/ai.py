@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import random
 
+from loguru import logger
+
 from rpg_battle.content.moves import MOVES
 from rpg_battle.core.actions import attack_action, defend_action, skill_action, switch_action
 from rpg_battle.core.battle_state import get_combatant, living_ally_ids, living_enemy_ids
@@ -19,6 +21,7 @@ def choose_ai_action(
 ) -> BattleAction:
     rng = rng or random.Random()
     actor = get_combatant(state, actor_id)
+    logger.debug("AI evaluating turn for {}", actor.spec.name)
     enemies = living_enemy_ids(state, actor_id)
     allies = living_ally_ids(state, actor_id, include_self=True)
     if not enemies:
@@ -37,7 +40,9 @@ def choose_ai_action(
                 target_ids = tuple(groups[0]) if groups else (actor_id,)
                 if move.target_mode == "single_ally":
                     target_ids = (weakest_ally.combatant_id,)
-                return skill_action(actor_id, move_id, target_ids=target_ids)
+                action = skill_action(actor_id, move_id, target_ids=target_ids)
+                logger.info("AI chose heal action: {}", action)
+                return action
         switch_targets = legal_switch_targets(state, actor_id)
         if switch_targets and weakest_enemy.current_hp > weakest_enemy.spec.max_hp * 0.4:
             best_switch = max(
@@ -82,12 +87,21 @@ def choose_ai_action(
             target_ids = tuple(groups[0]) if groups else ()
         return skill_action(actor_id, move_id, target_ids=target_ids)
     if rng.random() < 0.25:
-        return defend_action(actor_id)
-    return attack_action(actor_id, target_ids=(weakest_enemy.combatant_id,))
+        action = defend_action(actor_id)
+        logger.info("AI chose fallback action: {}", action)
+        return action
+    action = attack_action(actor_id, target_ids=(weakest_enemy.combatant_id,))
+    logger.info("AI chose fallback action: {}", action)
+    return action
 
 
 def choose_ai_replacement(state: BattleState, team_index: int) -> str | None:
     targets = legal_replacement_targets(state, team_index)
     if not targets:
+        logger.debug("AI found no legal replacements for team {}", team_index)
         return None
-    return max(targets, key=lambda combatant_id: get_combatant(state, combatant_id).current_hp)
+    replacement = max(
+        targets, key=lambda combatant_id: get_combatant(state, combatant_id).current_hp
+    )
+    logger.info("AI chose replacement {} for team {}", replacement, team_index)
+    return replacement

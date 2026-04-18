@@ -2,10 +2,8 @@ from __future__ import annotations
 
 """Encounter presets.
 
-Each encounter chooses how many frontline combatants are active at once. The
-same battle engine handles 1v1, 2v2, 3v3, and beyond by changing these limits.
-Teams themselves own their preferred starting frontline so students can edit
-rosters in one place.
+Each encounter starts as a small dictionary so students can add title, teams,
+limits, or music one key at a time.
 """
 
 from rpg_battle.content.audio import DEFAULT_BATTLE_TRACK
@@ -14,13 +12,13 @@ from rpg_battle.core.models import EncounterSpec
 
 ENCOUNTERS: dict[str, EncounterSpec] = {}
 
-ENCOUNTERS["default"] = EncounterSpec(
-    encounter_id="classroom_skirmish",
-    title="Classroom Skirmish",
-    player_team=DEFAULT_PLAYER_TEAM,
-    enemy_team=DEFAULT_ENEMY_TEAM,
-    active_limits=(2, 2),
-    music_track_id=DEFAULT_BATTLE_TRACK,
-)
+default: dict[str, object] = {}
+default["encounter_id"] = "classroom_skirmish"
+default["title"] = "Classroom Skirmish"
+default["player_team"] = DEFAULT_PLAYER_TEAM
+default["enemy_team"] = DEFAULT_ENEMY_TEAM
+default["active_limits"] = (2, 2)
+default["music_track_id"] = DEFAULT_BATTLE_TRACK
+ENCOUNTERS["default"] = EncounterSpec(**default)
 
 DEFAULT_ENCOUNTER = ENCOUNTERS["default"]

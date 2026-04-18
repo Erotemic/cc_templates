@@ -2,10 +2,8 @@ from __future__ import annotations
 
 """Student-facing audio catalog.
 
-Swap the default battle music by changing ``DEFAULT_BATTLE_TRACK`` to another key
-from ``MUSIC_TRACKS``. Each move in ``content.moves`` also points at a sound id
-from ``SOUND_EFFECTS``. The incremental style here mirrors the rest of
-``content/`` so students can add one sound or one track at a time.
+Tracks and sound effects are built from empty dictionaries so students can add a
+new field, listen, then keep iterating.
 """
 
 from pathlib import Path
@@ -18,11 +16,34 @@ AUDIO_ASSET_DIR = PACKAGE_ROOT / "assets" / "audio"
 DEFAULT_BATTLE_TRACK = "soft_dungeon_crawl"
 
 MUSIC_TRACKS: dict[str, GeneratedTrackSpec] = {}
-MUSIC_TRACKS["soft_dungeon_crawl"] = GeneratedTrackSpec(builder="soft_dungeon_crawl", volume=0.20)
-MUSIC_TRACKS["training_battle"] = GeneratedTrackSpec(builder="battle_loop_prototype", volume=0.42)
+
+soft_dungeon_crawl: dict[str, object] = {}
+soft_dungeon_crawl["builder"] = "soft_dungeon_crawl"
+soft_dungeon_crawl["volume"] = 0.20
+MUSIC_TRACKS["soft_dungeon_crawl"] = GeneratedTrackSpec(**soft_dungeon_crawl)
+
+training_battle: dict[str, object] = {}
+training_battle["builder"] = "battle_loop_prototype"
+training_battle["volume"] = 0.42
+MUSIC_TRACKS["training_battle"] = GeneratedTrackSpec(**training_battle)
+
+boss_battle_frenzy: dict[str, object] = {}
+boss_battle_frenzy["builder"] = "boss_battle_frenzy"
+boss_battle_frenzy["volume"] = 0.34
+MUSIC_TRACKS["boss_battle_frenzy"] = GeneratedTrackSpec(**boss_battle_frenzy)
+
 
 SOUND_EFFECTS: dict[str, SynthSoundSpec] = {}
-SOUND_EFFECTS["menu_move"] = SynthSoundSpec(
+
+
+def add_sound(sound_id: str, **kwargs: object) -> None:
+    """Register one synthesized sound effect in a readable incremental style."""
+
+    SOUND_EFFECTS[sound_id] = SynthSoundSpec(**kwargs)
+
+
+add_sound(
+    "menu_move",
     waveform="square",
     frequency=740.0,
     frequency_end=810.0,
@@ -30,7 +51,8 @@ SOUND_EFFECTS["menu_move"] = SynthSoundSpec(
     volume=0.16,
     release=0.03,
 )
-SOUND_EFFECTS["menu_confirm"] = SynthSoundSpec(
+add_sound(
+    "menu_confirm",
     waveform="square",
     frequency=510.0,
     frequency_end=680.0,
@@ -38,7 +60,8 @@ SOUND_EFFECTS["menu_confirm"] = SynthSoundSpec(
     volume=0.2,
     release=0.045,
 )
-SOUND_EFFECTS["menu_back"] = SynthSoundSpec(
+add_sound(
+    "menu_back",
     waveform="triangle",
     frequency=440.0,
     frequency_end=330.0,
@@ -46,7 +69,8 @@ SOUND_EFFECTS["menu_back"] = SynthSoundSpec(
     volume=0.18,
     release=0.04,
 )
-SOUND_EFFECTS["attack_basic"] = SynthSoundSpec(
+add_sound(
+    "attack_basic",
     waveform="square",
     frequency=170.0,
     frequency_end=110.0,
@@ -55,7 +79,8 @@ SOUND_EFFECTS["attack_basic"] = SynthSoundSpec(
     noise=0.16,
     release=0.045,
 )
-SOUND_EFFECTS["attack_magic"] = SynthSoundSpec(
+add_sound(
+    "attack_magic",
     waveform="sine",
     frequency=330.0,
     frequency_end=520.0,
@@ -65,7 +90,8 @@ SOUND_EFFECTS["attack_magic"] = SynthSoundSpec(
     vibrato_depth=0.02,
     release=0.06,
 )
-SOUND_EFFECTS["heal_chime"] = SynthSoundSpec(
+add_sound(
+    "heal_chime",
     waveform="sine",
     frequency=523.25,
     frequency_end=783.99,
@@ -75,7 +101,8 @@ SOUND_EFFECTS["heal_chime"] = SynthSoundSpec(
     vibrato_depth=0.015,
     release=0.08,
 )
-SOUND_EFFECTS["shield_bash"] = SynthSoundSpec(
+add_sound(
+    "shield_bash",
     waveform="square",
     frequency=140.0,
     frequency_end=90.0,
@@ -84,7 +111,8 @@ SOUND_EFFECTS["shield_bash"] = SynthSoundSpec(
     noise=0.18,
     release=0.06,
 )
-SOUND_EFFECTS["thorn_bind"] = SynthSoundSpec(
+add_sound(
+    "thorn_bind",
     waveform="saw",
     frequency=290.0,
     frequency_end=180.0,
@@ -93,7 +121,8 @@ SOUND_EFFECTS["thorn_bind"] = SynthSoundSpec(
     noise=0.1,
     release=0.07,
 )
-SOUND_EFFECTS["arc_bolt"] = SynthSoundSpec(
+add_sound(
+    "arc_bolt",
     waveform="triangle",
     frequency=370.0,
     frequency_end=610.0,
@@ -103,7 +132,8 @@ SOUND_EFFECTS["arc_bolt"] = SynthSoundSpec(
     vibrato_depth=0.025,
     release=0.06,
 )
-SOUND_EFFECTS["ember"] = SynthSoundSpec(
+add_sound(
+    "ember",
     waveform="square",
     frequency=230.0,
     frequency_end=120.0,
@@ -112,7 +142,8 @@ SOUND_EFFECTS["ember"] = SynthSoundSpec(
     noise=0.24,
     release=0.06,
 )
-SOUND_EFFECTS["wind_step"] = SynthSoundSpec(
+add_sound(
+    "wind_step",
     waveform="sine",
     frequency=420.0,
     frequency_end=700.0,
@@ -122,7 +153,8 @@ SOUND_EFFECTS["wind_step"] = SynthSoundSpec(
     vibrato_depth=0.03,
     release=0.05,
 )
-SOUND_EFFECTS["stone_ward"] = SynthSoundSpec(
+add_sound(
+    "stone_ward",
     waveform="triangle",
     frequency=150.0,
     frequency_end=190.0,
@@ -130,7 +162,8 @@ SOUND_EFFECTS["stone_ward"] = SynthSoundSpec(
     volume=0.2,
     release=0.08,
 )
-SOUND_EFFECTS["mist_veil"] = SynthSoundSpec(
+add_sound(
+    "mist_veil",
     waveform="sine",
     frequency=300.0,
     frequency_end=250.0,
@@ -139,7 +172,8 @@ SOUND_EFFECTS["mist_veil"] = SynthSoundSpec(
     noise=0.12,
     release=0.08,
 )
-SOUND_EFFECTS["sine_wave"] = SynthSoundSpec(
+add_sound(
+    "sine_wave",
     waveform="sine",
     frequency=260.0,
     frequency_end=480.0,
@@ -149,7 +183,8 @@ SOUND_EFFECTS["sine_wave"] = SynthSoundSpec(
     vibrato_depth=0.05,
     release=0.08,
 )
-SOUND_EFFECTS["square_pulse"] = SynthSoundSpec(
+add_sound(
+    "square_pulse",
     waveform="square",
     frequency=280.0,
     frequency_end=430.0,
@@ -158,7 +193,8 @@ SOUND_EFFECTS["square_pulse"] = SynthSoundSpec(
     duty_cycle=0.35,
     release=0.07,
 )
-SOUND_EFFECTS["fractal_veil"] = SynthSoundSpec(
+add_sound(
+    "fractal_veil",
     waveform="triangle",
     frequency=360.0,
     frequency_end=540.0,
@@ -168,10 +204,17 @@ SOUND_EFFECTS["fractal_veil"] = SynthSoundSpec(
     vibrato_depth=0.04,
     release=0.1,
 )
-SOUND_EFFECTS["gradient_descent"] = SynthSoundSpec(
-    waveform="saw", frequency=440.0, frequency_end=170.0, duration=0.2, volume=0.22, release=0.08
+add_sound(
+    "gradient_descent",
+    waveform="saw",
+    frequency=440.0,
+    frequency_end=170.0,
+    duration=0.2,
+    volume=0.22,
+    release=0.08,
 )
-SOUND_EFFECTS["regularization"] = SynthSoundSpec(
+add_sound(
+    "regularization",
     waveform="triangle",
     frequency=190.0,
     frequency_end=240.0,
@@ -179,7 +222,8 @@ SOUND_EFFECTS["regularization"] = SynthSoundSpec(
     volume=0.2,
     release=0.08,
 )
-SOUND_EFFECTS["artifact_burst"] = SynthSoundSpec(
+add_sound(
+    "artifact_burst",
     waveform="square",
     frequency=520.0,
     frequency_end=210.0,
@@ -188,7 +232,8 @@ SOUND_EFFECTS["artifact_burst"] = SynthSoundSpec(
     noise=0.28,
     release=0.07,
 )
-SOUND_EFFECTS["switch"] = SynthSoundSpec(
+add_sound(
+    "switch",
     waveform="triangle",
     frequency=300.0,
     frequency_end=420.0,
@@ -196,7 +241,8 @@ SOUND_EFFECTS["switch"] = SynthSoundSpec(
     volume=0.16,
     release=0.05,
 )
-SOUND_EFFECTS["defend"] = SynthSoundSpec(
+add_sound(
+    "defend",
     waveform="triangle",
     frequency=180.0,
     frequency_end=220.0,
@@ -204,7 +250,8 @@ SOUND_EFFECTS["defend"] = SynthSoundSpec(
     volume=0.15,
     release=0.05,
 )
-SOUND_EFFECTS["ko"] = SynthSoundSpec(
+add_sound(
+    "ko",
     waveform="square",
     frequency=170.0,
     frequency_end=70.0,
@@ -213,7 +260,8 @@ SOUND_EFFECTS["ko"] = SynthSoundSpec(
     noise=0.1,
     release=0.12,
 )
-SOUND_EFFECTS["damage_tick"] = SynthSoundSpec(
+add_sound(
+    "damage_tick",
     waveform="square",
     frequency=200.0,
     frequency_end=140.0,

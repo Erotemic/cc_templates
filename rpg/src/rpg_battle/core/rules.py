@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import random
 
+from loguru import logger
+
 from rpg_battle.content.moves import MOVES
 from rpg_battle.core.battle_state import (
     all_living_active_ids,
@@ -184,13 +186,15 @@ def _default_target_ids(state: BattleState, actor_id: str, move_id: str) -> tupl
 def build_round_turn_queue(state: BattleState, rng: random.Random | None = None) -> list[str]:
     rng = rng or random.Random()
     living_ids = all_living_active_ids(state)
-    return sorted(
+    order = sorted(
         living_ids,
         key=lambda combatant_id: (
             -effective_stat(get_combatant(state, combatant_id), "speed"),
             rng.random(),
         ),
     )
+    logger.info("Built round {} queue: {}", state.round_number, order)
+    return order
 
 
 def make_round_start_event(state: BattleState) -> dict:
@@ -213,6 +217,7 @@ def make_turn_start_event(state: BattleState, actor_id: str) -> dict:
 
 
 def resolve_replacement(state: BattleState, team_index: int, combatant_id: str) -> list[dict]:
+    logger.info("Resolving replacement: team={} combatant={}", team_index, combatant_id)
     if not bring_reserve_to_active(state, team_index, combatant_id):
         return []
     clear_replacement_request(state, team_index)
@@ -231,7 +236,11 @@ def _process_switch(state: BattleState, action: BattleAction, events: list[dict]
     if action.switch_in_id is None:
         return
     actor = get_combatant(state, action.actor_id)
+    logger.info("Resolving action kind={} actor={}", action.kind, actor.spec.name)
     if not replace_active_with_reserve(state, action.actor_id, action.switch_in_id):
+        logger.debug(
+            "Switch failed for actor={} switch_in={}", action.actor_id, action.switch_in_id
+        )
         return
     incoming = get_combatant(state, action.switch_in_id)
     events.append(
@@ -267,9 +276,16 @@ def _process_move(
     rng: random.Random,
 ) -> None:
     actor = get_combatant(state, action.actor_id)
+    logger.info("Resolving action kind={} actor={}", action.kind, actor.spec.name)
     move_id = action.move_id or "strike"
     move = MOVES[move_id]
     target_ids = tuple(action.target_ids) or _default_target_ids(state, actor.combatant_id, move_id)
+    logger.info(
+        "Processing move: actor={} move={} targets={}",
+        actor.spec.name,
+        move.name,
+        target_ids,
+    )
     events.append(
         make_event(
             "move",
@@ -305,6 +321,7 @@ def _process_move(
             continue
         if move.kind == "heal":
             amount = _apply_heal(target, max(8, move.power + effective_stat(actor, "magic")))
+            logger.debug("Heal applied: target={} amount={}", target.spec.name, amount)
             events.append(
                 make_event(
                     "heal",
@@ -322,6 +339,7 @@ def _process_move(
             magical = move.kind == "magical"
             damage = _damage_amount(move.power, actor, target, magical, rng)
             _apply_damage(target, damage)
+            logger.debug("Damage applied: target={} amount={}", target.spec.name, damage)
             events.append(
                 make_event(
                     "damage",
@@ -401,6 +419,7 @@ def resolve_action(
     if state.winner is not None:
         return events
     actor = get_combatant(state, action.actor_id)
+    logger.info("Resolving action kind={} actor={}", action.kind, actor.spec.name)
     if not actor.alive or not actor.active:
         return events
     if _maybe_skip_for_stun(actor, events, rng):
@@ -417,6 +436,7 @@ def resolve_action(
 
 
 def finish_round(state: BattleState) -> list[dict]:
+    logger.info("Finishing round {}", state.round_number)
     events: list[dict] = []
     for combatant_id in list(all_living_active_ids(state)):
         battler = get_combatant(state, combatant_id)

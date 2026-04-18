@@ -1,173 +1,172 @@
 from __future__ import annotations
 
-"""Student-friendly move catalog.
+"""Move catalog for the classroom battle project.
 
-Each move is registered one at a time so students can scroll, copy an example,
-and add a new move without editing a giant dictionary literal.
+Moves are built from empty dictionaries so students can add one field at a time,
+then register the completed move into ``MOVES``.
 """
 
 from rpg_battle.core.models import MoveEffect, MoveSpec
 
 MOVES: dict[str, MoveSpec] = {}
 
-MOVES["strike"] = MoveSpec(
-    move_id="strike",
-    name="Strike",
-    kind="physical",
-    power=10,
-    target_mode="single_enemy",
-    animation="impact",
-    sound_id="attack_basic",
-    flavor="A reliable close-range hit.",
-)
+strike: dict[str, object] = {}
+strike["move_id"] = "strike"
+strike["name"] = "Strike"
+strike["kind"] = "physical"
+strike["power"] = 9
+strike["target_mode"] = "single_enemy"
+strike["animation"] = "slash"
+strike["sound_id"] = "attack_basic"
+MOVES["strike"] = MoveSpec(**strike)
 
-MOVES["shield_bash"] = MoveSpec(
-    move_id="shield_bash",
-    name="Shield Bash",
-    kind="physical",
-    power=11,
-    target_mode="single_enemy",
-    animation="impact",
-    sound_id="shield_bash",
-    effects=(MoveEffect(status="stun", chance=0.25, duration=1),),
-)
+shield_bash: dict[str, object] = {}
+shield_bash["move_id"] = "shield_bash"
+shield_bash["name"] = "Shield Bash"
+shield_bash["kind"] = "physical"
+shield_bash["power"] = 11
+shield_bash["target_mode"] = "single_enemy"
+shield_bash["animation"] = "impact"
+shield_bash["sound_id"] = "shield_bash"
+shield_bash["effects"] = (MoveEffect(status="stun", chance=0.20, duration=1),)
+MOVES["shield_bash"] = MoveSpec(**shield_bash)
 
-MOVES["healing_light"] = MoveSpec(
-    move_id="healing_light",
-    name="Healing Light",
-    kind="heal",
-    power=10,
-    target_mode="single_ally",
-    animation="heal_pulse",
-    sound_id="heal_chime",
-)
+healing_light: dict[str, object] = {}
+healing_light["move_id"] = "healing_light"
+healing_light["name"] = "Healing Light"
+healing_light["kind"] = "heal"
+healing_light["power"] = 16
+healing_light["target_mode"] = "single_ally"
+healing_light["animation"] = "heal"
+healing_light["sound_id"] = "heal_chime"
+MOVES["healing_light"] = MoveSpec(**healing_light)
 
-MOVES["thorn_bind"] = MoveSpec(
-    move_id="thorn_bind",
-    name="Thorn Bind",
-    kind="magical",
-    power=9,
-    target_mode="single_enemy",
-    animation="vine",
-    sound_id="thorn_bind",
-    effects=(MoveEffect(status="slow", chance=0.65, duration=2),),
-)
+thorn_bind: dict[str, object] = {}
+thorn_bind["move_id"] = "thorn_bind"
+thorn_bind["name"] = "Thorn Bind"
+thorn_bind["kind"] = "magical"
+thorn_bind["power"] = 8
+thorn_bind["target_mode"] = "single_enemy"
+thorn_bind["animation"] = "thorn"
+thorn_bind["sound_id"] = "thorn_bind"
+thorn_bind["effects"] = (MoveEffect(status="slow", chance=0.80, duration=2),)
+MOVES["thorn_bind"] = MoveSpec(**thorn_bind)
 
-MOVES["arc_bolt"] = MoveSpec(
-    move_id="arc_bolt",
-    name="Arc Bolt",
-    kind="magical",
-    power=12,
-    target_mode="single_enemy",
-    animation="bolt",
-    sound_id="arc_bolt",
-)
+arc_bolt: dict[str, object] = {}
+arc_bolt["move_id"] = "arc_bolt"
+arc_bolt["name"] = "Arc Bolt"
+arc_bolt["kind"] = "magical"
+arc_bolt["power"] = 10
+arc_bolt["target_mode"] = "single_enemy"
+arc_bolt["animation"] = "arc"
+arc_bolt["sound_id"] = "arc_bolt"
+MOVES["arc_bolt"] = MoveSpec(**arc_bolt)
 
-MOVES["ember"] = MoveSpec(
-    move_id="ember",
-    name="Ember",
-    kind="magical",
-    power=10,
-    target_mode="single_enemy",
-    animation="ember",
-    sound_id="ember",
-    effects=(MoveEffect(status="burn", chance=0.35, duration=3),),
-)
+ember: dict[str, object] = {}
+ember["move_id"] = "ember"
+ember["name"] = "Ember"
+ember["kind"] = "magical"
+ember["power"] = 10
+ember["target_mode"] = "single_enemy"
+ember["animation"] = "ember"
+ember["sound_id"] = "ember"
+ember["effects"] = (MoveEffect(status="burn", chance=0.35, duration=2),)
+MOVES["ember"] = MoveSpec(**ember)
 
-MOVES["wind_step"] = MoveSpec(
-    move_id="wind_step",
-    name="Wind Step",
-    kind="buff",
-    target_mode="self",
-    animation="wind",
-    sound_id="wind_step",
-    effects=(MoveEffect(stat="speed", stages=2),),
-)
+wind_step: dict[str, object] = {}
+wind_step["move_id"] = "wind_step"
+wind_step["name"] = "Wind Step"
+wind_step["kind"] = "buff"
+wind_step["target_mode"] = "self"
+wind_step["animation"] = "wind"
+wind_step["sound_id"] = "wind_step"
+wind_step["effects"] = (MoveEffect(stat="speed", stages=2),)
+MOVES["wind_step"] = MoveSpec(**wind_step)
 
-MOVES["stone_ward"] = MoveSpec(
-    move_id="stone_ward",
-    name="Stone Ward",
-    kind="buff",
-    target_mode="single_ally",
-    animation="shield",
-    sound_id="stone_ward",
-    effects=(
-        MoveEffect(status="guarded", duration=2),
-        MoveEffect(stat="defense", stages=2),
-    ),
+stone_ward: dict[str, object] = {}
+stone_ward["move_id"] = "stone_ward"
+stone_ward["name"] = "Stone Ward"
+stone_ward["kind"] = "buff"
+stone_ward["target_mode"] = "self"
+stone_ward["animation"] = "shield"
+stone_ward["sound_id"] = "stone_ward"
+stone_ward["effects"] = (
+    MoveEffect(status="guarded", duration=2),
+    MoveEffect(stat="defense", stages=2),
 )
+MOVES["stone_ward"] = MoveSpec(**stone_ward)
 
-MOVES["mist_veil"] = MoveSpec(
-    move_id="mist_veil",
-    name="Mist Veil",
-    kind="debuff",
-    target_mode="single_enemy",
-    animation="mist",
-    sound_id="mist_veil",
-    effects=(MoveEffect(status="slow", chance=1.0, duration=2),),
-)
+mist_veil: dict[str, object] = {}
+mist_veil["move_id"] = "mist_veil"
+mist_veil["name"] = "Mist Veil"
+mist_veil["kind"] = "debuff"
+mist_veil["target_mode"] = "single_enemy"
+mist_veil["animation"] = "mist"
+mist_veil["sound_id"] = "mist_veil"
+mist_veil["effects"] = (MoveEffect(status="slow", chance=1.0, duration=2),)
+MOVES["mist_veil"] = MoveSpec(**mist_veil)
 
-MOVES["sine_wave"] = MoveSpec(
-    move_id="sine_wave",
-    name="Sine Wave",
-    kind="magical",
-    power=12,
-    target_mode="single_enemy",
-    animation="sine_wave",
-    sound_id="sine_wave",
-)
+sine_wave: dict[str, object] = {}
+sine_wave["move_id"] = "sine_wave"
+sine_wave["name"] = "Sine Wave"
+sine_wave["kind"] = "magical"
+sine_wave["power"] = 12
+sine_wave["target_mode"] = "single_enemy"
+sine_wave["animation"] = "sine_wave"
+sine_wave["sound_id"] = "sine_wave"
+MOVES["sine_wave"] = MoveSpec(**sine_wave)
 
-MOVES["square_pulse"] = MoveSpec(
-    move_id="square_pulse",
-    name="Square Pulse",
-    kind="magical",
-    power=10,
-    target_mode="all_enemies",
-    animation="square_pulse",
-    sound_id="square_pulse",
-)
+square_pulse: dict[str, object] = {}
+square_pulse["move_id"] = "square_pulse"
+square_pulse["name"] = "Square Pulse"
+square_pulse["kind"] = "magical"
+square_pulse["power"] = 10
+square_pulse["target_mode"] = "all_enemies"
+square_pulse["animation"] = "square_pulse"
+square_pulse["sound_id"] = "square_pulse"
+MOVES["square_pulse"] = MoveSpec(**square_pulse)
 
-MOVES["fractal_veil"] = MoveSpec(
-    move_id="fractal_veil",
-    name="Fractal Veil",
-    kind="status",
-    target_mode="all_allies",
-    animation="fractal",
-    sound_id="fractal_veil",
-    effects=(MoveEffect(status="focus", duration=3),),
-)
+fractal_veil: dict[str, object] = {}
+fractal_veil["move_id"] = "fractal_veil"
+fractal_veil["name"] = "Fractal Veil"
+fractal_veil["kind"] = "status"
+fractal_veil["target_mode"] = "all_allies"
+fractal_veil["animation"] = "fractal"
+fractal_veil["sound_id"] = "fractal_veil"
+fractal_veil["effects"] = (MoveEffect(status="focus", duration=3),)
+MOVES["fractal_veil"] = MoveSpec(**fractal_veil)
 
-MOVES["gradient_descent"] = MoveSpec(
-    move_id="gradient_descent",
-    name="Gradient Descent",
-    kind="magical",
-    power=11,
-    target_mode="single_enemy",
-    animation="gradient_descent",
-    sound_id="gradient_descent",
-    effects=(MoveEffect(status="slow", chance=0.35, duration=2),),
-)
+gradient_descent: dict[str, object] = {}
+gradient_descent["move_id"] = "gradient_descent"
+gradient_descent["name"] = "Gradient Descent"
+gradient_descent["kind"] = "magical"
+gradient_descent["power"] = 11
+gradient_descent["target_mode"] = "single_enemy"
+gradient_descent["animation"] = "gradient_descent"
+gradient_descent["sound_id"] = "gradient_descent"
+gradient_descent["effects"] = (MoveEffect(status="slow", chance=0.35, duration=2),)
+MOVES["gradient_descent"] = MoveSpec(**gradient_descent)
 
-MOVES["regularization"] = MoveSpec(
-    move_id="regularization",
-    name="Regularization",
-    kind="buff",
-    target_mode="self",
-    animation="regularization",
-    sound_id="regularization",
-    effects=(
-        MoveEffect(status="guarded", duration=2),
-        MoveEffect(stat="defense", stages=1),
-    ),
+regularization: dict[str, object] = {}
+regularization["move_id"] = "regularization"
+regularization["name"] = "Regularization"
+regularization["kind"] = "buff"
+regularization["target_mode"] = "self"
+regularization["animation"] = "regularization"
+regularization["sound_id"] = "regularization"
+regularization["effects"] = (
+    MoveEffect(status="guarded", duration=2),
+    MoveEffect(stat="defense", stages=1),
 )
+MOVES["regularization"] = MoveSpec(**regularization)
 
-MOVES["artifact_burst"] = MoveSpec(
-    move_id="artifact_burst",
-    name="Artifact Burst",
-    kind="magical",
-    power=8,
-    target_mode="all_enemies",
-    animation="artifact_burst",
-    sound_id="artifact_burst",
-    effects=(MoveEffect(status="burn", chance=0.2, duration=2),),
-)
+artifact_burst: dict[str, object] = {}
+artifact_burst["move_id"] = "artifact_burst"
+artifact_burst["name"] = "Artifact Burst"
+artifact_burst["kind"] = "magical"
+artifact_burst["power"] = 8
+artifact_burst["target_mode"] = "all_enemies"
+artifact_burst["animation"] = "artifact_burst"
+artifact_burst["sound_id"] = "artifact_burst"
+artifact_burst["effects"] = (MoveEffect(status="burn", chance=0.2, duration=2),)
+MOVES["artifact_burst"] = MoveSpec(**artifact_burst)

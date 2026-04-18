@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from loguru import logger
+
 from rpg_battle.content.characters import CHARACTERS
 from rpg_battle.content.encounters import DEFAULT_ENCOUNTER
 from rpg_battle.core.models import (
@@ -25,6 +27,12 @@ def _build_team_state(
     requested_active = (
         requested_active or team_spec.starting_active or team_spec.members[:active_limit]
     )
+    logger.debug(
+        "Building team {} with active_limit={} requested_active={}",
+        team_spec.name,
+        active_limit,
+        requested_active,
+    )
     requested_active = tuple(requested_active[:active_limit])
     requested_set = set(requested_active)
 
@@ -40,6 +48,12 @@ def _build_team_state(
         char_id for char_id in team_spec.members if char_id not in requested_set
     ]
     for member_index, char_id in enumerate(ordered_members):
+        logger.debug(
+            "Creating combatant template {} for team {} at roster index {}",
+            char_id,
+            team_spec.name,
+            member_index,
+        )
         combatant_id = f"t{team_index}_c{member_index}"
         combatant = CombatantState(
             combatant_id=combatant_id,
@@ -58,6 +72,7 @@ def _build_team_state(
 
 def new_battle(encounter: EncounterSpec = DEFAULT_ENCOUNTER) -> BattleState:
     """Build a fresh battle state from a declarative encounter spec."""
+    logger.info("Constructing new battle for encounter {}", encounter.encounter_id)
     teams: list[TeamBattleState] = []
     combatants: dict[str, CombatantState] = {}
     for team_index, (team_spec, active_limit) in enumerate(
@@ -72,7 +87,13 @@ def new_battle(encounter: EncounterSpec = DEFAULT_ENCOUNTER) -> BattleState:
         )
         teams.append(team_state)
         combatants.update(team_combatants)
-    return BattleState(teams=teams, combatants=combatants)
+    state = BattleState(teams=teams, combatants=combatants)
+    logger.info(
+        "New battle ready: teams={} combatants={}",
+        [team.name for team in teams],
+        len(combatants),
+    )
+    return state
 
 
 def get_combatant(state: BattleState, combatant_id: str) -> CombatantState:
@@ -172,6 +193,12 @@ def bring_reserve_to_active(state: BattleState, team_index: int, combatant_id: s
     combatant = get_combatant(state, combatant_id)
     combatant.active = True
     combatant.slot_index = slot_index
+    logger.debug(
+        "Promoted reserve {} to active slot {} on team {}",
+        combatant_id,
+        slot_index,
+        team_index,
+    )
     return True
 
 
@@ -195,11 +222,13 @@ def replace_active_with_reserve(
     incoming = get_combatant(state, switch_in_id)
     incoming.active = True
     incoming.slot_index = preserved_slot
+    logger.debug("Swapped {} out for {} in slot {}", actor_id, switch_in_id, preserved_slot)
     return True
 
 
 def mark_fainted(state: BattleState, combatant_id: str) -> None:
     combatant = get_combatant(state, combatant_id)
+    logger.info("Marking {} as fainted", combatant.spec.name)
     combatant.fainted = True
     combatant.active = False
     team = state.teams[combatant.team_index]
@@ -219,6 +248,7 @@ def ensure_replacement_request(state: BattleState, team_index: int) -> None:
     state.pending_replacements.append(
         ReplacementRequest(team_index=team_index, slots_to_fill=missing)
     )
+    logger.info("Queued replacement request for team {} with {} open slots", team_index, missing)
 
 
 def clear_replacement_request(state: BattleState, team_index: int) -> None:

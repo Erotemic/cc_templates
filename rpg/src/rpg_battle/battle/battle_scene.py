@@ -13,6 +13,7 @@ from rpg_battle.battle.combat_log import CombatLog
 from rpg_battle.battle.menu_state import MenuState
 from rpg_battle.content.moves import MOVES
 from rpg_battle.core.actions import attack_action, defend_action, skill_action, switch_action
+from rpg_battle.core.models import EncounterSpec
 from rpg_battle.core.battle_state import get_combatant
 from rpg_battle.core.targeting import get_valid_target_groups
 from rpg_battle.engine.input import (
@@ -52,11 +53,19 @@ TARGET_GLOW = (255, 240, 150)
 class BattleScene(SceneBase):
     """Drive the classroom battle UI with explicit actor turns and targeting."""
 
-    def __init__(self, rect: pygame.Rect, audio: AudioEngine | None = None) -> None:
+    def __init__(
+        self,
+        rect: pygame.Rect,
+        audio: AudioEngine | None = None,
+        encounter: EncounterSpec | None = None,
+    ) -> None:
         self.rect = rect
         self.audio = audio or AudioEngine()
         self.audio.play_default_music()
-        self.controller = BattleController(seed=5)
+        if encounter is None:
+            self.controller = BattleController(seed=5)
+        else:
+            self.controller = BattleController(encounter=encounter, seed=5)
         if self.controller.encounter.music_track_id:
             self.audio.play_music(self.controller.encounter.music_track_id)
         self.log = CombatLog(max_lines=18)
@@ -268,6 +277,7 @@ class BattleScene(SceneBase):
         self.pending_action_kind = None
         self.pending_move_id = None
         self.pending_target_ids = []
+        logger.debug("Opening root action menu for actor {}", actor.spec.name)
         self.menu_stack = [
             MenuState(
                 title=f"{actor.spec.name}: Choose Action",
@@ -288,6 +298,7 @@ class BattleScene(SceneBase):
             return
         targets = self.controller.player_replacement_targets()
         self.pending_target_ids = list(targets)
+        logger.debug("Opening replacement menu with targets {}", targets)
         self.menu_stack = [
             MenuState(title="Choose Replacement", options=self._target_names(targets))
         ]
@@ -301,15 +312,19 @@ class BattleScene(SceneBase):
             return
         menu = self._active_menu()
         if event.key in UP_KEYS | LEFT_KEYS:
+            logger.debug("Menu navigation: left/up on {}", menu.title)
             menu.move(-1)
             self.audio.play_sfx("menu_move")
         elif event.key in DOWN_KEYS | RIGHT_KEYS:
+            logger.debug("Menu navigation: right/down on {}", menu.title)
             menu.move(1)
             self.audio.play_sfx("menu_move")
         elif event.key in CANCEL_KEYS and len(self.menu_stack) > 1:
+            logger.debug("Menu cancel on {}", menu.title)
             self.menu_stack.pop()
             self.audio.play_sfx("menu_back")
         elif event.key in CONFIRM_KEYS:
+            logger.debug("Menu confirm on {} choice={}", menu.title, menu.current())
             self.audio.play_sfx("menu_confirm")
             self._confirm_menu_choice()
 
@@ -348,6 +363,7 @@ class BattleScene(SceneBase):
         self.pending_action_kind = action_kind
         self.pending_move_id = move_id
         self.pending_target_ids = target_ids
+        logger.debug("Opening target menu for move={} targets={}", move_id, target_ids)
         self.menu_stack.append(
             MenuState(title="Choose Target", options=self._target_names(target_ids))
         )
@@ -357,6 +373,7 @@ class BattleScene(SceneBase):
         if actor_id is None:
             return
         move = MOVES[move_id]
+        logger.debug("Player selected move {} with target_mode={}", move_id, move.target_mode)
         groups = get_valid_target_groups(self.controller.state, actor_id, move.target_mode)
         if not groups:
             self._resolve_immediate_action(
@@ -374,6 +391,7 @@ class BattleScene(SceneBase):
         )
 
     def _confirm_menu_choice(self) -> None:
+        logger.debug("Confirming menu choice for {}", menu.title)
         if self.controller.state.winner is not None:
             choice = self._active_menu().current()
             if choice == "Restart":
@@ -396,6 +414,7 @@ class BattleScene(SceneBase):
             return
         actor = get_combatant(self.controller.state, actor_id)
         if menu.title.endswith("Choose Action"):
+            logger.debug("Action menu choice {} for actor {}", choice, actor.spec.name)
             if choice == "Attack":
                 self._handle_player_move_selection("strike", "attack")
             elif choice == "Skill":

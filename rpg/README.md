@@ -29,7 +29,7 @@ python -m rpg_battle
 Or without an editable install:
 
 ```bash
-python -m pip install pygame numpy loguru
+python -m pip install pygame numpy loguru rich
 PYTHONPATH=src python -m rpg_battle
 ```
 
@@ -55,13 +55,34 @@ Start in these files:
 
 
 ## Audio customization
-- The default battle song is now `soft_dungeon_crawl` in `src/rpg_battle/content/audio.py`.
-- Edit `MUSIC_TRACKS` to swap between `soft_dungeon_crawl`, `training_battle`, or a future `.wav` / `.ogg` file.
+- The default battle song is `soft_dungeon_crawl` in `src/rpg_battle/content/audio.py`.
+- Generated music is now built through reusable `TrackBuilder` subclasses in `src/rpg_battle/audio/tracks.py`.
+- Shared synthesis helpers live in `src/rpg_battle/audio/builder.py`.
+- Add a new track by registering a new `GeneratedTrackSpec` in `content/audio.py` and a matching builder class in `audio/tracks.py`.
 - Edit `SOUND_EFFECTS` to change menu blips and move sounds.
 - Each move in `src/rpg_battle/content/moves.py` can point at a different `sound_id`.
+- The engine caches rendered generated tracks under `~/.cache/rpg_battle/audio/` so later startups can reuse them.
 
+
+
+## Development render tools
+The project now keeps its CLI tools in `src/rpg_battle/cli/`, with friendly top-level wrappers for convenience.
+
+- Render one character quickly: `./render_character.py knight`
+- Render the initial battle layout: `./render_battle_state.py`
+- Render the scene with the first player menu open: `./render_battle_state.py --open-menu`
+- Render a built-in music track or sound effect: `./render_audio.py --kind music soft_dungeon_crawl`
+
+If you run these without the main id argument, a small `rich` prompt lets students browse the registered options and choose what to render.
+
+By default, outputs land in the current working directory:
+- `./knight_preview.png`
+- `./battle_preview.png`
+- `./soft_dungeon_crawl.wav`
+
+These helpers are useful when students are changing `content/sprites.py`, `content/characters.py`, encounter layouts, or audio assets and want fast feedback without playing a whole battle.
 
 ## Debugging and formatting
-- Terminal logging now uses `loguru` so students can watch turn order, menu choices, and action resolution while the game runs.
-- Set `RPG_BATTLE_LOG_LEVEL=DEBUG` before launch to get more detailed logs.
+- Terminal logging now uses `loguru` so students can watch the higher-level architecture: battle setup, round queues, turn starts, menu flow, action resolution, and audio lookup.
+- Set `RPG_BATTLE_LOG_LEVEL=DEBUG` before launch to get more detailed logs without flooding the terminal with per-frame game-loop noise.
 - Run `ruff format .` after edits to keep the code layout consistent.
