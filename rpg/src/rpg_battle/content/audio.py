@@ -32,6 +32,11 @@ boss_battle_frenzy["builder"] = "boss_battle_frenzy"
 boss_battle_frenzy["volume"] = 0.34
 MUSIC_TRACKS["boss_battle_frenzy"] = GeneratedTrackSpec(**boss_battle_frenzy)
 
+bluesy_overhaul: dict[str, object] = {}
+bluesy_overhaul["builder"] = "bluesy_overhaul"
+bluesy_overhaul["volume"] = 0.22
+MUSIC_TRACKS["bluesy_overhaul"] = GeneratedTrackSpec(**bluesy_overhaul)
+
 
 SOUND_EFFECTS: dict[str, SynthSoundSpec] = {}
 

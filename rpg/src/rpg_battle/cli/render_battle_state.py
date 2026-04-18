@@ -7,14 +7,12 @@ from pathlib import Path
 
 import pygame
 
-from rpg_battle.debug import configure_logging
-
 from rpg_battle.audio.engine import AudioEngine
 from rpg_battle.battle.battle_scene import BattleScene
 from rpg_battle.cli.common import choose_from_registry, choose_yes_no, console, default_output_path
-from rpg_battle.cli.render_common import configure_headless_pygame, save_surface
+from rpg_battle.cli.render_common import init_surface, save_surface, show_surface
 from rpg_battle.content.encounters import ENCOUNTERS
-from rpg_battle.settings import SCREEN_HEIGHT, SCREEN_WIDTH
+from rpg_battle.debug import configure_logging
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -35,6 +33,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--dt", type=float, default=0.1, help="Delta time for scripted update steps"
+    )
+    parser.add_argument(
+        "--no-show",
+        action="store_true",
+        help="Do not open a preview window after rendering",
     )
     return parser
 
@@ -62,9 +65,7 @@ def main() -> None:
     output = args.output or str(default_output_path("battle_preview.png"))
 
     console.print(f"[bold green]Rendering[/bold green] encounter [magenta]{encounter_id}[/magenta]")
-    configure_headless_pygame()
-    pygame.init()
-    screen = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    screen = init_surface(headless=args.no_show)
     audio = AudioEngine()
     audio.initialize()
     audio.stop_music()
@@ -75,6 +76,8 @@ def main() -> None:
         scene.update(args.dt)
     scene.draw(screen)
     save_surface(screen, Path(output))
+    if not args.no_show:
+        show_surface(screen, title=f"Battle Preview - {scene.controller.encounter.title}")
     audio.stop_music()
     pygame.quit()
 

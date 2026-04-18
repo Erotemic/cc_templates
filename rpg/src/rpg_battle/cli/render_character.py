@@ -7,11 +7,10 @@ from pathlib import Path
 
 import pygame
 
-from rpg_battle.debug import configure_logging
-
 from rpg_battle.cli.common import choose_from_registry, console, default_output_path
-from rpg_battle.cli.render_common import init_surface, save_surface
+from rpg_battle.cli.render_common import init_surface, save_surface, show_surface
 from rpg_battle.content.characters import CHARACTERS
+from rpg_battle.debug import configure_logging
 from rpg_battle.render.renderer import draw_background
 from rpg_battle.render.sprite_actor import SpriteActor
 from rpg_battle.settings import SCREEN_HEIGHT, SCREEN_WIDTH
@@ -35,6 +34,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Render on a transparent background instead of the battle backdrop",
     )
+    parser.add_argument(
+        "--no-show",
+        action="store_true",
+        help="Do not open a preview window after rendering",
+    )
     return parser
 
 
@@ -49,7 +53,7 @@ def main() -> None:
     output = args.output or str(default_output_path(f"{character_id}_preview.png"))
 
     console.print(f"[bold green]Rendering[/bold green] character [magenta]{character_id}[/magenta]")
-    surface = init_surface()
+    surface = init_surface(headless=args.no_show)
     if args.transparent:
         surface.fill((0, 0, 0, 0))
     else:
@@ -65,6 +69,8 @@ def main() -> None:
     label_rect = label.get_rect(center=(SCREEN_WIDTH // 2, 44))
     surface.blit(label, label_rect)
     save_surface(surface, Path(output))
+    if not args.no_show:
+        show_surface(surface, title=f"Character Preview - {spec.name}")
     pygame.quit()
 
 

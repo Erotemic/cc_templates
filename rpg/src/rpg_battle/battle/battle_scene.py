@@ -391,15 +391,15 @@ class BattleScene(SceneBase):
         )
 
     def _confirm_menu_choice(self) -> None:
+        menu = self._active_menu()
         logger.debug("Confirming menu choice for {}", menu.title)
         if self.controller.state.winner is not None:
-            choice = self._active_menu().current()
+            choice = menu.current()
             if choice == "Restart":
                 self.reset()
             elif choice == "Quit":
                 self.should_quit = True
             return
-        menu = self._active_menu()
         choice = menu.current()
         if choice is None:
             return

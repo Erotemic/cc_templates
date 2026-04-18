@@ -6,12 +6,23 @@ Each track subclasses :class:`TrackBuilder` so new songs can focus on the
 musical arrangement rather than the low-level synthesis details.
 """
 
+import math
+
+import numpy as np
+
 from rpg_battle.audio.builder import (
     DrumEvent,
     NoteEvent,
     TrackArrangement,
     TrackBuilder,
+    adsr,
+    midi_to_freq,
+    note_to_midi,
+    one_pole_lowpass,
+    pulse_wave,
+    stereoize,
     transpose_note,
+    triangle_wave,
 )
 
 
@@ -452,8 +463,263 @@ class BossBattleFrenzyTrack(TrackBuilder):
         return TrackArrangement(tuple(pad + bass + harmony + melody), tuple(drums))
 
 
+class BluesyOverhaulTrack(TrackBuilder):
+    """Shuffle / 12-8 inspired battle loop based on the user prototype."""
+
+    track_id = "bluesy_overhaul"
+    bpm = 116
+    bar_steps = 12
+    total_bars = 12
+    master_gain = 0.22
+
+    def _lead_voice(self, freq: float, times: np.ndarray) -> np.ndarray:
+        wobble = 0.10 * np.sin(2 * math.pi * 5.2 * times)
+        signal = (
+            0.40 * pulse_wave(freq, times, duty=0.45)
+            + 0.30 * np.sin(2 * math.pi * freq * times + wobble)
+            + 0.18 * np.sin(2 * math.pi * 2 * freq * times)
+            + 0.10 * pulse_wave(freq * 0.5, times, duty=0.5)
+        )
+        signal = np.tanh(1.4 * signal)
+        signal = one_pole_lowpass(signal, amount=0.08)
+        return signal / 0.92
+
+    def _organ_voice(self, freq: float, times: np.ndarray) -> np.ndarray:
+        signal = (
+            0.30 * np.sin(2 * math.pi * freq * times)
+            + 0.24 * np.sin(2 * math.pi * 2 * freq * times)
+            + 0.14 * np.sin(2 * math.pi * 3 * freq * times)
+            + 0.10 * pulse_wave(freq, times, duty=0.5)
+        )
+        signal = one_pole_lowpass(signal, amount=0.05)
+        return signal / 0.78
+
+    def _bass_voice(self, freq: float, times: np.ndarray) -> np.ndarray:
+        signal = (
+            0.65 * triangle_wave(freq, times)
+            + 0.22 * np.sin(2 * math.pi * freq * times)
+            + 0.12 * pulse_wave(freq * 0.5, times, duty=0.5)
+        )
+        signal = one_pole_lowpass(signal, amount=0.10)
+        return signal / 0.84
+
+    def synth_note(
+        self,
+        note: str,
+        dur_steps: int,
+        *,
+        voice: str = "lead",
+        gain: float = 0.14,
+        pan: float = 0.0,
+    ) -> np.ndarray:
+        sample_count = max(1, int(round(dur_steps * self.step_seconds * self.sample_rate)))
+        if note == "R":
+            return np.zeros((sample_count, 2), dtype=np.float32)
+        frequency = midi_to_freq(note_to_midi(note))
+        times = np.arange(sample_count, dtype=np.float32) / self.sample_rate
+        if voice == "bass":
+            signal = self._bass_voice(frequency, times)
+            env = adsr(
+                sample_count, self.sample_rate, attack=0.001, decay=0.02, sustain=0.78, release=0.04
+            )
+        elif voice == "organ":
+            signal = self._organ_voice(frequency, times)
+            env = adsr(
+                sample_count, self.sample_rate, attack=0.010, decay=0.03, sustain=0.80, release=0.08
+            )
+        else:
+            signal = self._lead_voice(frequency, times)
+            env = adsr(
+                sample_count,
+                self.sample_rate,
+                attack=0.002,
+                decay=0.026,
+                sustain=0.66,
+                release=0.05,
+            )
+        signal = signal * env * gain
+        return stereoize(signal, pan=pan)
+
+    def synth_drum(
+        self, kind: str, *, dur_steps: int = 1, gain: float = 0.05, pan: float = 0.0
+    ) -> np.ndarray:
+        sample_count = max(1, int(round(dur_steps * self.step_seconds * self.sample_rate)))
+        times = np.arange(sample_count, dtype=np.float32) / self.sample_rate
+        noise = np.random.default_rng(1337).uniform(-1.0, 1.0, sample_count).astype(np.float32)
+        if kind == "kick":
+            f0, f1 = 100.0, 40.0
+            sweep = f0 * ((f1 / f0) ** (times / max(float(times[-1]), 1e-6)))
+            phase = 2 * math.pi * np.cumsum(sweep) / self.sample_rate
+            signal = np.sin(phase)
+            env = np.exp(-times / 0.07)
+            signal = signal * env
+        elif kind == "snare":
+            tone = np.sin(2 * math.pi * 190.0 * times)
+            env = np.exp(-times / 0.04)
+            signal = (0.20 * tone + 0.80 * noise) * env
+        else:
+            env = np.exp(-times / 0.012)
+            signal = noise * env * 0.45
+        signal = signal.astype(np.float32) * gain
+        return stereoize(signal, pan=pan)
+
+    def _add_comp_bar(
+        self,
+        dest: list[NoteEvent],
+        bar_idx: int,
+        notes: tuple[str, str, str, str],
+        *,
+        gain: float = 0.020,
+    ) -> None:
+        start = bar_idx * self.bar_steps
+        for offset in (1, 4, 7, 10):
+            dest.extend(
+                [
+                    self.note(start + offset, notes[0], 2, gain, "organ", -0.10),
+                    self.note(start + offset, notes[1], 2, gain * 0.92, "organ", 0.02),
+                    self.note(start + offset, notes[2], 2, gain * 0.88, "organ", 0.12),
+                    self.note(start + offset, notes[3], 2, gain * 0.82, "organ", 0.18),
+                ]
+            )
+
+    def _add_shuffle_bass(self, dest: list[NoteEvent], bar_idx: int, root: str) -> None:
+        start = bar_idx * self.bar_steps
+        fifth = transpose_note(root, 7)
+        sixth = transpose_note(root, 9)
+        flat7 = transpose_note(root, 10)
+        octave = transpose_note(root, 12)
+        pattern = [
+            (0, root),
+            (2, fifth),
+            (3, sixth),
+            (5, flat7),
+            (6, octave),
+            (8, sixth),
+            (9, fifth),
+            (11, flat7),
+        ]
+        for offset, note in pattern:
+            dest.append(self.note(start + offset, note, 1, 0.095, "bass", -0.02))
+
+    def build(self) -> TrackArrangement:
+        melody: list[NoteEvent] = []
+        comp: list[NoteEvent] = []
+        bass: list[NoteEvent] = []
+        drums: list[DrumEvent] = []
+
+        riff_e1 = [
+            self.note(0, "E4", 1, 0.12, pan=0.02),
+            self.note(1, "G4", 1, 0.13, pan=0.03),
+            self.note(2, "A4", 2, 0.14, pan=0.04),
+            self.note(5, "A#4", 1, 0.12, pan=0.03),
+            self.note(6, "B4", 2, 0.15, pan=0.05),
+            self.note(9, "D5", 1, 0.14, pan=0.05),
+            self.note(10, "B4", 1, 0.13, pan=0.04),
+            self.note(11, "G4", 1, 0.12, pan=0.03),
+        ]
+        riff_e2 = [
+            self.note(0, "B4", 1, 0.14, pan=0.04),
+            self.note(1, "D5", 1, 0.15, pan=0.05),
+            self.note(2, "E5", 2, 0.16, pan=0.06),
+            self.note(5, "D5", 1, 0.14, pan=0.05),
+            self.note(6, "B4", 1, 0.13, pan=0.04),
+            self.note(7, "A#4", 1, 0.12, pan=0.03),
+            self.note(8, "A4", 1, 0.12, pan=0.03),
+            self.note(9, "G4", 1, 0.12, pan=0.03),
+            self.note(10, "E4", 2, 0.11, pan=0.01),
+        ]
+        riff_a = [
+            self.note(0, "A4", 1, 0.13, pan=0.03),
+            self.note(1, "C5", 1, 0.14, pan=0.04),
+            self.note(2, "D5", 2, 0.15, pan=0.05),
+            self.note(5, "D#5", 1, 0.13, pan=0.04),
+            self.note(6, "E5", 2, 0.16, pan=0.06),
+            self.note(9, "G5", 1, 0.15, pan=0.06),
+            self.note(10, "E5", 1, 0.14, pan=0.05),
+            self.note(11, "D5", 1, 0.13, pan=0.04),
+        ]
+        riff_b = [
+            self.note(0, "B4", 1, 0.14, pan=0.04),
+            self.note(1, "D5", 1, 0.15, pan=0.05),
+            self.note(2, "F#5", 2, 0.16, pan=0.06),
+            self.note(5, "A5", 1, 0.16, pan=0.07),
+            self.note(6, "F#5", 1, 0.15, pan=0.06),
+            self.note(7, "D5", 1, 0.14, pan=0.05),
+            self.note(8, "C5", 1, 0.13, pan=0.04),
+            self.note(9, "B4", 1, 0.13, pan=0.04),
+            self.note(10, "A4", 2, 0.12, pan=0.03),
+        ]
+        turnaround = [
+            self.note(0, "G4", 1, 0.12, pan=0.03),
+            self.note(1, "G#4", 1, 0.12, pan=0.03),
+            self.note(2, "A4", 1, 0.13, pan=0.04),
+            self.note(3, "A#4", 1, 0.13, pan=0.04),
+            self.note(4, "B4", 1, 0.14, pan=0.05),
+            self.note(5, "C5", 1, 0.14, pan=0.05),
+            self.note(6, "C#5", 1, 0.14, pan=0.05),
+            self.note(7, "D5", 1, 0.15, pan=0.06),
+            self.note(8, "D#5", 1, 0.15, pan=0.06),
+            self.note(9, "E5", 1, 0.16, pan=0.06),
+            self.note(10, "B4", 1, 0.13, pan=0.04),
+            self.note(11, "R", 1, 0.00),
+        ]
+
+        for bar_idx, phrase in enumerate(
+            [
+                riff_e1,
+                riff_e2,
+                riff_e1,
+                riff_e2,
+                riff_a,
+                riff_a,
+                riff_e1,
+                riff_e2,
+                riff_b,
+                riff_a,
+                riff_e1,
+                turnaround,
+            ]
+        ):
+            self.add_phrase(melody, phrase, bar_offset=bar_idx)
+
+        comp_chords = [
+            ("D4", "G#4", "B4", "D5"),
+            ("D4", "G#4", "B4", "D5"),
+            ("D4", "G#4", "B4", "D5"),
+            ("D4", "G#4", "B4", "D5"),
+            ("G4", "C#5", "E5", "G5"),
+            ("G4", "C#5", "E5", "G5"),
+            ("D4", "G#4", "B4", "D5"),
+            ("D4", "G#4", "B4", "D5"),
+            ("A4", "D#5", "F#5", "A5"),
+            ("G4", "C#5", "E5", "G5"),
+            ("D4", "G#4", "B4", "D5"),
+            ("A4", "D#5", "F#5", "A5"),
+        ]
+        bass_roots = ["E2", "E2", "E2", "E2", "A2", "A2", "E2", "E2", "B2", "A2", "E2", "B2"]
+        for bar_idx in range(self.total_bars):
+            self._add_comp_bar(
+                comp, bar_idx, comp_chords[bar_idx], gain=0.021 if bar_idx < 8 else 0.023
+            )
+            self._add_shuffle_bass(bass, bar_idx, bass_roots[bar_idx])
+            start = bar_idx * self.bar_steps
+            drums.extend(
+                [
+                    self.drum(start + 0, "kick", 1, 0.060),
+                    self.drum(start + 3, "hat", 1, 0.020, -0.10),
+                    self.drum(start + 6, "snare", 1, 0.036, 0.03),
+                    self.drum(start + 9, "hat", 1, 0.020, 0.10),
+                ]
+            )
+            if bar_idx % 2 == 1:
+                drums.append(self.drum(start + 11, "kick", 1, 0.028, -0.02))
+
+        return TrackArrangement(tuple(comp + bass + melody), tuple(drums))
+
+
 TRACK_BUILDERS = {
     TrainingBattleTrack.track_id: TrainingBattleTrack,
     SoftDungeonCrawlTrack.track_id: SoftDungeonCrawlTrack,
     BossBattleFrenzyTrack.track_id: BossBattleFrenzyTrack,
+    BluesyOverhaulTrack.track_id: BluesyOverhaulTrack,
 }

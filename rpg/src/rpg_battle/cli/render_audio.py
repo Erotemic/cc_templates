@@ -6,6 +6,7 @@ import argparse
 import shutil
 from pathlib import Path
 
+import pygame
 from loguru import logger
 
 from rpg_battle.audio.library import (
@@ -29,7 +30,29 @@ def build_parser() -> argparse.ArgumentParser:
         help="Which registry to inspect. If omitted, the CLI prompts you.",
     )
     parser.add_argument("--output", help="Output WAV path. Defaults to ./<asset_id>.wav")
+    parser.add_argument(
+        "--no-show",
+        action="store_true",
+        help="Do not play the rendered audio after writing it",
+    )
     return parser
+
+
+def _play_audio_file(path: Path) -> None:
+    pygame.mixer.pre_init(44100, -16, 2, 512)
+    pygame.init()
+    if pygame.mixer.get_init() is None:
+        pygame.mixer.init(44100, -16, 2, 512)
+    sound = pygame.mixer.Sound(str(path))
+    channel = sound.play()
+    console.print("[dim]Playing preview... press Ctrl+C to stop.[/dim]")
+    try:
+        while channel.get_busy():
+            pygame.time.wait(50)
+    except KeyboardInterrupt:
+        channel.stop()
+    finally:
+        pygame.quit()
 
 
 def main() -> None:
@@ -58,10 +81,12 @@ def main() -> None:
             logger.info("Copied file-backed track {} to {}", spec.path, output)
         else:
             raise TypeError(f"Unsupported track spec: {spec!r}")
-        return
+    else:
+        pcm = render_synth_sound(SOUND_EFFECTS[asset_id])
+        write_pcm_to_wav(output, pcm)
 
-    pcm = render_synth_sound(SOUND_EFFECTS[asset_id])
-    write_pcm_to_wav(output, pcm)
+    if not args.no_show:
+        _play_audio_file(output)
 
 
 if __name__ == "__main__":
