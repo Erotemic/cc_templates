@@ -59,7 +59,6 @@ ASCII_ART_POLISHED = {
     /_/\
    /_/ /
 """,
-
     "bramble_push": r"""\
  \\\   |   ////
   \\\  |  ////
@@ -69,7 +68,6 @@ ASCII_ART_POLISHED = {
 ---//// | \\---
   ////  |  \\
 """,
-
     "dark_cave_blocked": r"""\
     _________
    /  _____  \
@@ -79,7 +77,6 @@ ASCII_ART_POLISHED = {
  |  |_______|  |
   \___________/
 """,
-
     "broken_crossing": r"""\
   __         __
 _/ /________/ /_
@@ -88,7 +85,6 @@ _/ /________/ /_
 _/__/ /  \ \__\_
 \____/    \____/
 """,
-
     "tower_gate_unlock": r"""\
       /\
      /[]\
@@ -98,7 +94,6 @@ _/__/ /  \ \__\_
     | || |
     |_/\_|
 """,
-
     "forest_whisper_hint": r"""\
     ^^     ^^
    <  \   /  >
@@ -107,7 +102,6 @@ _/__/ /  \ \__\_
     /   |   \
        / \
 """,
-
     "trail_reopened": r"""\
     _________
  __/  __ __  \__
@@ -117,7 +111,6 @@ _/__/ /  \ \__\_
  _/__/  \____\_
 \______________/
 """,
-
     "serve_time": r"""\
   | | | | | |
   | | | | | |
@@ -126,7 +119,6 @@ _/__/ /  \ \__\_
   | | / \ | |
   |_|_____|_|
 """,
-
     "jail_release": r"""\
   | | |   | |
   | | |   | |
@@ -135,7 +127,6 @@ _/__/ /  \ \__\_
   | | / \   |
   |_|_______|
 """,
-
     "first_tower_visit": r"""\
        /\
       /  \
@@ -145,17 +136,15 @@ _/__/ /  \ \__\_
       ||||
     ~~~~~~~~
 """,
-
     "bandit_surrenders": r"""\
     .------.
-   / x   x \
+   / @   @ \
    |   ^   |
    |  ---  |
    \_/| |\_/
       | |
      /   \
 """,
-
     "player_surrender_accepted": r"""\
       \o/
        |
@@ -164,7 +153,6 @@ _/__/ /  \ \__\_
        |
       / \
 """,
-
     "player_surrender_rejected": r"""\
       \o/
        |
@@ -173,7 +161,6 @@ _/__/ /  \ \__\_
     /_____\
       / \
 """,
-
     "guardian_trial_passed": r"""\
      .-***-.
    .'  ***  '.
@@ -183,7 +170,6 @@ _/__/ /  \ \__\_
    '.  ***  .'
      '-***-'
 """,
-
     "guardian_trial_failed": r"""\
      .--?--.
    .'   !   '.
@@ -193,7 +179,6 @@ _/__/ /  \ \__\_
    '.   !   .'
      '--.--'
 """,
-
     "spider_web_cleared": r"""\
  \   |  |  |   /
   \  |  |  |  /
@@ -202,7 +187,6 @@ _/__/ /  \ \__\_
   /  |  |  |  \
  /   |  |  |   \
 """,
-
     "return_crystal": r"""\
        /\
       /**\
@@ -213,7 +197,6 @@ _/__/ /  \ \__\_
   /  ________  \
   \_/________\_/
 """,
-
     "fountain_restored": r"""\
        /\
       /**\
@@ -223,7 +206,6 @@ _/__/ /  \ \__\_
       _||_
     _/____\_
 """,
-
     "fountain_rest": r"""\
      _=====_
    _/ _____ \_
@@ -233,7 +215,6 @@ _/__/ /  \ \__\_
   \  \_____/  /
    \_________/
 """,
-
     "quest_complete_cheer": r"""\
    \o/   \o/
     |     |
@@ -243,7 +224,6 @@ _/__/ /  \ \__\_
     |     |
    / \   / \
 """,
-
     "guard_arrest": r"""\
      [###]
       /|\
@@ -252,7 +232,6 @@ _/__/ /  \ \__\_
    |         |
   / \       / \
 """,
-
     "item_shatter": r"""\
       __
      |++|
@@ -261,7 +240,6 @@ _/__/ /  \ \__\_
   \_/\__/\\_/
      /  \
 """,
-
     "mercy_choice": r"""\
       \o
        |\
@@ -270,50 +248,51 @@ _/__/ /  \ \__\_
    /  mercy \
    \________/
 """,
-
     # NPC-specific placeholder art
     "npc::elder_mira::alive": r"""\
       .-====-.
     .'  .--.  '.
    /   /    \   \
-  |   |  __  |   |
-  |   | (__) |   |
+  |   | o  o |   |
+  |   |  --  |   |
+  |   | \__/ |   |
    \   \____/   /
     '.  ____  .'
       '------'
 """,
     "npc::elder_mira::dead": r"""\
       .-====-.
-    .'  x  x '.
-   /    .--.   \
-  |    /____\   |
-  |      --     |
-   \   .____.   /
-    '.        .'
+    .'  .--.  '.
+   /   /    \   \
+  |   | x  x |   |
+  |   |  --  |   |
+  |   | \__/ |   |
+   \   \____/   /
+    '.  ____  .'
       '------'
 """,
-
     "npc::guard_halwen::alive": r"""\
       .------.
-     /  [] []\\
-    |    --   |
-    |  .-==-. |
-    |  | || | |
-     \ | || |/
-      '------'
-        /||\\
+     /  ____  \
+    |  |o  o|  |
+    |  | -- |  |
+    |  |____|  |
+    | /|_||_|\ |
+     \_  ||  _/
+       | || |
+       |_||_|
 """,
     "npc::guard_halwen::dead": r"""\
       .------.
-     /  xx xx\\
-    |    --   |
-    |  .-==-. |
-    |   \\//   |
-     \  ====  /
-      '------'
-        /  \\
+     /  ____  \
+    |  |x  x|  |
+    |  | -- |  |
+    |  |____|  |
+    | /|_.._|\ |
+     \_  ||  _/
+       |    |
+       |_/\_|
 """,
-
     "npc::merchant_sella::alive": r"""\
       .------.
      /  o  o \\
@@ -334,7 +313,6 @@ _/__/ /  \ \__\_
       '------'
        /    \\
 """,
-
     "npc::fisher_rowan::alive": r"""\
       .------.
      /  o  o \\
@@ -355,28 +333,26 @@ _/__/ /  \ \__\_
          ||
          ~~
 """,
-
     "npc::bandit_nox::alive": r"""\
-      .------.
-     /  o  o \\
-    |   .--.  |
-    |  /_==_\\ |
-     \  \__/  /
-      '------'
-       _/||
-      /_ ||
+    .------.
+   / o   o \
+   |   ^   |
+   |  ---  |
+   \_/| |\_/
+      | |
+     /   \
+
 """,
     "npc::bandit_nox::dead": r"""\
-      .------.
-     /  x  x \\
-    |   .--.  |
-    |  /_==_\\ |
-     \  \\//  /
-      '------'
-         ||
-        /  \\
-""",
+    .------.
+   / x   x \
+   |   ^   |
+   |  ---  |
+   \_/| |\_/
+      | |
+     /   \
 
+""",
     "npc::crystal_spider::alive": r"""\
    \\  |\  /|  //
     \\ | \/ | //
@@ -393,7 +369,6 @@ _/__/ /  \ \__\_
     // |/  \\| \\
    //  /_/\\_\\  \\
 """,
-
     "npc::tower_guardian::alive": r"""\
        .-**-.
      .' *  * '.
@@ -412,7 +387,6 @@ _/__/ /  \ \__\_
      '. xx xx .'
        '-..-'
 """,
-
     "npc::small_spider::alive": r"""\
    \\  /\  //
 ----\\(oo)//----
@@ -425,7 +399,6 @@ _/__/ /  \ \__\_
 ----//_||_\\----
    // /  \\
 """,
-
 }
 
 
@@ -3814,13 +3787,20 @@ class RPGTextualApp(App):
             return "serve_time"
         if "game_won" in flags:
             return "fountain_restored"
-        if "return the star crystal" in latest or "you found it... the star crystal" in latest:
+        if (
+            "return the star crystal" in latest
+            or "you found it... the star crystal" in latest
+        ):
             return "return_crystal"
         if "surrenders" in latest or "spare" in latest or "make a deal" in latest:
             return "bandit_surrenders"
         if "shatters" in latest or "shatters on the rocks" in latest:
             return "item_shatter"
-        if "marches you to the village jail" in latest or "bounty" in latest and "stand down" in latest:
+        if (
+            "marches you to the village jail" in latest
+            or "bounty" in latest
+            and "stand down" in latest
+        ):
             return "guard_arrest"
         if "the trial is complete" in latest or "wisdom and patience" in latest:
             return "guardian_trial_passed"
@@ -3842,29 +3822,35 @@ class RPGTextualApp(App):
             return "serve_time"
         return "fountain_rest"
 
-    def make_npc_ascii_placeholder(self, name: str, state: str, mood: str | None = None) -> str:
+    def make_npc_ascii_placeholder(
+        self, name: str, state: str, mood: str | None = None
+    ) -> str:
         mood_text = mood or "unknown"
         if state == "dead":
-            art = "\n".join([
-                "   .-------.",
-                "  /  x   x  \\",
-                " |     -     |",
-                r" |   \\___//  |",
-                r"  \\_________/",
-                "     /   \\",
-                r"    /_____\\",
-            ])
+            art = "\n".join(
+                [
+                    "   .-------.",
+                    "  /  x   x  \\",
+                    " |     -     |",
+                    r" |   \\___//  |",
+                    r"  \\_________/",
+                    "     /   \\",
+                    r"    /_____\\",
+                ]
+            )
             title = f"{name} [defeated]"
         else:
-            art = "\n".join([
-                "   .-------.",
-                "  /  o   o  \\",
-                " |     ^     |",
-                r" |   \\___//  |",
-                r"  \\_________/",
-                r"     /| |\\",
-                r"    /_| |_\\",
-            ])
+            art = "\n".join(
+                [
+                    "   .-------.",
+                    "  /  o   o  \\",
+                    " |     ^     |",
+                    r" |   \\___//  |",
+                    r"  \\_________/",
+                    r"     /| |\\",
+                    r"    /_| |_\\",
+                ]
+            )
             title = f"{name} [{mood_text}]"
         return f"[b]{title}[/b]\n\n{art}"
 
@@ -4045,4 +4031,3 @@ class RPGTextualApp(App):
 
 if __name__ == "__main__":
     RPGTextualApp().run()
-

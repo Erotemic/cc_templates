@@ -1467,7 +1467,9 @@ class DustVaultWorld(World):
                     ),
                     GivePlayerItemEffect("med_patch"),
                 ),
-                repeat_effect=PrintEffect("The locker is empty except for old meal wrappers."),
+                repeat_effect=PrintEffect(
+                    "The locker is empty except for old meal wrappers."
+                ),
             ),
         )
         self.place_feature(
@@ -1512,7 +1514,9 @@ class DustVaultWorld(World):
                         ]
                     ),
                     GivePlayerItemEffect("survey_canister"),
-                    ChangeGoldEffect(12, reason="Loose station credit and bonded scrip"),
+                    ChangeGoldEffect(
+                        12, reason="Loose station credit and bonded scrip"
+                    ),
                     ChangeBountyEffect(45, "You tripped the archive side locker"),
                 ),
                 repeat_effect=PrintEffect("You already stripped the red locker."),
@@ -1531,7 +1535,9 @@ class DustVaultWorld(World):
                         "Someone buried a find on this world and then buried the record of finding it.",
                     ]
                 ),
-                repeat_effect=PrintEffect("The terminal is blank now, but you still remember the world code."),
+                repeat_effect=PrintEffect(
+                    "The terminal is blank now, but you still remember the world code."
+                ),
             ),
         )
         self.place_feature(
@@ -1551,8 +1557,15 @@ class DustVaultWorld(World):
                                 "The side log from the archive mentioned a dead survey world. Rafe wants first rights to whatever was buried there, and now you are trusted enough to go look.",
                             ]
                         ),
-                        GivePlayerItemEffect("cutter_rifle", "pressure_weave", "claim_marker", "med_patch"),
-                        ChangeGoldEffect(18, reason="Promotion cut and expedition advance"),
+                        GivePlayerItemEffect(
+                            "cutter_rifle",
+                            "pressure_weave",
+                            "claim_marker",
+                            "med_patch",
+                        ),
+                        ChangeGoldEffect(
+                            18, reason="Promotion cut and expedition advance"
+                        ),
                         SetBountyEffect(0),
                         SetFlagEffect("promoted", "act2_started", "heard_artifact_tip"),
                         MovePlayerEffect(
@@ -1596,8 +1609,14 @@ class DustVaultWorld(World):
                     ),
                     SetBountyEffect(0),
                     ClearFlagEffect("jailed"),
-                    MovePlayerEffect("berth", text="You are dumped back at Ring Berth Three."),
-                    HealPlayerEffect(999, heal_text="Time and water do some repair.", full_text="You are already steady enough."),
+                    MovePlayerEffect(
+                        "berth", text="You are dumped back at Ring Berth Three."
+                    ),
+                    HealPlayerEffect(
+                        999,
+                        heal_text="Time and water do some repair.",
+                        full_text="You are already steady enough.",
+                    ),
                 ),
             ),
         )
@@ -1628,7 +1647,9 @@ class DustVaultWorld(World):
                     ),
                     GivePlayerItemEffect("locator_chart", "coldlamp"),
                 ),
-                repeat_effect=PrintEffect("The mast has already given you everything it had left."),
+                repeat_effect=PrintEffect(
+                    "The mast has already given you everything it had left."
+                ),
             ),
         )
         self.place_feature(
@@ -1667,7 +1688,9 @@ class DustVaultWorld(World):
                     "ending_broadcast",
                     "game_won",
                 ),
-                repeat_effect=PrintEffect("The uplink is already screaming the truth into the void."),
+                repeat_effect=PrintEffect(
+                    "The uplink is already screaming the truth into the void."
+                ),
             ),
         )
         self.place_feature(
@@ -1893,7 +1916,9 @@ class DustVaultWorld(World):
                         required_items=["survey_canister"],
                         blocked_flags={"canister_discussed"},
                         once=True,
-                        outcome_effect=SetFlagEffect("truth_known", "canister_discussed"),
+                        outcome_effect=SetFlagEffect(
+                            "truth_known", "canister_discussed"
+                        ),
                     ),
                     DialogueTopic(
                         key="juno_end",
@@ -1974,17 +1999,23 @@ class DustVaultWorld(World):
                     ),
                 ],
                 riddle=Riddle(
-                    intro_lines=["Answer plainly. What comes before every stolen claim?"],
+                    intro_lines=[
+                        "Answer plainly. What comes before every stolen claim?"
+                    ],
                     question="What is the first tool of every claim jumper?",
                     answers=["lie", "a lie", "lies"],
                     success_lines=["Correct. Your species teaches that lesson early."],
                     failure_lines=["No. The blade comes later."],
                     damage_on_failure=10,
                     set_flags_on_success={"custodian_cleared"},
-                    repeat_lines=["The chamber has judged you already. Take what you came for."],
+                    repeat_lines=[
+                        "The chamber has judged you already. Take what you came for."
+                    ],
                 ),
                 inventory=["grave_core", "stim_dose"],
-                defeat_lines=["The chamber voice fractures into a thousand quiet tones and finally falls still."],
+                defeat_lines=[
+                    "The chamber voice fractures into a thousand quiet tones and finally falls still."
+                ],
                 reward_flags={"custodian_cleared"},
                 reward_gold=0,
             ),
@@ -2044,11 +2075,15 @@ class DustVaultWorld(World):
             hostile=True,
             persistent=False,
             surrender_reject_lines=["The drone's warning klaxon only rises in pitch."],
-            defeat_lines=["The patrol drone tumbles across the deck, sparks bleeding from its lens."],
+            defeat_lines=[
+                "The patrol drone tumbles across the deck, sparks bleeding from its lens."
+            ],
             reward_gold=6,
         )
         action_separator("A station patrol wakes")
-        print("A patrol drone finds your trail and sweeps the corridor with a stunner arc.")
+        print(
+            "A patrol drone finds your trail and sweeps the corridor with a stunner arc."
+        )
         game.enter_mode("combat", npc=drone)
         return True
 
@@ -2063,12 +2098,18 @@ class DustVaultWorld(World):
             willingness_to_trade=0,
             hostile=True,
             persistent=False,
-            surrender_reject_lines=["It only scrapes its teeth across the stone and comes on."],
-            defeat_lines=["The glass maw shudders once and slides back into stillness."],
+            surrender_reject_lines=[
+                "It only scrapes its teeth across the stone and comes on."
+            ],
+            defeat_lines=[
+                "The glass maw shudders once and slides back into stillness."
+            ],
             reward_gold=7,
         )
         action_separator("Something moves in the ravine")
-        print("A dust predator erupts from the mineral shelves and cuts off your retreat.")
+        print(
+            "A dust predator erupts from the mineral shelves and cuts off your retreat."
+        )
         game.enter_mode("combat", npc=beast)
         return True
 
@@ -2791,6 +2832,7 @@ class Game:
             engine.run(self)
             if self.running and self.player.is_alive():
                 prompt_continue()
+
 
 """Textual front end for rich_single_file_rpg.py.
 

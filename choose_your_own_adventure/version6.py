@@ -3547,4 +3547,3 @@ class RPGTextualApp(App):
 
 if __name__ == "__main__":
     RPGTextualApp().run()
-
