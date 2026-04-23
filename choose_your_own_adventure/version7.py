@@ -248,6 +248,100 @@ _/__/ /  \ \__\_
    /  mercy \
    \________/
 """,
+
+    # Dedicated location icons
+    "loc::village": r"""\
+      _/\_   _/\_
+     /    \ /    \
+    | []  | | [] |
+    |_____| |____|
+       \  ___  /
+        /~ ~ \
+       /_____\
+""",
+    "loc::crossroads": r"""\
+         ||
+    =====++=====
+         ||
+      ---++---
+         ||
+        /  \
+""",
+    "loc::forest": r"""\
+       &&&  &&&
+     &&&&&&&&&&&
+       || || ||
+      /| || ||\
+     /_|_||_||_\
+""",
+    "loc::garden": r"""\
+       .-*-.
+    .-(  *  )-.
+   / *  /\  * \
+   \___/  \___/
+      /_/\_\
+     <*>  <*>
+""",
+    "loc::lake": r"""\
+       _      _
+    .-(.)----(.)-.
+ ~~~/            \~~~
+   /   ~~~~~~~~   \
+  /________________\
+      /_/    \_\
+""",
+    "loc::cave_entrance": r"""\
+       ________
+     /  ____   \
+    /  /    \   \
+   |  |      |  |
+   |  |  __  |  |
+    \  \____/  /
+     \________/
+""",
+    "loc::cave_depths": r"""\
+        /\/\
+       /_**_\
+      /_****_\
+      \ *  * /
+       \_**_/
+      /_/  \_\
+""",
+    "loc::ruins": r"""\
+       _[]_
+      |    |
+    __|_  _|__
+   / _  ||  _ \
+   ||_|_||_|_||
+    \__      __/
+       |____|
+""",
+    "loc::tower_gate": r"""\
+        /^^\
+       /_[]_\
+       | || |
+       | || |
+       | || |
+       |_||_|
+       /_/\_\
+""",
+    "loc::tower_top": r"""\
+         /\
+        /  \
+       /_[]_\
+         ||
+       __||__
+      /______\
+        /  \
+""",
+    "loc::jail": r"""\
+      .------.
+      | |||| |
+      | |||| |
+      | |||| |
+      | |||| |
+      |______|
+""",
     # NPC-specific placeholder art
     "npc::elder_mira::alive": r"""\
       .-====-.
@@ -3051,6 +3145,7 @@ class BackendBridge:
         return {
             "mode": game.mode,
             "goal": self.goal_text(game),
+            "location_key": location.key,
             "location": location.name,
             "description": location.description,
             "items": [game.item_name(item_id) for item_id in location.items],
@@ -3775,6 +3870,7 @@ class RPGTextualApp(App):
     def choose_ascii_art_key(self, snapshot: dict[str, Any]) -> str:
         flags = set(snapshot.get("flags", []))
         location = snapshot.get("location", "")
+        location_key = snapshot.get("location_key", "")
         latest = self.normalize_event_text().lower()
         focus_npc_name = snapshot.get("focus_npc_name")
         focus_npc_state = snapshot.get("focus_npc_state")
@@ -3783,8 +3879,6 @@ class RPGTextualApp(App):
             slug = focus_npc_name.lower().replace(" ", "_")
             return f"npc::{slug}::{focus_npc_state or 'alive'}"
 
-        if "jailed" in flags:
-            return "serve_time"
         if "game_won" in flags:
             return "fountain_restored"
         if (
@@ -3806,21 +3900,40 @@ class RPGTextualApp(App):
             return "guardian_trial_passed"
         if "not quite. think more carefully." in latest:
             return "guardian_trial_failed"
-        if "first_tower_visit" in flags or location == "Tower Summit":
+        if "first_tower_visit" in flags or location_key == "tower_top" or location == "Tower Summit":
             return "first_tower_visit"
-        if location == "Sunmeadow Village":
-            return "fountain_rest"
-        if location == "Whispering Forest":
-            return "forest_whisper_hint"
-        if location == "Cave Entrance" or location == "Crystal Cave":
-            return "dark_cave_blocked"
-        if location == "Moonstone Ruins":
-            return "broken_crossing"
-        if location == "Tower Gate":
-            return "tower_gate_unlock"
-        if location == "Village Jail":
-            return "serve_time"
-        return "fountain_rest"
+
+        location_icons = {
+            "village": "loc::village",
+            "crossroads": "loc::crossroads",
+            "forest": "loc::forest",
+            "garden": "loc::garden",
+            "lake": "loc::lake",
+            "cave_entrance": "loc::cave_entrance",
+            "cave_depths": "loc::cave_depths",
+            "ruins": "loc::ruins",
+            "tower_gate": "loc::tower_gate",
+            "tower_top": "loc::tower_top",
+            "jail": "loc::jail",
+        }
+        if location_key in location_icons:
+            return location_icons[location_key]
+
+        # Backward-compatible fallback if the snapshot was created before location_key existed.
+        legacy_location_icons = {
+            "Sunmeadow Village": "loc::village",
+            "Old Crossroads": "loc::crossroads",
+            "Whispering Forest": "loc::forest",
+            "Hidden Garden": "loc::garden",
+            "Mirror Lake": "loc::lake",
+            "Cave Entrance": "loc::cave_entrance",
+            "Crystal Cave": "loc::cave_depths",
+            "Moonstone Ruins": "loc::ruins",
+            "Tower Gate": "loc::tower_gate",
+            "Tower Summit": "loc::tower_top",
+            "Village Jail": "loc::jail",
+        }
+        return legacy_location_icons.get(location, "loc::village")
 
     def make_npc_ascii_placeholder(
         self, name: str, state: str, mood: str | None = None
