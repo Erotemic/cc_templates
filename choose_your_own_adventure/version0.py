@@ -1,214 +1,148 @@
 """
-A simple template for a choose your own adventure game.
+Version 0: the smallest clean adventure game.
+
+This is the beginner-first starting point in the progression.
+It keeps the game as small and readable as possible so students can focus on:
+- variables
+- dictionaries
+- loops
+- conditionals
+- user input
+
+This version is intentionally tiny.
+It does not introduce custom functions yet.
+Its job is to help students understand how a text adventure works before
+they learn about organizing code into reusable pieces.
 """
 
+print("Welcome to the Tiny Adventure Game!")
+print("Tip: type 'quit' at any prompt to leave the game.")
 
-class GameEnvironment:
-    """
-    Store information about the environment players are in
-    """
+# Store simple player information
+player_name = "Tav"
+# player_name = input("Enter your name: ")
+player_location = "village"
+inventory = []
 
-    def __init__(self):
-        self.locations = {}
-        self.choices = {}
-        self.npcs = {}
+# Track simple game state
+key_taken = False
+treasure_found = False
+game_won = False
 
-    def add_location(self, name, description):
-        self.locations[name] = description
+# Store information about the world
+locations = {
+    "village": "You are in a small village. A path leads north into the forest.",
+    "forest": "You are in a quiet forest. There is a cave nearby and an old stump by the path.",
+    "cave": "You are inside a dark cave. A small treasure chest sits in the corner.",
+}
 
-    def set_choices(self, location, choices):
-        self.choices[location] = choices
+# Main game loop
+while True:
+    if game_won:
+        print("\nThanks for playing!")
+        break
 
-    def add_npc(self, location, npc):
-        self.npcs[location] = npc
+    # Show the current location
+    print("\nYou look around.")
+    print(locations.get(player_location, "This place seems unfamiliar."))
 
-    def observe_suroundings(self, location):
-        print("You observe your surroundings")
-        print(self.locations.get(location, "This place seems unfamiliar."))
+    # Show a very small status display
+    print(f"\nPlayer: {player_name}")
+    if inventory:
+        print("Inventory:", ", ".join(inventory))
+    else:
+        print("Inventory: empty")
 
-    def get_choices(self, location):
-        return self.choices.get(location, {})
+    # Build choices for the current room
+    choices = []
 
-    def get_npc(self, location):
-        return self.npcs.get(location)
+    if player_location == "village":
+        choices.append(("Go north to the forest", "go_forest"))
+        choices.append(("Talk to the villager", "talk_villager"))
 
+    elif player_location == "forest":
+        choices.append(("Go south to the village", "go_village"))
+        choices.append(("Go east to the cave", "go_cave"))
 
-class Player:
-    """
-    Store information about a player
-    """
+        if not key_taken:
+            choices.append(("Look inside the old stump", "look_stump"))
 
-    def __init__(self, name):
-        self.name = name
-        self.inventory = []
-        self.location = None
-        self.health = 100
+    elif player_location == "cave":
+        choices.append(("Go west to the forest", "go_forest"))
 
-    def add_item(self, item):
-        self.inventory.append(item)
-        print(f"{item} added to inventory.")
+        if not treasure_found:
+            choices.append(("Open the treasure chest", "open_chest"))
 
-    def move_to(self, location):
-        self.location = location
-        print(f"You are now at {location}.")
+    # If there are no choices, end the game
+    if not choices:
+        print("There is nothing more to do here.")
+        break
 
+    # Show choices
+    print("\nWhat do you want to do?")
+    for index, (choice_text, _) in enumerate(choices, start=1):
+        print(f"{index}. {choice_text}")
 
-class MysteriousNPC:
-    def __init__(self):
-        self.name = "Mysterious Figure"
-        self.inventory = ["key"]
-        self.memory = []
+    # Get player input
+    user_input = input("\nEnter the number of your choice: ").strip().lower()
 
-    def speak(self, text):
-        typewriter_print(f"{self.name}: ", text)
+    if user_input == "quit":
+        print("Thanks for playing!")
+        break
 
-    def interact(self, player):
-        """ """
-        import time
+    try:
+        choice_index = int(user_input) - 1
+        action_text, action_value = choices[choice_index]
+    except (ValueError, IndexError):
+        print("Invalid choice, try again.")
+        input("\nPress Enter to continue...")
+        continue
 
-        if len(self.inventory) > 0:
-            # The NPC has something left to give
-            reward = self.inventory[-1]
-            self.speak(
-                "Hello traveler! If you can make me laugh, I might just give you something valuable."
-            )
-            if reward in self.inventory:
-                joke = input("\nTell a joke to the NPC: ").strip()
-                if joke:
-                    if joke not in self.memory:
-                        self.speak(f"Ha ha, that's a good one! Here's a {reward}.")
-                        self.inventory.remove(reward)
-                        self.memory.append(joke)
-                        player.add_item(reward)
-                    else:
-                        self.speak(
-                            "Hmm, I've heard that one before. Try again next time!"
-                        )
-                else:
-                    self.speak("Hmm, that's not very funny. Try again next time!")
+    print(f"\nYou chose to: {action_text}")
+
+    # Handle actions
+    if action_value == "go_forest":
+        player_location = "forest"
+        print("You walk to the forest.")
+        input("\nPress Enter to continue...")
+
+    elif action_value == "go_village":
+        player_location = "village"
+        print("You return to the village.")
+        input("\nPress Enter to continue...")
+
+    elif action_value == "go_cave":
+        player_location = "cave"
+        print("You step carefully into the cave.")
+        input("\nPress Enter to continue...")
+
+    elif action_value == "talk_villager":
+        if "key" in inventory:
+            print("Villager: Maybe that key opens something in the cave.")
         else:
-            assert self.memory, "Something should be in the NPC memory"
-            self.speak(f"Haha, haha: `{self.memory[-1]}`, I can't stop laughing")
-        time.sleep(0.5)
+            print("Villager: I heard there is something useful hidden in the forest.")
+        input("\nPress Enter to continue...")
 
+    elif action_value == "look_stump":
+        if not key_taken:
+            key_taken = True
+            inventory.append("key")
+            print("You find a small brass key inside the old stump.")
+        else:
+            print("The stump is empty.")
+        input("\nPress Enter to continue...")
 
-def typewriter_print(prefix, text, word_delay=0.1):
-    """
-    Simulates a typewriter effect with a delay between each character.
+    elif action_value == "open_chest":
+        if "key" in inventory:
+            treasure_found = True
+            game_won = True
+            print("You unlock the chest with the key.")
+            print("Inside is a glittering treasure.")
+            print("You found the treasure and won the game!")
+        else:
+            print("The chest is locked. You need a key.")
+        input("\nPress Enter to continue...")
 
-    Example:
-        >>> typewriter_print("Welcome to the Adventure Game! Your journey begins now.")
-    """
-    import sys
-    import time
-
-    sys.stdout.write(prefix)
-    words = text.split(" ")  # Split the text into words
-    for word in words:
-        char_delay = word_delay / (len(word) + 1)
-        for char in word:  # Print each character of the word with a delay
-            sys.stdout.write(char)
-            sys.stdout.flush()
-            time.sleep(char_delay)
-        sys.stdout.write(" ")  # Print space after the word
-        sys.stdout.flush()
-        time.sleep(char_delay)  # Delay between words
-    sys.stdout.write("\n")  # Newline after the dialog
-
-
-def start_game():
-    print("Welcome to the Adventure Game Template!")
-
-    player_name = "Tav"
-    # player_name = input("Enter your name: ")  # can get input here
-
-    player = Player(player_name)
-    environment = GameEnvironment()
-
-    # Set up locations and choices
-    environment.add_location(
-        "forest", "You are standing in a forest clearing. Paths lead north and east."
-    )
-    environment.add_location(
-        "cave", "A dark, damp cave. You hear faint noises in the distance."
-    )
-    environment.add_location(
-        "lake", "A serene lake surrounded by tall trees. The water is crystal clear."
-    )
-
-    environment.set_choices(
-        "forest",
-        {
-            "Go north": "cave",
-            "Go east": "lake",
-        },
-    )
-    environment.set_choices(
-        "cave",
-        {
-            "Go back": "forest",
-            "Explore deeper": None,  # Example: deeper exploration could be added
-        },
-    )
-    environment.set_choices(
-        "lake",
-        {
-            "Go back": "forest",
-            "Swim": None,  # Swimming interaction
-        },
-    )
-
-    # Add NPC to the lake
-    npc = MysteriousNPC()
-    environment.add_npc("lake", npc)
-
-    player.move_to("forest")
-
-    DEBUGGING = 0
-    if DEBUGGING:
-        player.move_to("lake")
-
-    # Main game loop
-    while True:
-        environment.observe_suroundings(player.location)
-
-        # Check for NPCs
-        npc = environment.get_npc(player.location)
-
-        # Prepare choices
-        choices = environment.get_choices(player.location)
-        if npc:
-            choices["Talk to the mysterious figure"] = "npc_interaction"
-
-        if not choices:
-            print("There's nothing more to do here.")
-            break
-
-        # Display choices
-        print("\nWhat do you want to do?")
-        for idx, (choice, _) in enumerate(choices.items(), 1):
-            print(f"{idx}. {choice}")
-
-        # Get and handle player choice
-        try:
-            choice_idx = int(input("\nEnter the number of your choice: ")) - 1
-            selected_choice = list(choices.items())[choice_idx]
-            action, next_location = selected_choice
-            print(f"\nYou chose to: {action}")
-
-            if next_location == "npc_interaction":
-                npc.interact(player)
-            elif action == "Swim":
-                print(
-                    "You take a refreshing swim in the lake. The water is cold but invigorating!"
-                )
-            elif next_location:
-                player.move_to(next_location)
-            else:
-                print("Nothing happens...")
-        except (IndexError, ValueError):
-            print("Invalid choice, try again.")
-
-
-if __name__ == "__main__":
-    start_game()
+    else:
+        print("Nothing happens.")
+        input("\nPress Enter to continue...")

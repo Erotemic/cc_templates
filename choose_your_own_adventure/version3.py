@@ -1,24 +1,23 @@
 from __future__ import annotations
 
 """
-Merged adventure game.
+Version 3: the small story inside a reusable engine.
 
-What this keeps from the larger engine
---------------------------------------
-- mode-driven routing between engines
-- Character + Controller combat model
-- Location / Exit / Feature world model
-- scriptable Effect composition
-- NPC dialogue through DialogueTopic
-- separate exploration / NPC / dialogue / combat / menu / loadout engines
+This version keeps the teaching-sized adventure, but rebuilds it on top of a
+larger game architecture. The story is still simple, but the code now uses:
+- a world model with locations, exits, items, NPCs, and features
+- effect objects for scripted outcomes
+- engine modes for exploration, dialogue, combat, and menus
+- reusable combat and inventory systems
 
-What this changes
------------------
-- Replaces the original large story/world with the smaller teaching story
-- Removes unused advanced systems (bounty, jail, surrender, riddle, trade,
-  random encounters, guards, merchants, etc.)
-- Keeps the gameplay close to the small story while preserving the larger,
-  extensible structure
+Use this version to teach:
+- separation of concerns
+- extensible game architecture
+- how a simple story can sit on top of reusable systems
+- the tradeoff between flexibility and complexity
+
+This file is useful when students are ready to see how small game logic can
+be moved into a more general framework.
 """
 
 from dataclasses import dataclass, field

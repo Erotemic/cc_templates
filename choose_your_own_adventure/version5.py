@@ -1,10 +1,19 @@
 from __future__ import annotations
 
-"""Textual front end for rich_single_file_rpg.py.
+"""
+Version 5: a graphical/textual front end for the rich RPG.
 
-This app wraps the existing single-file RPG logic in a Textual TUI without
-rewriting the game's core systems. The backend game runs in a worker thread,
-and this UI turns blocking prompts into widgets.
+This file does not replace the game logic in version4.
+Instead, it wraps that game in a Textual user interface.
+
+This version is useful for teaching:
+- separating core logic from presentation
+- adapting a command-line game to another interface
+- threading and event-driven UI ideas
+- how to reuse an existing backend instead of rewriting it
+
+The important lesson here is that the game systems live in version4,
+while this file focuses on input, output, layout, and interaction.
 """
 
 from collections import Counter

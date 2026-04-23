@@ -1,17 +1,23 @@
 """
-A simple template for a choose your own adventure game.
+Version 2: a small, organized game script.
 
-This version is designed to be easy to teach:
-- one player
-- one world
-- one main game loop
-- small action functions
-- one action dispatch table
+This version keeps the same small adventure, but organizes the code into
+clearer pieces:
+- plain data for rooms and state
+- a Player dataclass
+- helper functions for world description and choices
+- one function per action
+- a small dispatch table for action handling
 
-It also tries to make the gameplay feel clear:
-- choose an action
-- see the result in one place
-- press Enter when you are ready for the next decision
+Use this version to teach:
+- separating data from behavior
+- writing focused helper functions
+- reducing repetition without building a full engine
+- how a small program can become easier to read and extend
+
+This is a good "middle ground" version:
+more structured than the giant if / else file, but still small enough for
+students to hold in their heads.
 """
 
 from dataclasses import dataclass, field

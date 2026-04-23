@@ -1,28 +1,9 @@
 from __future__ import annotations
 
 """
-Version 4: the full single-file RPG architecture prototype.
+Single-file RPG architecture prototype.
 
-This is a rich and most system-heavy version.
-It is not mainly about the small teaching story anymore; it is about building
-a flexible RPG framework in one file.
-
-This version includes ideas like:
-- mode-driven routing between engines
-- characters and controllers
-- reusable NPC types
-- items, equipment, and consumables
-- features and effects
-- combat, trade, riddles, surrender, bounty, jail, and encounters
-
-Use this version to teach:
-- architecture for larger games
-- reusable systems
-- composition over one-off special cases
-- how abstractions support growth in a complex project
-
-Students should usually arrive here after they already understand the smaller,
-more direct versions.
+This version integrates the TUI with the game a little bit better.
 """
 
 from collections import Counter
@@ -2586,10 +2567,984 @@ class Game:
                 prompt_continue()
 
 
-def main() -> None:
-    game = Game(player_name="Tav", world=StarCrystalWorld())
-    game.run()
+"""Textual front end for rich_single_file_rpg.py.
+
+Development version that imports the core game from a sibling file.
+A build script can merge both files into a single-file program by setting
+EMBEDDED_CORE=True and prepending the core code.
+"""
+
+from collections import Counter
+from contextlib import redirect_stdout, redirect_stderr
+import builtins
+import importlib.util
+from pathlib import Path
+import queue
+import sys
+import threading
+import traceback
+from typing import Any
+
+from textual.app import App, ComposeResult
+from textual.containers import Horizontal, Vertical
+from textual.events import Key
+from textual.widgets import Footer, Header, Input, OptionList, RichLog, Static
+
+
+EMBEDDED_CORE = True
+CORE_PATH = Path(__file__).with_name("rich_single_file_rpg.py")
+
+
+def load_core_module() -> Any:
+    if EMBEDDED_CORE:
+        return sys.modules[__name__]
+    spec = importlib.util.spec_from_file_location("rpg_core", CORE_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load game core from {CORE_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+class QueueWriter:
+    """Capture stdout/stderr and emit complete lines to the UI queue."""
+
+    def __init__(self, bridge: "BackendBridge"):
+        self.bridge = bridge
+        self._buffer = ""
+
+    def write(self, text: str) -> int:
+        self._buffer += text
+        while "\n" in self._buffer:
+            line, self._buffer = self._buffer.split("\n", 1)
+            self.bridge.emit("log", text=line)
+        return len(text)
+
+    def flush(self) -> None:
+        if self._buffer:
+            self.bridge.emit("log", text=self._buffer)
+            self._buffer = ""
+
+
+class BackendBridge:
+    def __init__(self, core: Any):
+        self.core = core
+        self.events: queue.Queue[dict[str, Any]] = queue.Queue()
+        self.responses: queue.Queue[Any] = queue.Queue()
+        self.thread: threading.Thread | None = None
+        self.game: Any | None = None
+
+    def start(self) -> None:
+        self.thread = threading.Thread(target=self._run_backend, daemon=True)
+        self.thread.start()
+
+    def emit(self, event_type: str, **payload: Any) -> None:
+        self.events.put({"type": event_type, **payload})
+
+    def snapshot(self) -> dict[str, Any]:
+        game = self.game
+        if game is None:
+            return {
+                "mode": "boot",
+                "goal": "",
+                "location": "Starting...",
+                "description": "",
+                "items": [],
+                "npcs": [],
+                "features": [],
+                "health": 0,
+                "max_health": 0,
+                "gold": 0,
+                "bounty": 0,
+                "attack": (0, 0),
+                "defense": 0,
+                "equipment": {},
+                "inventory": [],
+                "flags": [],
+            }
+        location = game.current_location()
+        item_db = game.world.item_db
+        low, high = game.player.attack_range(item_db)
+        counts = Counter(game.player.inventory)
+        inventory = []
+        seen = set()
+        for item_id in game.player.inventory:
+            if item_id in seen:
+                continue
+            seen.add(item_id)
+            item = item_db[item_id]
+            count = counts[item_id]
+            inventory.append((item.name, count))
+        equipment = {}
+        for slot in game.player.EQUIPMENT_SLOTS:
+            item_id = game.player.equipment[slot]
+            equipment[slot] = item_db[item_id].name if item_id is not None else "empty"
+        return {
+            "mode": game.mode,
+            "goal": self.goal_text(game),
+            "location": location.name,
+            "description": location.description,
+            "items": [game.item_name(item_id) for item_id in location.items],
+            "npcs": [f"{npc.name} ({npc.mood_label()})" for npc in location.npcs],
+            "features": [feature.name for feature in location.features],
+            "health": game.player.health,
+            "max_health": game.player.total_max_hp(item_db),
+            "gold": game.player.gold,
+            "bounty": game.bounty,
+            "attack": (low, high),
+            "defense": game.player.total_defense(item_db),
+            "equipment": equipment,
+            "inventory": inventory,
+            "flags": sorted(game.flags),
+        }
+
+    def goal_text(self, game: Any) -> str:
+        if "jailed" in game.flags:
+            return "Serve your time."
+        if "quest_started" not in game.flags:
+            return "Talk to Elder Mira."
+        if "has_star_crystal" in game.flags and "game_won" not in game.flags:
+            return "Return the Star Crystal to Elder Mira."
+        if "game_won" in game.flags:
+            return "The valley has been saved."
+        return "Explore the valley and recover the Star Crystal."
+
+    def request_choice(self, options: list[dict[str, Any]], prompt: str) -> int:
+        self.emit("state", snapshot=self.snapshot())
+        self.emit(
+            "choices", prompt=prompt, options=[option["text"] for option in options]
+        )
+        return int(self.responses.get())
+
+    def request_text(self, prompt: str) -> str:
+        self.emit("state", snapshot=self.snapshot())
+        self.emit("text_input", prompt=prompt)
+        response = self.responses.get()
+        return "" if response is None else str(response)
+
+    def request_continue(self, prompt: str) -> None:
+        # In the TUI, the current outcome remains visible in its own pane, so
+        # an explicit continue step is unnecessary. Treat it as a no-op.
+        self.emit("state", snapshot=self.snapshot())
+        return
+
+    def _run_backend(self) -> None:
+        core = self.core
+        bridge = self
+
+        class TuiExplorationEngine(core.Engine):
+            def run(self, game: Any) -> None:
+                if game.world.try_start_of_exploration_encounter(game):
+                    return
+
+                location = game.current_location()
+                choices = []
+                jailed = "jailed" in game.flags and location.key == "jail"
+                if not jailed:
+                    for exit_obj in location.exits:
+                        destination = game.world.get(exit_obj.destination)
+                        text = f"Go {exit_obj.direction} to {destination.name}"
+                        if game.exit_is_blocked(exit_obj):
+                            text += " [blocked]"
+                        elif exit_obj.warning_text:
+                            text += " [risky]"
+                        choices.append(
+                            {"kind": "move", "text": text, "value": exit_obj}
+                        )
+                    for item_id in location.items:
+                        choices.append(
+                            {
+                                "kind": "take_item",
+                                "text": f"Take {game.item_name(item_id)}",
+                                "value": item_id,
+                            }
+                        )
+                    for npc in location.npcs:
+                        choices.append(
+                            {"kind": "npc", "text": npc.menu_text(), "value": npc}
+                        )
+                for feature in location.features:
+                    choices.append(
+                        {
+                            "kind": "feature",
+                            "text": feature.menu_text(),
+                            "value": feature,
+                        }
+                    )
+                if not jailed:
+                    choices.append({"kind": "menu", "text": "Open menu", "value": None})
+
+                choice = game.choose(choices, prompt="What do you want to do?")
+                if choice["kind"] == "move":
+                    game.handle_move(choice["value"])
+                elif choice["kind"] == "take_item":
+                    game.handle_take_item(choice["value"])
+                elif choice["kind"] == "npc":
+                    game.enter_mode("npc", npc=choice["value"])
+                elif choice["kind"] == "feature":
+                    choice["value"].interact(game)
+                elif choice["kind"] == "menu":
+                    game.enter_mode("menu")
+
+        class TuiNPCInteractionEngine(core.Engine):
+            def run(self, game: Any) -> None:
+                npc = game.context["npc"]
+                if (
+                    npc.is_guard()
+                    and game.bounty > 0
+                    and npc.is_alive()
+                    and not npc.defeated
+                    and not npc.hostile
+                ):
+                    core.say(
+                        npc.name, f"You have a bounty of {game.bounty}. Stand down."
+                    )
+                    npc.hostile = True
+                    game.enter_mode("combat", npc=npc)
+                    return
+
+                options = []
+                if npc.can_talk(game):
+                    options.append(
+                        {"kind": "talk", "text": f"Talk to {npc.name}", "value": npc}
+                    )
+                if npc.can_trade(game):
+                    options.append(
+                        {
+                            "kind": "trade",
+                            "text": f"Trade with {npc.name}",
+                            "value": npc,
+                        }
+                    )
+                if npc.can_riddle():
+                    options.append(
+                        {
+                            "kind": "riddle",
+                            "text": f"Challenge {npc.name}",
+                            "value": npc,
+                        }
+                    )
+                if npc.can_attack():
+                    options.append(
+                        {"kind": "attack", "text": f"Attack {npc.name}", "value": npc}
+                    )
+                if npc.can_loot():
+                    options.append(
+                        {"kind": "loot", "text": f"Loot {npc.name}", "value": npc}
+                    )
+                options.append({"kind": "back", "text": "Step away", "value": None})
+
+                choice = game.choose(
+                    options, prompt=f"How do you want to interact with {npc.name}?"
+                )
+                kind = choice["kind"]
+                if kind == "talk":
+                    game.enter_mode("dialogue", npc=npc)
+                elif kind == "trade":
+                    game.enter_mode("trade", npc=npc)
+                elif kind == "riddle":
+                    game.enter_mode("riddle", npc=npc)
+                elif kind == "attack":
+                    npc.on_player_attack(game)
+                    game.enter_mode("combat", npc=npc)
+                elif kind == "loot":
+                    game.loot_npc(npc)
+                    game.enter_mode("npc", npc=npc)
+                elif kind == "back":
+                    game.enter_mode("exploration")
+
+        class TuiDialogueEngine(core.Engine):
+            def run(self, game: Any) -> None:
+                npc = game.context["npc"]
+                topics = npc.available_topics(game)
+                if not topics:
+                    core.say(npc.name, "I have nothing more to say right now.")
+                    game.enter_mode("npc", npc=npc)
+                    return
+
+                options = [
+                    {"kind": "topic", "text": topic.title, "value": topic}
+                    for topic in topics
+                ]
+                options.append({"kind": "back", "text": "Back", "value": None})
+                choice = game.choose(
+                    options, prompt=f"What do you want to ask {npc.name}?"
+                )
+                if choice["kind"] == "back":
+                    game.enter_mode("npc", npc=npc)
+                    return
+
+                topic = choice["value"]
+                for line in topic.lines:
+                    core.say(npc.name, line)
+                if topic.outcome_effect is not None:
+                    topic.outcome_effect.apply(game)
+                if topic.once:
+                    npc.used_topics.add(topic.key)
+                if "game_won" in game.flags:
+                    game.running = False
+                    return
+                game.enter_mode("npc", npc=npc)
+
+        class TuiTradeEngine(core.Engine):
+            def run(self, game: Any) -> None:
+                npc = game.context["npc"]
+                offers = npc.available_trade_offers(game)
+                if not offers:
+                    core.say(npc.name, "I have nothing I can trade right now.")
+                    game.enter_mode("npc", npc=npc)
+                    return
+
+                options = []
+                for offer_index, offer in offers:
+                    wants_parts = []
+                    if offer.wants_gold:
+                        wants_parts.append(f"{offer.wants_gold} gold")
+                    if offer.wants_items:
+                        wants_parts.extend(
+                            game.item_name(item_id) for item_id in offer.wants_items
+                        )
+                    gives_parts = []
+                    if offer.gives_gold:
+                        gives_parts.append(f"{offer.gives_gold} gold")
+                    if offer.gives_items:
+                        gives_parts.extend(
+                            game.item_name(item_id) for item_id in offer.gives_items
+                        )
+                    wants = ", ".join(wants_parts) or "nothing"
+                    gives = ", ".join(gives_parts) or "nothing"
+                    options.append(
+                        {
+                            "kind": "offer",
+                            "text": f"{offer.title} [{wants} -> {gives}]",
+                            "value": (offer_index, offer),
+                        }
+                    )
+                options.append({"kind": "back", "text": "Back", "value": None})
+
+                choice = game.choose(options, prompt=f"Choose a trade with {npc.name}")
+                if choice["kind"] == "back":
+                    game.enter_mode("npc", npc=npc)
+                    return
+
+                offer_index, offer = choice["value"]
+                if game.player.gold < offer.wants_gold:
+                    core.say(
+                        npc.name, f"Come back when you have {offer.wants_gold} gold."
+                    )
+                    game.enter_mode("npc", npc=npc)
+                    return
+                if not game.player.has_items(offer.wants_items):
+                    core.say(
+                        npc.name,
+                        f"Come back when you have: {', '.join(game.item_name(i) for i in offer.wants_items)}.",
+                    )
+                    game.enter_mode("npc", npc=npc)
+                    return
+                if npc.gold < offer.gives_gold or not npc.has_items(offer.gives_items):
+                    core.say(npc.name, "I cannot complete that trade right now.")
+                    game.enter_mode("npc", npc=npc)
+                    return
+
+                game.player.gold -= offer.wants_gold
+                npc.gold += offer.wants_gold
+                npc.gold -= offer.gives_gold
+                game.player.gold += offer.gives_gold
+                game.player.remove_items(offer.wants_items)
+                npc.add_items(offer.wants_items)
+                npc.remove_items(offer.gives_items)
+                for item_id in offer.gives_items:
+                    game.give_player_item(item_id)
+                if not offer.repeatable:
+                    npc.completed_trades.add(offer_index)
+                core.say(npc.name, "A fair trade.")
+                game.enter_mode("npc", npc=npc)
+
+        class TuiRiddleEngine(core.Engine):
+            def run(self, game: Any) -> None:
+                npc = game.context["npc"]
+                riddle = npc.riddle
+                if riddle is None:
+                    game.enter_mode("npc", npc=npc)
+                    return
+                if npc.riddle_solved:
+                    for line in riddle.repeat_lines:
+                        core.say(npc.name, line)
+                    game.enter_mode("npc", npc=npc)
+                    return
+
+                for line in riddle.intro_lines:
+                    core.say(npc.name, line)
+                core.say(npc.name, riddle.question)
+                answer = input("Your answer: ").strip().lower()
+                if answer in [a.lower() for a in riddle.answers]:
+                    for line in riddle.success_lines:
+                        core.say(npc.name, line)
+                    npc.riddle_solved = True
+                    for flag in riddle.set_flags_on_success:
+                        game.flags.add(flag)
+                else:
+                    for line in riddle.failure_lines:
+                        core.say(npc.name, line)
+                    if riddle.damage_on_failure > 0:
+                        actual = game.player.take_damage(
+                            riddle.damage_on_failure, game.world.item_db
+                        )
+                        print(f"You take {actual} damage.")
+                game.enter_mode("npc", npc=npc)
+
+        class TuiMenuEngine(core.Engine):
+            def run(self, game: Any) -> None:
+                options = [
+                    {"kind": "status", "text": "View status", "value": None},
+                    {"kind": "loadout", "text": "Manage loadout", "value": None},
+                    {
+                        "kind": "journal",
+                        "text": "View world flags / journal",
+                        "value": None,
+                    },
+                    {"kind": "back", "text": "Return to exploration", "value": None},
+                    {"kind": "quit", "text": "Quit game", "value": None},
+                ]
+                choice = game.choose(options, prompt="Choose a menu option")
+                if choice["kind"] == "status":
+                    game.player.show_status(game.world.item_db, bounty=game.bounty)
+                    game.enter_mode("menu")
+                elif choice["kind"] == "loadout":
+                    game.enter_mode("loadout")
+                elif choice["kind"] == "journal":
+                    game.show_journal()
+                    game.enter_mode("menu")
+                elif choice["kind"] == "back":
+                    game.enter_mode("exploration")
+                elif choice["kind"] == "quit":
+                    print("Thanks for playing!")
+                    game.running = False
+
+        class TuiLoadoutEngine(core.Engine):
+            def run(self, game: Any) -> None:
+                player = game.player
+                item_db = game.world.item_db
+                options = []
+                for item_id in player.equippable_items(item_db):
+                    item = item_db[item_id]
+                    current = player.equipment.get(item.slot)
+                    suffix = " [equipped]" if current == item_id else ""
+                    options.append(
+                        {
+                            "kind": "equip",
+                            "text": f"Equip {item.name} ({item.slot}){suffix}",
+                            "value": item_id,
+                        }
+                    )
+                for slot in player.EQUIPMENT_SLOTS:
+                    if player.equipment[slot] is not None:
+                        options.append(
+                            {
+                                "kind": "unequip",
+                                "text": f"Unequip {slot}",
+                                "value": slot,
+                            }
+                        )
+                options.append({"kind": "back", "text": "Back", "value": None})
+                choice = game.choose(options, prompt="Choose a loadout action")
+                if choice["kind"] == "equip":
+                    ok, message = player.equip(choice["value"], item_db)
+                    print(message)
+                    game.enter_mode("loadout")
+                elif choice["kind"] == "unequip":
+                    ok, message = player.unequip(choice["value"], item_db)
+                    print(message)
+                    game.enter_mode("loadout")
+                elif choice["kind"] == "back":
+                    game.enter_mode("menu")
+
+        class TuiGame(core.Game):
+            def __init__(self, bridge: BackendBridge):
+                self._bridge = bridge
+                super().__init__(player_name="Tav", world=core.StarCrystalWorld())
+                self.engines.update(
+                    {
+                        "exploration": TuiExplorationEngine(),
+                        "npc": TuiNPCInteractionEngine(),
+                        "dialogue": TuiDialogueEngine(),
+                        "trade": TuiTradeEngine(),
+                        "riddle": TuiRiddleEngine(),
+                        "menu": TuiMenuEngine(),
+                        "loadout": TuiLoadoutEngine(),
+                    }
+                )
+
+            def choose(self, options: list[dict], prompt: str = "Choose: ") -> dict:
+                index = self._bridge.request_choice(options, prompt)
+                selected = options[index]
+                core.action_separator(selected.get("text"))
+                return selected
+
+        old_input = builtins.input
+        old_typewriter = core.typewriter_print
+        old_continue = core.prompt_continue
+
+        def queued_typewriter(prefix: str, text: str, word_delay: float = 0.02) -> None:
+            bridge.emit("stream_start", prefix=prefix)
+            words = text.split()
+            for index, word in enumerate(words):
+                suffix = " " if index < len(words) - 1 else ""
+                bridge.emit("stream_chunk", text=word + suffix)
+                if word_delay > 0:
+                    time.sleep(word_delay)
+            bridge.emit("stream_end")
+
+        def queued_input(prompt: str = "") -> str:
+            return bridge.request_text(prompt)
+
+        def queued_continue(prompt: str = "Press Enter to continue...") -> None:
+            bridge.request_continue(prompt)
+
+        writer = QueueWriter(bridge)
+
+        try:
+            builtins.input = queued_input
+            core.typewriter_print = queued_typewriter
+            core.prompt_continue = queued_continue
+            with redirect_stdout(writer), redirect_stderr(writer):
+                bridge.game = TuiGame(bridge)
+                bridge.emit("state", snapshot=bridge.snapshot())
+                bridge.game.run()
+            writer.flush()
+            bridge.emit("state", snapshot=bridge.snapshot())
+            bridge.emit("game_over", message="Game over.")
+        except Exception:
+            writer.flush()
+            bridge.emit("log", text=traceback.format_exc())
+            bridge.emit("game_over", message="The backend crashed.")
+        finally:
+            builtins.input = old_input
+            core.typewriter_print = old_typewriter
+            core.prompt_continue = old_continue
+
+
+class RPGTextualApp(App):
+    CSS = """
+    Screen {
+        layout: vertical;
+    }
+
+    #body {
+        height: 1fr;
+        layout: horizontal;
+    }
+
+    #sidebar {
+        width: 34;
+        min-width: 28;
+        border: round $accent;
+        padding: 1;
+    }
+
+    #main {
+        width: 1fr;
+        border: round $accent;
+        padding: 1;
+    }
+
+    #actions {
+        width: 40;
+        min-width: 34;
+        border: round $accent;
+        padding: 1;
+    }
+
+    #goal, #location, #status {
+        margin-bottom: 1;
+        border: round $surface;
+        padding: 1;
+    }
+
+    #current_event {
+        height: 1fr;
+        min-height: 10;
+        border: round $surface;
+        padding: 1;
+        margin-bottom: 1;
+        overflow-y: auto;
+    }
+
+    #log_status {
+        height: auto;
+        margin-bottom: 1;
+        border: round $surface;
+        padding: 0 1;
+    }
+
+    #history {
+        height: 6;
+        min-height: 4;
+        max-height: 12;
+        border: round $surface;
+        padding: 1;
+    }
+
+    #prompt {
+        margin-bottom: 1;
+        min-height: 3;
+        border: round $surface;
+        padding: 1;
+    }
+
+    #options {
+        height: 1fr;
+        margin-bottom: 1;
+    }
+
+    #options:focus {
+        border: round $accent;
+    }
+
+    #text_input {
+        margin-top: 1;
+    }
+
+
+    .hidden {
+        display: none;
+    }
+    """
+
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("m", "menu", "Menu"),
+        ("c", "clear_history", "Clear history"),
+        ("l", "toggle_log", "Toggle log"),
+        ("L", "toggle_log", "Toggle log"),
+        ("escape", "focus_choices", "Focus choices"),
+    ]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.core = load_core_module()
+        self.bridge = BackendBridge(self.core)
+        self.interaction_mode = "boot"
+        self.pending_options: list[str] = []
+        self.current_event_text = ""
+        self.game_over = False
+        self.log_collapsed = True
+        self.history_line_count = 0
+
+    def compose(self) -> ComposeResult:
+        yield Header(show_clock=False)
+        with Horizontal(id="body"):
+            with Vertical(id="sidebar"):
+                yield Static("Goal", id="goal")
+                yield Static("Location", id="location")
+                yield Static("Status", id="status")
+            with Vertical(id="main"):
+                yield Static("Latest outcome will appear here.", id="current_event")
+                yield Static("System log hidden. Press L to show.", id="log_status")
+                yield RichLog(
+                    id="history",
+                    wrap=True,
+                    markup=False,
+                    auto_scroll=True,
+                    max_lines=600,
+                    classes="hidden",
+                )
+            with Vertical(id="actions"):
+                yield Static("Starting up...", id="prompt")
+                yield OptionList(id="options")
+                yield Input(
+                    placeholder="Type response and press Enter",
+                    id="text_input",
+                    classes="hidden",
+                )
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self.bridge.start()
+        self.set_interval(0.05, self.poll_backend)
+
+    def action_menu(self) -> None:
+        if self.interaction_mode == "choice":
+            for i, label in enumerate(self.pending_options):
+                if label.lower().startswith("open menu"):
+                    self.archive_current_event()
+                    self.bridge.responses.put(i)
+                    return
+
+    def action_focus_choices(self) -> None:
+        if self.interaction_mode == "choice":
+            self.query_one("#options", OptionList).focus()
+        elif self.interaction_mode == "text":
+            self.query_one("#text_input", Input).focus()
+
+    def action_clear_history(self) -> None:
+        self.query_one("#history", RichLog).clear()
+        self.history_line_count = 0
+        self.update_history_size()
+
+    def action_toggle_log(self) -> None:
+        self.log_collapsed = not self.log_collapsed
+        log = self.query_one("#history", RichLog)
+        status = self.query_one("#log_status", Static)
+        if self.log_collapsed:
+            log.add_class("hidden")
+            status.update("System log hidden. Press L to show.")
+        else:
+            log.remove_class("hidden")
+            status.update("System log visible. Press L to hide.")
+            self.update_history_size()
+
+    def poll_backend(self) -> None:
+        while True:
+            try:
+                event = self.bridge.events.get_nowait()
+            except queue.Empty:
+                break
+            self.handle_backend_event(event)
+
+    def handle_backend_event(self, event: dict[str, Any]) -> None:
+        event_type = event["type"]
+        if event_type == "log":
+            self.append_current_event_line(event.get("text", ""))
+        elif event_type == "stream_start":
+            self.prepare_for_stream_start()
+            self.append_current_event_chunk(event.get("prefix", ""))
+        elif event_type == "stream_chunk":
+            self.append_current_event_chunk(event.get("text", ""))
+        elif event_type == "stream_end":
+            self.append_current_event_chunk("\n")
+        elif event_type == "state":
+            self.update_state(event["snapshot"])
+        elif event_type == "choices":
+            self.show_choices(event["prompt"], event["options"])
+        elif event_type == "text_input":
+            self.show_text_input(event["prompt"])
+        elif event_type == "game_over":
+            self.game_over = True
+            self.query_one("#prompt", Static).update(event.get("message", "Game over."))
+            self.clear_options()
+            self.hide_text_input()
+            self.archive_current_event()
+
+    def append_current_event_line(self, text: str) -> None:
+        if self.current_event_text and not self.current_event_text.endswith("\n"):
+            self.current_event_text += "\n"
+        self.current_event_text += text
+        self.render_current_event()
+
+    def prepare_for_stream_start(self) -> None:
+        if not self.current_event_text:
+            return
+        if not self.current_event_text.endswith("\n"):
+            self.current_event_text += "\n"
+        if not self.current_event_text.endswith("\n\n"):
+            self.current_event_text += "\n"
+        self.render_current_event()
+
+    def append_current_event_chunk(self, text: str) -> None:
+        self.current_event_text += text
+        self.render_current_event()
+
+    def normalize_event_text(self) -> str:
+        if not self.current_event_text:
+            return "Latest outcome will appear here."
+        lines = self.current_event_text.split("\n")
+        while lines and lines[0] == "":
+            lines.pop(0)
+        while lines and lines[-1] == "":
+            lines.pop()
+        if not lines:
+            return "Latest outcome will appear here."
+        normalized = []
+        blank_run = 0
+        for line in lines:
+            if line == "":
+                blank_run += 1
+                if blank_run <= 1:
+                    normalized.append(line)
+            else:
+                blank_run = 0
+                normalized.append(line)
+        return "\n".join(normalized)
+
+    def render_current_event(self) -> None:
+        self.query_one("#current_event", Static).update(self.normalize_event_text())
+
+    def archive_current_event(self) -> None:
+        text = self.normalize_event_text()
+        if text and text != "Latest outcome will appear here.":
+            history = self.query_one("#history", RichLog)
+            history.write("─" * 56)
+            self.history_line_count += 1
+            for line in text.splitlines():
+                history.write(line)
+                self.history_line_count += 1
+            self.update_history_size()
+        self.current_event_text = ""
+        self.render_current_event()
+
+    def update_history_size(self) -> None:
+        history = self.query_one("#history", RichLog)
+        if self.log_collapsed:
+            return
+        desired = max(4, min(12, self.history_line_count + 2))
+        history.styles.height = desired
+
+    def update_state(self, snapshot: dict[str, Any]) -> None:
+        goal = self.query_one("#goal", Static)
+        location = self.query_one("#location", Static)
+        status = self.query_one("#status", Static)
+
+        goal.update(f"[b]Goal[/b]\n{snapshot['goal']}")
+
+        parts = [f"[b]{snapshot['location']}[/b]", "", snapshot["description"]]
+        if snapshot["items"]:
+            parts.extend(
+                ["", "[b]Items here[/b]"] + [f"- {item}" for item in snapshot["items"]]
+            )
+        if snapshot["npcs"]:
+            parts.extend(
+                ["", "[b]People / creatures[/b]"]
+                + [f"- {npc}" for npc in snapshot["npcs"]]
+            )
+        if snapshot["features"]:
+            parts.extend(
+                ["", "[b]Features[/b]"]
+                + [f"- {feature}" for feature in snapshot["features"]]
+            )
+        location.update("\n".join(parts))
+
+        attack_low, attack_high = snapshot["attack"]
+        status_lines = [
+            "[b]Player[/b]",
+            f"HP: {snapshot['health']}/{snapshot['max_health']}",
+            f"Attack: {attack_low}-{attack_high}",
+            f"Defense: {snapshot['defense']}",
+            f"Gold: {snapshot['gold']}",
+            f"Bounty: {snapshot['bounty']}",
+            "",
+            "[b]Equipment[/b]",
+        ]
+        for slot, item_name in snapshot["equipment"].items():
+            status_lines.append(f"- {slot}: {item_name}")
+        status_lines.extend(["", "[b]Inventory[/b]"])
+        if snapshot["inventory"]:
+            for item_name, count in snapshot["inventory"]:
+                suffix = f" x{count}" if count > 1 else ""
+                status_lines.append(f"- {item_name}{suffix}")
+        else:
+            status_lines.append("- empty")
+        status.update("\n".join(status_lines))
+
+    def clear_options(self) -> None:
+        option_list = self.query_one("#options", OptionList)
+        option_list.clear_options()
+        self.pending_options = []
+
+    def show_choices(self, prompt: str, options: list[str]) -> None:
+        self.interaction_mode = "choice"
+        self.pending_options = list(options)
+        self.query_one("#prompt", Static).update(
+            f"{prompt}\n\nUse ↑/↓ and Enter, number keys 1-9, or click."
+        )
+        self.hide_text_input()
+        option_list = self.query_one("#options", OptionList)
+        option_list.clear_options()
+        display_options = [f"{i}. {label}" for i, label in enumerate(options, start=1)]
+        option_list.add_options(display_options)
+        option_list.highlighted = 0 if options else None
+        option_list.focus()
+
+    def show_text_input(self, prompt: str) -> None:
+        self.interaction_mode = "text"
+        self.clear_options()
+        self.query_one("#prompt", Static).update(prompt)
+        input_widget = self.query_one("#text_input", Input)
+        input_widget.remove_class("hidden")
+        input_widget.value = ""
+        input_widget.placeholder = prompt or "Type response and press Enter"
+        input_widget.focus()
+
+    def hide_text_input(self) -> None:
+        input_widget = self.query_one("#text_input", Input)
+        input_widget.add_class("hidden")
+        input_widget.value = ""
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        if self.interaction_mode != "choice":
+            return
+        self.archive_current_event()
+        self.bridge.responses.put(event.option_index)
+        self.clear_options()
+        self.query_one("#prompt", Static).update("Resolving action...")
+
+    def on_key(self, event: Key) -> None:
+        if self.interaction_mode != "choice":
+            return
+
+        option_list = self.query_one("#options", OptionList)
+        count = len(self.pending_options)
+        if count == 0:
+            return
+
+        key = event.key
+        option_list_has_focus = self.focused is option_list
+
+        # When the OptionList itself has focus, let it handle arrow keys and
+        # Enter so we do not double-advance the selection.
+        if option_list_has_focus and key in {"up", "down", "enter"}:
+            return
+
+        if key == "up":
+            current = option_list.highlighted
+            if current is None:
+                option_list.highlighted = 0
+            else:
+                option_list.highlighted = max(0, current - 1)
+            event.stop()
+            return
+
+        if key == "down":
+            current = option_list.highlighted
+            if current is None:
+                option_list.highlighted = 0
+            else:
+                option_list.highlighted = min(count - 1, current + 1)
+            event.stop()
+            return
+
+        if key == "enter":
+            current = option_list.highlighted
+            if current is None:
+                current = 0
+            self.archive_current_event()
+            self.bridge.responses.put(current)
+            self.clear_options()
+            self.query_one("#prompt", Static).update("Resolving action...")
+            event.stop()
+            return
+
+        if len(key) == 1 and key.isdigit():
+            index = int(key) - 1
+            if 0 <= index < count:
+                option_list.highlighted = index
+                self.archive_current_event()
+                self.bridge.responses.put(index)
+                self.clear_options()
+                self.query_one("#prompt", Static).update("Resolving action...")
+                event.stop()
+                return
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id != "text_input" or self.interaction_mode != "text":
+            return
+        self.archive_current_event()
+        self.bridge.responses.put(event.value)
+        self.hide_text_input()
+        self.query_one("#prompt", Static).update("Resolving input...")
 
 
 if __name__ == "__main__":
-    main()
+    RPGTextualApp().run()
+

@@ -1,22 +1,20 @@
 """
-A simple template for a choose your own adventure game.
+Version 1: the giant if / elif / else version.
 
-This version is designed to be easy to teach:
-- one player
-- one world
-- one main game loop
-- one handle_action() function with if / elif / else
+This file keeps the small adventure story, but makes the control flow
+extremely explicit. Almost everything happens inside one large game loop
+with one large action tree.
 
-This file is intentionally more naive and much more repetitive.
+Use this version to teach:
+- state variables
+- menu building
+- nested conditionals
+- how repetition grows in a procedural program
+- why "just one more branch" works for a while, but becomes hard to manage
 
-Teaching idea:
-- This version stays pretty faithful to the polished game.
-- It keeps the same solve path and most of the same behavior.
-- But instead of organizing the code into small helpers for world setup,
-  dynamic choices, and action handling, it pushes almost everything into
-  one giant loop with a giant if / elif / else tree.
-- Students can see very directly how a program grows when you keep solving
-  every problem with "just one more branch".
+This is not the cleanest version.
+It is here so students can see the brute-force approach clearly before moving
+to better organization.
 """
 
 
