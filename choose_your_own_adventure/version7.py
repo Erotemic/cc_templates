@@ -248,7 +248,6 @@ _/__/ /  \ \__\_
    /  mercy \
    \________/
 """,
-
     # Dedicated location icons
     "loc::village": r"""\
       _/\_   _/\_
@@ -3900,7 +3899,11 @@ class RPGTextualApp(App):
             return "guardian_trial_passed"
         if "not quite. think more carefully." in latest:
             return "guardian_trial_failed"
-        if "first_tower_visit" in flags or location_key == "tower_top" or location == "Tower Summit":
+        if (
+            "first_tower_visit" in flags
+            or location_key == "tower_top"
+            or location == "Tower Summit"
+        ):
             return "first_tower_visit"
 
         location_icons = {
