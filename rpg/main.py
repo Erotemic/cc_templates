@@ -6,14 +6,23 @@ Usage:
     python main.py
 
 This works straight from the project folder so you can play before
-learning about ``pip install -e .`` and packaging.
+learning about ``pip install -e .`` and packaging. It adds the local
+``src/`` directory to ``sys.path`` so imports resolve without an install.
 """
 
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
-DEPENDENCIES = ["pygame>=2.6.1", "ubelt>=1.4.0", "pillow>=11.3.0"]
+PROJECT_ROOT = Path(__file__).resolve().parent
+SRC_DIR = PROJECT_ROOT / "src"
+
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+
+DEPENDENCIES = ["pygame>=2.5", "numpy>=1.24", "loguru>=0.7", "rich>=13.7"]
 
 
 def _missing_dependency(exc: ModuleNotFoundError) -> None:
@@ -30,10 +39,10 @@ def _missing_dependency(exc: ModuleNotFoundError) -> None:
 
 
 try:
-    from platformer.main import main
+    from rpg_battle.__main__ import main
 except ModuleNotFoundError as exc:
     _missing_dependency(exc)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

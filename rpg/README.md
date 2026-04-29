@@ -16,21 +16,19 @@ A small but real pygame fantasy battle engine built for students to modify.
 From the project root, the simplest launch command is:
 
 ```bash
-python run_game.py
+python main.py
 ```
 
-If you want the package installed in editable mode:
+If a dependency is missing, the script will tell you which one and how
+to install it.
+
+### Run as an installed project (optional)
+
+Once you are comfortable with Python projects, install this one:
 
 ```bash
 python -m pip install -e .
 python -m rpg_battle
-```
-
-Or without an editable install:
-
-```bash
-python -m pip install pygame numpy loguru rich
-PYTHONPATH=src python -m rpg_battle
 ```
 
 ## Best student entry points
@@ -109,9 +107,9 @@ Examples:
 The main game is configurable from the command line:
 
 ```bash
-python run_game.py --encounter boss_ai_slop
-python run_game.py --encounter default --music-track bluesy_overhaul
-python run_game.py --player-team extra --enemy-team duel_enemy --player-limit 2 --enemy-limit 1
+python main.py --encounter boss_ai_slop
+python main.py --encounter default --music-track bluesy_overhaul
+python main.py --player-team extra --enemy-team duel_enemy --player-limit 2 --enemy-limit 1
 ```
 
 

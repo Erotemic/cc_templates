@@ -1,4 +1,4 @@
-"""Crystal Cavern Dash package."""
+"""First Person Exploration 3D game package."""
 
 from .game import main
 

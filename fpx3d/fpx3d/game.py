@@ -208,7 +208,7 @@ class GameAudio:
 
     def __init__(self, game: ShowBase) -> None:
         self.game = game
-        self.cache_dir = Path.home() / ".cache" / "crystal_cavern_dash" / "audio"
+        self.cache_dir = Path.home() / ".cache" / "fpx3d" / "audio"
         self.music = None
         self.sounds: dict[str, object] = {}
 

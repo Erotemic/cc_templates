@@ -1,4 +1,4 @@
-# First Person 3D Game
+# First Person Exploration 3D Game
 
 A bright first-person 3D Python game built directly with Panda3D, a real Python
 game engine.
@@ -6,16 +6,29 @@ game engine.
 Run through the cavern, collect every crystal, avoid the red hazard pads, and
 jump through the portal before time runs out.
 
-## Install
+## Run
+
+The simplest way, no install needed:
+
+```bash
+python main.py
+```
+
+If a dependency is missing, the script will tell you which one and how
+to install it.
+
+### Run as an installed project (optional)
+
+Once you are comfortable with Python projects, you can install this one:
 
 ```bash
 pip install -e .
 ```
 
-## Run
+Then launch it with:
 
 ```bash
-crystal-cavern-dash
+fpx3d
 ```
 
 or:
@@ -35,7 +48,7 @@ python -m fpx3d
 
 ## One-Hour Student Mods
 
-Open `src/fpx3d/game.py` and try one of these:
+Open `fpx3d/game.py` and try one of these:
 
 - Add another crystal to `CRYSTAL_SPOTS`.
 - Move a hazard in `HAZARD_PADS`.
