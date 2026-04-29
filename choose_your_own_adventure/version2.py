@@ -20,6 +20,11 @@ more structured than the giant if / else file, but still small enough for
 students to hold in their heads.
 """
 
+# `dataclass` is a decorator that auto-generates __init__ (and friends)
+# for a class so you can declare a "record" type in a few lines.
+# `field(default_factory=list)` says "if no value is passed, start with a
+# brand new empty list" — important because using `= []` as a default
+# would share one list across every instance (a classic Python gotcha).
 from dataclasses import dataclass, field
 
 
@@ -50,8 +55,15 @@ def typewriter_print(prefix, text, word_delay=0.1):
 # ============================================================
 # Data
 # ============================================================
+# Big idea: pull the *world* (rooms, exits, default state) out of the
+# code and into plain data structures. Adding a new room is now just
+# adding a key to a dictionary — you don't have to touch the game loop
+# or the action tree the way version 1 made you do.
 
 
+# Maps each room key -> list of (visible text, destination room key).
+# When the player is in a room, we can look up "where can I go from here?"
+# in one line: ROOM_CHOICES[player.location].
 ROOM_CHOICES = {
     "village": [("Go north to the crossroads", "crossroads")],
     "crossroads": [
@@ -78,8 +90,14 @@ ROOM_CHOICES = {
     "tower_top": [("Go down to the tower gate", "tower_gate")],
 }
 
+# A `set` of just the room keys — handy for "is this action a room name?"
+# checks (sets give us fast `in` lookups).
 ROOM_NAMES = set(ROOM_CHOICES)
 
+# All the boolean flags live in one dictionary instead of being eight
+# separate variables like in version 1. Now we can copy this dict at the
+# start of a new game with `dict(STATE_DEFAULTS)` and pass the whole
+# state around as a single argument — far easier to manage.
 STATE_DEFAULTS = {
     "quest_started": False,
     "spider_alive": True,
@@ -97,6 +115,19 @@ STATE_DEFAULTS = {
 # ============================================================
 
 
+# A class is a custom type. With @dataclass, we just declare the fields
+# (with optional defaults) and Python writes the boilerplate for us.
+# We can now write Player("Tav") and get an object with a name, a default
+# location, default health, and a fresh empty inventory.
+#
+# `name: str`, `health: int`, ... are *type hints*. Python doesn't
+# enforce them at runtime, but they document intent and let editors and
+# type-checkers catch mistakes.
+#
+# The methods (has_item, add_item, remove_item) are simple wrappers that
+# *attach behavior to the data*. From now on, anywhere we have a Player
+# we can just say `player.add_item("herb")` instead of poking at the
+# list directly. This is the start of object-oriented thinking.
 @dataclass
 class Player:
     """
@@ -112,6 +143,7 @@ class Player:
         return item in self.inventory
 
     def add_item(self, item):
+        # Avoid duplicates — having two "lanterns" wouldn't help anything.
         if item not in self.inventory:
             self.inventory.append(item)
 
@@ -169,6 +201,9 @@ def describe_location(location, state):
     Some descriptions change based on game state so the world feels
     more consistent to the player.
     """
+    # Notice the structure: this function *returns* a string instead of
+    # printing it. That's a deliberate choice — separating "decide what
+    # to say" from "say it" makes the function easier to reuse and test.
     if location == "village":
         if state["game_won"]:
             return "You are in the village square. The fountain is flowing again, and the villagers are smiling."
@@ -232,6 +267,11 @@ def get_choices(player, state):
     Add extra choices based on location and game state.
     Remove choices that no longer make sense.
     """
+    # Start with the basic exits looked up from data, then layer extra
+    # actions on top depending on context. This is much smaller than
+    # version 1's giant if/elif tree because the *common* cases (room
+    # exits) come straight from ROOM_CHOICES.
+    # `list(...)` makes a copy so we don't mutate the original.
     choices = list(ROOM_CHOICES[player.location])
 
     if player.location == "village":
@@ -264,6 +304,14 @@ def get_choices(player, state):
 # ============================================================
 # Actions
 # ============================================================
+# One function per action. Each one takes (player, state) and returns a
+# list of strings to print. Returning data instead of printing means the
+# caller can decide *how* to present it — and we can later log it, show
+# it in a different style, etc., without changing this code.
+#
+# Compare this to the giant elif-tree in version 1: there, picking the
+# herb and reading the elder's lines were two more branches in one huge
+# function. Here they're independent functions, each easy to read in isolation.
 
 
 def talk_to_elder(player, state):
@@ -450,6 +498,17 @@ def move_player(player, destination):
     return [move_text.get(destination, f"You travel to the {destination}.")]
 
 
+# ----- Dispatch table -----------------------------------------------------
+# This is the key idea of version 2. Instead of one giant if/elif chain
+# saying "if action == 'pick_herb': ... elif action == 'find_sword': ...",
+# we keep a *dictionary* that maps each action name to the function that
+# handles it. Looking up the right function becomes a single lookup.
+#
+# Functions are objects in Python — we can store them in a dict, pass
+# them around, and call them later. `ACTIONS["pick_herb"]` returns the
+# pick_herb function itself; adding `(...)` then calls it.
+#
+# Adding a new action is now: write a function, add one entry here.
 ACTIONS = {
     "talk_elder": talk_to_elder,
     "talk_fisherman": talk_to_fisherman,
@@ -466,12 +525,15 @@ def handle_action(action, player, state):
     """
     Handle actions with a small dispatch table.
     """
+    # Two kinds of action: moving to another room (the action value *is*
+    # a room name), or one of the named ACTIONS above. We check each in
+    # turn and fall through to a generic "not implemented" message.
     if action in ROOM_NAMES:
         return move_player(player, action)
 
-    handler = ACTIONS.get(action)
+    handler = ACTIONS.get(action)  # .get returns None if the key is missing
     if handler is not None:
-        return handler(player, state)
+        return handler(player, state)  # call the function we just looked up
 
     return ["That action is not implemented yet."]
 
@@ -482,13 +544,20 @@ def handle_action(action, player, state):
 
 
 def start_game():
+    # Compare this function with version 1's start_game! It is dramatically
+    # shorter because all the room descriptions, choice-building, and
+    # action-handling has moved into focused helpers above. The loop here
+    # is now just: describe -> menu -> dispatch -> repeat.
     print("Welcome to the Adventure Game Template!")
     print("Tip: type 'quit' at any prompt to leave the game.")
 
     player_name = "Tav"
     # player_name = input("Enter your name: ")  # can get input here
 
+    # One Player object holds all the player data.
     player = Player(player_name)
+    # `dict(STATE_DEFAULTS)` makes a fresh copy of the defaults so editing
+    # `state` doesn't change the template for future games.
     state = dict(STATE_DEFAULTS)
 
     # Main game loop

@@ -21,9 +21,14 @@ to better organization.
 # ============================================================
 # Small user-interface helpers
 # ============================================================
+# Functions! A function is a named, reusable block of code. Anywhere we
+# call show_result(...), the same printing logic runs — so we only have
+# to write it once and improve it in one place. This is the first big
+# step away from the long, repeating code of version 0.
 
 
 def show_action(action_text):
+    # Print a clear "===" banner saying what the player just chose.
     print("\n" + "=" * 40)
     print(f"You chose to: {action_text}")
     print("=" * 40)
@@ -33,11 +38,14 @@ def show_result(lines):
     """
     Show the result of an action in one clear block.
     """
+    # Allow callers to pass either a single string or a list of strings.
+    # isinstance(x, str) checks "is x a string?". This little trick keeps
+    # the rest of the function simple — from here on we only deal with a list.
     if isinstance(lines, str):
         lines = [lines]
 
     if not lines:
-        return
+        return  # Nothing to show — leave early.
 
     print("\nResult:")
     for line in lines:
@@ -45,6 +53,7 @@ def show_result(lines):
 
 
 def pause():
+    # Wait for Enter before moving on, so the player can read the screen.
     input("\nPress Enter to continue...")
 
 
@@ -55,16 +64,21 @@ def typewriter_print(prefix, text, word_delay=0.1):
     Example:
         >>> typewriter_print("Narrator: ", "Welcome to the Adventure Game! Your journey begins now.")
     """
+    # `import` inside a function is uncommon but legal — it just defers
+    # the import until the function actually runs.
     import sys
     import time
 
     sys.stdout.write(prefix)
     words = text.split(" ")  # Split the text into words
+    # Two nested for-loops: outer loop walks words, inner loop walks
+    # characters in the current word. time.sleep(...) pauses the program
+    # for that many seconds, which is what makes the effect visible.
     for word in words:
         char_delay = word_delay / (len(word) + 1)
         for char in word:  # Print each character of the word with a delay
             sys.stdout.write(char)
-            sys.stdout.flush()
+            sys.stdout.flush()  # force the character out *now*, don't buffer
             time.sleep(char_delay)
         sys.stdout.write(" ")  # Print space after the word
         sys.stdout.flush()
@@ -77,6 +91,7 @@ def show_dialog_lines(speaker, lines, word_delay=0.1):
     Show spoken dialog with the typewriter effect, while keeping narration
     and other result text handled elsewhere.
     """
+    # Same "string or list" trick as show_result.
     if isinstance(lines, str):
         lines = [lines]
 
@@ -94,6 +109,9 @@ def show_dialog_lines(speaker, lines, word_delay=0.1):
 
 
 def start_game():
+    # All the game state lives inside this one function. That keeps things
+    # simple — every variable is a "local" variable, and the whole game is
+    # one big block you can read top to bottom.
     print("Welcome to the Adventure Game Template!")
     print("Tip: type 'quit' at any prompt to leave the game.")
 
@@ -105,7 +123,11 @@ def start_game():
     player_location = "village"
     player_health = 20
 
-    # Track game state
+    # Track game state.
+    # Each of these flags answers a yes/no question about the world. The
+    # number of flags grows quickly as the game gets bigger — that's a
+    # warning sign we'll fix in version 2 by grouping state into a
+    # dictionary or a dataclass.
     quest_started = False
     spider_alive = True
     herb_taken = False
@@ -115,8 +137,9 @@ def start_game():
     game_won = False
     quit_game = False
 
-    # Main game loop
+    # Main game loop. Each pass = one turn.
     while True:
+        # End-of-game checks: any of these means we stop looping.
         if quit_game:
             print("\nThanks for playing!")
             break
@@ -132,6 +155,9 @@ def start_game():
         # ============================================================
         # Observe surroundings
         # ============================================================
+        # One big if / elif chain that prints a description for each room.
+        # Some rooms have multiple descriptions depending on what the
+        # player has done so far (e.g. forest changes after picking herbs).
 
         print("\nYou observe your surroundings")
 
@@ -214,6 +240,11 @@ def start_game():
         # ============================================================
         # Build choices directly with if / elif / else
         # ============================================================
+        # `choices` is a list of (text, action_value) tuples. The text is
+        # what the player sees on screen; the action_value is a short
+        # label we'll match on later in the giant action tree. Some
+        # choices only show up under certain conditions (for example,
+        # "Pick the herb" disappears once you've taken it).
 
         choices = []
 
@@ -305,6 +336,9 @@ def start_game():
         # ============================================================
         # Show choices
         # ============================================================
+        # `enumerate(choices, 1)` numbers the choices starting at 1. The
+        # second variable inside the tuple-unpacking is `_` style — we
+        # capture it as `choice_value` here but don't use it on this line.
 
         print("\nWhat do you want to do?")
         for idx, (choice_text, choice_value) in enumerate(choices, 1):
@@ -316,19 +350,26 @@ def start_game():
             print("Thanks for playing!")
             break
 
+        # try / except: if int() fails (not a number) or the index is out
+        # of range, fall into the except block instead of crashing.
         try:
             choice_index = int(user_input) - 1
             action_text, action_value = choices[choice_index]
         except (ValueError, IndexError):
             show_result(["Invalid choice, try again."])
             pause()
-            continue
+            continue  # skip the action handling and show the menu again
 
         show_action(action_text)
 
         # ============================================================
         # Giant action tree
         # ============================================================
+        # Every possible action_value the menu can produce gets one big
+        # `elif` block down here that does whatever should happen. This
+        # works, but notice how repetitive it is — every "go somewhere"
+        # block is almost the same code. That repetition is exactly what
+        # version 2 cleans up using helper functions and a dispatch table.
 
         if action_value == "go_to_crossroads_from_village":
             player_location = "crossroads"
@@ -406,6 +447,12 @@ def start_game():
             pause()
 
         elif action_value == "talk_to_elder":
+            # Pattern: build up two lists — what the elder *says* (dialog)
+            # and what *happens* (result) — and print them together at
+            # the end. This is cleaner than scattering `print(...)` calls
+            # through the if/elif logic, because one branch can change
+            # state and another can change the lines without stepping on
+            # each other.
             dialog_lines = []
             result_lines = []
 
@@ -520,6 +567,11 @@ def start_game():
             pause()
 
         elif action_value == "fight_spider":
+            # A loop *inside* the main loop. While we're fighting, we
+            # take repeated turns of attack/run until the spider dies,
+            # the player loses, or the player flees. When this inner
+            # `while True` ends (via `break`), control returns to the
+            # main outer loop and the next room turn begins.
             while True:
                 if not spider_alive:
                     break

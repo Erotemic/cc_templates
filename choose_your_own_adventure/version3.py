@@ -18,8 +18,33 @@ Use this version to teach:
 
 This file is useful when students are ready to see how small game logic can
 be moved into a more general framework.
+
+Reading guide
+-------------
+This file is long. The major sections are:
+
+1. Presentation helpers — printing utilities.
+2. Core data models — small @dataclass records (Stats, Item, Exit, etc.).
+3. Effects — the *Command pattern*. Each Effect is a tiny object that
+   knows how to do one thing when applied to the game (print, set a
+   flag, give an item, ...). They can be composed.
+4. Controllers — the *Strategy pattern*. The combat system asks a
+   controller "what move?" and a Player or AI controller answers.
+5. Character / NPC — characters with stats, inventory, and equipment.
+6. Features / World — placeable objects and the room graph.
+7. ValleyQuestWorld — the concrete world content for this story.
+8. Engines — one per *game mode* (exploration, dialogue, combat, etc.).
+   This is roughly the *State pattern*: the active engine handles input
+   for that mode and decides which mode to switch to next.
+9. Game — the conductor that owns the player + world + flags and runs
+   whichever engine matches the current mode.
+
+The tradeoff: this engine can support far bigger games than v1 or v2,
+but you have to follow many threads to understand any single feature.
 """
 
+# `Counter` is a dict subclass that counts how many of each thing are in
+# a sequence — perfect for "how many herbs do I have?" questions.
 from dataclasses import dataclass, field
 from collections import Counter
 import random
@@ -64,6 +89,12 @@ def prompt_continue(prompt: str = "Press Enter to continue...") -> None:
 # ============================================================
 # Core data models
 # ============================================================
+# These are the "nouns" of the game — pure data, no behavior. Defining
+# them as @dataclasses lets the rest of the code work in terms of named
+# fields (item.name, exit.destination) instead of dictionary lookups.
+# Note the type hints throughout: `set[str]`, `Effect | None`, etc.
+# These are the modern Python ways of saying "a set of strings" and
+# "either an Effect or None".
 
 
 @dataclass
@@ -126,16 +157,30 @@ class Location:
 
 
 # ============================================================
-# Effects
+# Effects  (the Command pattern)
 # ============================================================
+# An Effect is a tiny object that says "when I am applied, do X". This
+# is sometimes called the *Command pattern*: we package an action as a
+# value, so we can store it in data, pass it around, choose between
+# different ones at runtime, and combine them.
+#
+# Why bother? Look at the world definition further down. Saying
+# "unlocking the gate prints two lines, sets a flag, and moves the
+# player" becomes a literal data structure (CompositeEffect of three
+# Effects), no extra Python code per door. We're using effects as a
+# small *scripting language* for game outcomes.
 
 
+# The base Effect declares the contract: every subclass must define
+# `apply(game)`. Calling .apply on the base directly raises an error to
+# remind you to use one of the concrete subclasses.
 class Effect:
     def apply(self, game: "Game") -> None:
         raise NotImplementedError
 
 
 class PrintEffect(Effect):
+    # Print one line or a list of lines.
     def __init__(self, lines: str | list[str]):
         self.lines = [lines] if isinstance(lines, str) else lines
 
@@ -145,6 +190,8 @@ class PrintEffect(Effect):
 
 
 class SetFlagEffect(Effect):
+    # Add one or more named flags to the game's flag set.
+    # `*flags` collects extra positional arguments into a tuple.
     def __init__(self, *flags: str):
         self.flags = list(flags)
 
@@ -154,6 +201,7 @@ class SetFlagEffect(Effect):
 
 
 class GivePlayerItemEffect(Effect):
+    # Hand one or more items to the player.
     def __init__(self, *item_ids: str):
         self.item_ids = list(item_ids)
 
@@ -163,6 +211,7 @@ class GivePlayerItemEffect(Effect):
 
 
 class MovePlayerEffect(Effect):
+    # Teleport the player to a destination room and announce it.
     def __init__(self, destination: str, text: str | None = None):
         self.destination = destination
         self.text = text
@@ -175,6 +224,8 @@ class MovePlayerEffect(Effect):
         game.world.on_location_enter(game, game.current_location())
 
 
+# A "wrapper" effect that picks between two other effects based on flags
+# and inventory. Lets us build branching logic in data instead of in code.
 class ConditionalEffect(Effect):
     def __init__(
         self,
@@ -205,6 +256,9 @@ class ConditionalEffect(Effect):
             self.failure_effect.apply(game)
 
 
+# Run several effects in sequence. This is what lets us treat "print
+# something + set a flag + move the player" as one composable action.
+# (This is a small example of the *Composite pattern*.)
 class CompositeEffect(Effect):
     def __init__(self, *effects: Effect):
         self.effects = list(effects)
@@ -215,11 +269,18 @@ class CompositeEffect(Effect):
 
 
 # ============================================================
-# Controllers and characters
+# Controllers and characters  (the Strategy pattern)
 # ============================================================
+# A Controller decides what a character does on its combat turn. We have
+# one Controller for human players (which asks the user) and one for the
+# AI (which uses simple rules). The combat engine doesn't care which —
+# it just calls `controller.choose_combat_action(...)` and trusts the
+# answer. This is the *Strategy pattern*: pick the algorithm at runtime
+# by swapping out an object.
 
 
 class Controller:
+    # Abstract base — like Effect, the real work happens in subclasses.
     def choose_combat_action(
         self, game: "Game", actor: "Character", opponent: "Character"
     ) -> tuple[str, str | None]:
@@ -227,6 +288,7 @@ class Controller:
 
 
 class PlayerController(Controller):
+    # Asks the human player what to do.
     def choose_combat_action(
         self, game: "Game", actor: "Character", opponent: "Character"
     ) -> tuple[str, str | None]:
@@ -261,6 +323,8 @@ class PlayerController(Controller):
 
 
 class AIController(Controller):
+    # Very simple AI: heal if low on HP and a consumable is available,
+    # otherwise attack. Easy to swap for a smarter strategy later.
     def choose_combat_action(
         self, game: "Game", actor: "Character", opponent: "Character"
     ) -> tuple[str, str | None]:
@@ -271,6 +335,10 @@ class AIController(Controller):
         return "attack", None
 
 
+# Character is the shared base for both the player and NPCs. It knows
+# how to: track health, manage an inventory, equip / unequip gear, roll
+# attack damage, take damage, heal, and report status. The player and
+# NPCs differ mainly in *which Controller they use* — see Strategy above.
 class Character:
     EQUIPMENT_SLOTS = ("weapon", "armor", "charm")
 
@@ -445,6 +513,10 @@ class Character:
 # ============================================================
 # Shared NPC model
 # ============================================================
+# NPC *inherits* from Character: it gets all of Character's behavior
+# automatically (health, inventory, attack/defend), and adds NPC-specific
+# concepts on top — dialogue topics, hostility, rewards, defeat state.
+# This is classic OOP inheritance: "an NPC IS-A character".
 
 
 class NPC(Character):
@@ -533,9 +605,15 @@ class NPC(Character):
 # ============================================================
 # Features / world objects
 # ============================================================
+# A Feature is something interactable that lives in a room and isn't an
+# NPC or an item — a signpost, a locked gate, a glowing pedestal. Each
+# Feature subclass overrides `interact(game)` to define what happens.
+# This is *polymorphism* in action: the engine just calls
+# `feature.interact(game)` and the right subclass behavior runs.
 
 
 class Feature:
+    # Default behavior: do nothing interesting. Subclasses override interact.
     def __init__(self, name: str, verb: str = "Inspect"):
         self.name = name
         self.verb = verb
@@ -547,6 +625,7 @@ class Feature:
         print(f"Nothing happens when you interact with {self.name}.")
 
 
+# A feature whose interaction is "print this block of text" (e.g. a signpost).
 class TextFeature(Feature):
     def __init__(self, name: str, text: str, verb: str = "Inspect"):
         super().__init__(name=name, verb=verb)
@@ -556,6 +635,11 @@ class TextFeature(Feature):
         print("\n" + self.text)
 
 
+# A flexible feature whose interaction is data-driven: define when it
+# can be used (flags / items required), and which Effect runs the first
+# time vs. on later uses. This is where Effects pay off — a locked gate,
+# a glowing pedestal, and a healing fountain are all *the same code*,
+# just different effects plugged in.
 class ScriptedFeature(Feature):
     def __init__(
         self,
@@ -606,6 +690,11 @@ class ScriptedFeature(Feature):
 # ============================================================
 # World base class
 # ============================================================
+# World owns the *content* of the game: the room graph, the items
+# database, what's placed where. It's a generic container — the actual
+# story is built by subclassing it (see ValleyQuestWorld below). The
+# `on_*` methods are *lifecycle hooks*: empty defaults a subclass can
+# override to react to events ("did the player just enter the cave?").
 
 
 class World:
@@ -690,6 +779,12 @@ class World:
 # ============================================================
 # Concrete world
 # ============================================================
+# This is where the story lives. Everything specific to *this* adventure
+# (which rooms exist, which paths connect them, who lives where, what
+# the elder says, the spider's stats) is configured here — entirely as
+# data and small Effect graphs. Compare with v1/v2: there, the story
+# was tangled with the engine code; here, swapping in a totally
+# different World subclass would give you a different game.
 
 
 class ValleyQuestWorld(World):
@@ -1017,15 +1112,24 @@ class ValleyQuestWorld(World):
 
 
 # ============================================================
-# Engines
+# Engines  (one per game mode — roughly the State pattern)
 # ============================================================
+# At any moment the game is in one *mode*: exploring rooms, talking to
+# someone, fighting, paging through a menu. Each mode has its own input
+# loop and screen layout. Rather than one giant function with a "what
+# mode am I in?" if/elif chain, we make each mode a class with a `run`
+# method, and the Game just calls run() on whichever engine matches the
+# current mode. Engines change mode by calling game.enter_mode("combat"),
+# which redirects future ticks to the combat engine.
 
 
 class Engine:
+    # Abstract base. Each subclass is one mode.
     def run(self, game: "Game") -> None:
         raise NotImplementedError
 
 
+# Exploration: list exits/items/people in this room and let the player choose.
 class ExplorationEngine(Engine):
     def run(self, game: "Game") -> None:
         location = game.current_location()
@@ -1096,6 +1200,7 @@ class ExplorationEngine(Engine):
             game.enter_mode("menu")
 
 
+# When the player approaches someone: choose to talk, fight, or step away.
 class NPCInteractionEngine(Engine):
     def run(self, game: "Game") -> None:
         npc: NPC = game.context["npc"]
@@ -1127,6 +1232,8 @@ class NPCInteractionEngine(Engine):
             game.enter_mode("exploration")
 
 
+# Pick a topic, the NPC says lines, optionally an outcome Effect runs
+# (which can grant items, set "quest_started" / "game_won", etc.).
 class DialogueEngine(Engine):
     def run(self, game: "Game") -> None:
         npc: NPC = game.context["npc"]
@@ -1160,6 +1267,10 @@ class DialogueEngine(Engine):
         game.enter_mode("npc", npc=npc)
 
 
+# Round-based combat. Each round, both sides ask their Controller for an
+# action and the engine resolves it. Notice it doesn't matter whether
+# the player is human or AI from the engine's point of view — both go
+# through `controller.choose_combat_action(...)`.
 class CombatEngine(Engine):
     def run(self, game: "Game") -> None:
         enemy: NPC = game.context["npc"]
@@ -1252,6 +1363,7 @@ class CombatEngine(Engine):
         game.enter_mode("exploration")
 
 
+# A pause-menu mode: status, loadout, journal, quit. Pure UI.
 class MenuEngine(Engine):
     def run(self, game: "Game") -> None:
         divider("MENU")
@@ -1278,6 +1390,7 @@ class MenuEngine(Engine):
             game.running = False
 
 
+# Equip / unequip gear. Reachable from the menu.
 class LoadoutEngine(Engine):
     def run(self, game: "Game") -> None:
         divider("LOADOUT")
@@ -1323,6 +1436,16 @@ class LoadoutEngine(Engine):
 # ============================================================
 # Game director / router
 # ============================================================
+# Game ties everything together. It owns the player, the world, the set
+# of flags, the current mode, and a dictionary mapping mode name ->
+# Engine instance. The main loop is dead simple:
+#
+#     while running:
+#         engines[mode].run(self)
+#
+# Engines decide which mode to switch to next by calling enter_mode(...),
+# which is how the player flows from exploration -> dialogue -> combat
+# -> exploration -> menu -> ... without one big tangled function.
 
 
 class Game:
@@ -1445,6 +1568,8 @@ class Game:
         self.give_player_item(item_id)
 
     def run(self) -> None:
+        # The main loop. Notice how short it is — all the per-mode logic
+        # is delegated to whichever Engine is currently active.
         divider(f"Welcome to {self.world.name}")
         print(
             "This version uses the larger mode-driven engine, but the smaller valley story."
@@ -1455,6 +1580,7 @@ class Game:
                 divider("Defeat")
                 print("Game over.")
                 break
+            # Look up the engine for the current mode and let it run one tick.
             engine = self.engines[self.mode]
             engine.run(self)
             if self.running and self.player.is_alive():
