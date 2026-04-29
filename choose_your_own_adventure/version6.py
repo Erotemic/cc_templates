@@ -4,6 +4,23 @@ from __future__ import annotations
 Single-file RPG architecture prototype.
 
 This version integrates the TUI with the game a little bit better.
+
+Reading guide
+-------------
+v6 fuses two earlier files into one:
+- The first ~2400 lines are the v4 RPG core (data models, Effects,
+  Controllers, Character/NPC, Features, Encounters, World,
+  StarCrystalWorld, Engines, Game). See v3 and v4 for the design-pattern
+  walkthrough — those comments explain Effect (Command), Controller
+  (Strategy), Engine (per-mode State), and the @dataclass world data.
+- The last ~1000 lines (search for `from textual.app import App`) are
+  the v5 Textual front-end (QueueWriter, BackendBridge, RPGTextualApp).
+  See v5's comments for the threading + queue + redirected-stdout pattern.
+
+What v6 adds vs running v4 + v5 separately: by living in one file, the
+backend can call into UI-aware helpers more directly (no module path
+lookup, no monkey-patching surprises) and the engines can be tweaked
+to play nicer with the snapshot/event flow.
 """
 
 from collections import Counter
@@ -2567,6 +2584,14 @@ class Game:
                 prompt_continue()
 
 
+# ============================================================
+# Textual front-end (v5 architecture, fused inline)
+# ============================================================
+# Everything below is the v5 UI: QueueWriter captures stdout, BackendBridge
+# runs the game on a worker thread and routes events through queues, and
+# RPGTextualApp is the Textual app that polls those queues. See v5 for
+# the detailed walkthrough of why this looks the way it does.
+
 """Textual front end for rich_single_file_rpg.py.
 
 Development version that imports the core game from a sibling file.
@@ -3125,6 +3150,26 @@ class BackendBridge:
             core.prompt_continue = old_continue
 
 
+# ============================================================
+# Textual UI — what's new vs v5
+# ============================================================
+# v5 commented the basics of Textual (widget tree, CSS dialect, event
+# handlers, query_one, Rich markup). Re-read v5 if any of those are
+# unfamiliar — this version assumes them.
+#
+# What v6 does differently:
+#   - Uses OptionList instead of a stack of Buttons for the choice
+#     menu. OptionList is a built-in keyboard-navigable list — arrow
+#     keys move the highlight, Enter selects, no manual focus juggling.
+#   - Adds a "current event" panel (#current_event) that shows the most
+#     recent outcome alone, plus a collapsible history log (#history)
+#     for everything before that. This gives the player a clean focus
+#     and an optional scrollback.
+#   - Adds streaming events (stream_start / stream_chunk / stream_end)
+#     so the backend can push a typewriter-like animation chunk by chunk
+#     instead of one big block.
+#   - Adds more keybindings (c, l/L, escape) and uses an on_key handler
+#     for number-key shortcuts on the choice list.
 class RPGTextualApp(App):
     CSS = """
     Screen {
@@ -3212,6 +3257,12 @@ class RPGTextualApp(App):
     }
     """
 
+    # Each tuple = (key, action_name, description). The action name
+    # maps to a method via the action_<name> convention (so
+    # `action_clear_history` runs when the user presses C). The
+    # description shows up in the Footer so users discover the keys.
+    # Listing both "l" and "L" means the same action fires whether or
+    # not Shift was held.
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("m", "menu", "Menu"),
@@ -3233,6 +3284,13 @@ class RPGTextualApp(App):
         self.history_line_count = 0
 
     def compose(self) -> ComposeResult:
+        # Layout (compare v5 — center pane is where this version differs):
+        #   Header
+        #   Horizontal #body
+        #     Vertical #sidebar     — Goal / Location / Status
+        #     Vertical #main        — current_event + collapsible history
+        #     Vertical #actions     — prompt + OptionList + text input
+        #   Footer
         yield Header(show_clock=False)
         with Horizontal(id="body"):
             with Vertical(id="sidebar"):
@@ -3240,8 +3298,13 @@ class RPGTextualApp(App):
                 yield Static("Location", id="location")
                 yield Static("Status", id="status")
             with Vertical(id="main"):
+                # The "freshest" outcome is shown big, on its own.
                 yield Static("Latest outcome will appear here.", id="current_event")
+                # Tiny status line telling the user how to show the log.
                 yield Static("System log hidden. Press L to show.", id="log_status")
+                # RichLog supports max_lines (auto-trim old text) and
+                # auto_scroll (jump to bottom on new writes). Starts in
+                # the .hidden class so it's invisible until the user toggles.
                 yield RichLog(
                     id="history",
                     wrap=True,
@@ -3252,6 +3315,10 @@ class RPGTextualApp(App):
                 )
             with Vertical(id="actions"):
                 yield Static("Starting up...", id="prompt")
+                # OptionList is a built-in keyboard-navigable list —
+                # arrow keys move the highlight, Enter selects, and
+                # clicking a row works too. Much less code than mounting
+                # individual Buttons like v5 did.
                 yield OptionList(id="options")
                 yield Input(
                     placeholder="Type response and press Enter",
@@ -3261,8 +3328,14 @@ class RPGTextualApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        # Lifecycle hook (see v5). Start the worker thread and poll
+        # 20 times a second.
         self.bridge.start()
         self.set_interval(0.05, self.poll_backend)
+
+    # ---- Action methods (each maps to a key from BINDINGS) ----------
+    # Textual calls action_<name>() when its bound key fires. These are
+    # great places to put keyboard shortcuts that change widget state.
 
     def action_menu(self) -> None:
         if self.interaction_mode == "choice":
@@ -3273,17 +3346,23 @@ class RPGTextualApp(App):
                     return
 
     def action_focus_choices(self) -> None:
+        # Snap keyboard focus back to the right input widget. Useful if
+        # the user has tabbed away to read the log and wants to type a
+        # choice quickly.
         if self.interaction_mode == "choice":
             self.query_one("#options", OptionList).focus()
         elif self.interaction_mode == "text":
             self.query_one("#text_input", Input).focus()
 
     def action_clear_history(self) -> None:
+        # RichLog has a .clear() method to wipe contents.
         self.query_one("#history", RichLog).clear()
         self.history_line_count = 0
         self.update_history_size()
 
     def action_toggle_log(self) -> None:
+        # Toggle visibility by flipping the .hidden class. CSS does the
+        # rest (display: none in the CSS rule above).
         self.log_collapsed = not self.log_collapsed
         log = self.query_one("#history", RichLog)
         status = self.query_one("#log_status", Static)
@@ -3304,13 +3383,19 @@ class RPGTextualApp(App):
             self.handle_backend_event(event)
 
     def handle_backend_event(self, event: dict[str, Any]) -> None:
+        # Dispatch on event type. New in v6: stream_* events let the
+        # backend send text chunk-by-chunk for a typewriter effect,
+        # instead of one log line at a time as in v5.
         event_type = event["type"]
         if event_type == "log":
             self.append_current_event_line(event.get("text", ""))
         elif event_type == "stream_start":
+            # A new streamed message is starting (like the typewriter).
             self.prepare_for_stream_start()
             self.append_current_event_chunk(event.get("prefix", ""))
         elif event_type == "stream_chunk":
+            # A piece of the streamed message — append directly without
+            # forcing a newline so words can flow in.
             self.append_current_event_chunk(event.get("text", ""))
         elif event_type == "stream_end":
             self.append_current_event_chunk("\n")
@@ -3369,13 +3454,18 @@ class RPGTextualApp(App):
         return "\n".join(normalized)
 
     def render_current_event(self) -> None:
+        # Push the latest event text into the #current_event Static.
+        # Static.update(text) replaces the contents wholesale.
         self.query_one("#current_event", Static).update(self.normalize_event_text())
 
     def archive_current_event(self) -> None:
+        # When the player advances, move whatever is in the "current
+        # event" panel down into the history RichLog and clear the
+        # panel. RichLog.write(line) appends a single line.
         text = self.normalize_event_text()
         if text and text != "Latest outcome will appear here.":
             history = self.query_one("#history", RichLog)
-            history.write("─" * 56)
+            history.write("─" * 56)  # visual separator between turns
             self.history_line_count += 1
             for line in text.splitlines():
                 history.write(line)
@@ -3385,6 +3475,10 @@ class RPGTextualApp(App):
         self.render_current_event()
 
     def update_history_size(self) -> None:
+        # widget.styles.<property> = value lets us set CSS properties
+        # at runtime — same effect as putting "height: N" in the CSS
+        # block, but dynamic. Here we grow/shrink the log panel based
+        # on how much it currently contains, capped at 4..12.
         history = self.query_one("#history", RichLog)
         if self.log_collapsed:
             return
@@ -3443,6 +3537,11 @@ class RPGTextualApp(App):
         self.pending_options = []
 
     def show_choices(self, prompt: str, options: list[str]) -> None:
+        # OptionList API: clear_options() + add_options(list_of_str)
+        # rebuilds the menu in one shot. .highlighted = N moves the
+        # selection cursor to row N. .focus() makes the list catch
+        # keyboard input. Compare with v5 which mounted/focused
+        # individual Button widgets.
         self.interaction_mode = "choice"
         self.pending_options = list(options)
         self.query_one("#prompt", Static).update(
@@ -3471,15 +3570,25 @@ class RPGTextualApp(App):
         input_widget.add_class("hidden")
         input_widget.value = ""
 
+    # Textual message-handler naming rule:
+    #   class OptionList.OptionSelected  ->  on_option_list_option_selected
+    # Each PascalCase word becomes an underscore-separated lower-case
+    # word. Define a method with the matching name and Textual delivers
+    # the message to it automatically.
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         if self.interaction_mode != "choice":
             return
         self.archive_current_event()
+        # event.option_index is the 0-based row the user selected.
         self.bridge.responses.put(event.option_index)
         self.clear_options()
         self.query_one("#prompt", Static).update("Resolving action...")
 
     def on_key(self, event: Key) -> None:
+        # `on_key` is a low-level catch-all: every key the app receives
+        # comes here before being handed to the focused widget. We use
+        # it to add number-key (1..9) shortcuts that select directly
+        # from the OptionList without arrow-keying first.
         if self.interaction_mode != "choice":
             return
 

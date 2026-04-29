@@ -4,6 +4,20 @@ from __future__ import annotations
 Single-file RPG architecture prototype.
 
 This version integrates the TUI with the game a little bit better.
+
+Reading guide
+-------------
+v8 is v6 with two additions in the Effects section and a different
+concrete world:
+- EndGameEffect: marks the run as won/lost from data (ends the loop).
+- BranchOnBountyEffect: picks one of several Effects based on the
+  player's bounty value — adds a branching primitive that complements
+  ConditionalEffect (which branches on flags/items).
+- DustVaultWorld replaces v6's StarCrystalWorld as the example story.
+
+Architecture is otherwise the same as v6: v4 RPG core in the upper
+~2400 lines, v5 Textual front-end in the lower ~1000. See v3, v4, v5
+for the underlying patterns.
 """
 
 from collections import Counter
@@ -383,6 +397,8 @@ class CompositeEffect(Effect):
             effect.apply(game)
 
 
+# Print final lines, set any closing flags ("game_won", "game_lost"),
+# and stop the main loop. Lets a story end the game purely from data.
 class EndGameEffect(Effect):
     def __init__(self, lines: str | list[str], *flags: str):
         self.lines = [lines] if isinstance(lines, str) else list(lines)
@@ -396,6 +412,9 @@ class EndGameEffect(Effect):
         game.running = False
 
 
+# Pick which inner Effect runs based on the player's bounty score.
+# Complements ConditionalEffect (which branches on flags/items) — here
+# the choice depends on a numeric stat compared against `threshold`.
 class BranchOnBountyEffect(Effect):
     def __init__(
         self,
@@ -2833,6 +2852,12 @@ class Game:
             if self.running and self.player.is_alive():
                 prompt_continue()
 
+
+# ============================================================
+# Textual front-end (v5 architecture, fused inline)
+# ============================================================
+# Same QueueWriter + BackendBridge + RPGTextualApp pattern as v6/v7.
+# See v5 for the threading + queues + redirected-stdout walkthrough.
 
 """Textual front end for rich_single_file_rpg.py.
 

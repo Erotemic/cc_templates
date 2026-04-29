@@ -5,6 +5,14 @@ Single-file RPG architecture prototype.
 
 This version integrates the TUI with the game a little bit better and has some
 visual art.
+
+Reading guide
+-------------
+v7 is v6 with one extra: an ASCII_ART_POLISHED dictionary (search the
+file) that maps event keys -> multi-line ASCII art strings. The engines
+look these up to render an illustration alongside text for some
+encounters and NPCs. Everything else is the v4 RPG core + v5 Textual
+front-end fused together — see v3, v4, v5 for the architecture comments.
 """
 
 from collections import Counter
@@ -49,6 +57,15 @@ def prompt_continue(prompt: str = "Press Enter to continue...") -> None:
     input(f"\n{prompt}")
 
 
+# ============================================================
+# Visual art (ASCII)
+# ============================================================
+# Maps short string keys ("ruins_stumble", an NPC name, etc.) to
+# multi-line ASCII art. r"""..."""  is a *raw* triple-quoted string —
+# the `r` prefix means backslashes are kept literal, which matters here
+# because the art uses backslashes as drawing characters.
+# Engines below look these keys up to render art when an NPC is
+# inspected or an encounter fires.
 ASCII_ART_POLISHED = {
     "ruins_stumble": r"""\
       __
@@ -3013,6 +3030,13 @@ class Game:
             if self.running and self.player.is_alive():
                 prompt_continue()
 
+
+# ============================================================
+# Textual front-end (v5 architecture, fused inline)
+# ============================================================
+# Same structure as v6: QueueWriter + BackendBridge + RPGTextualApp.
+# In this version the snapshots and log lines may also include ASCII
+# art keys so the UI can render the matching illustration.
 
 """Textual front end for rich_single_file_rpg.py.
 

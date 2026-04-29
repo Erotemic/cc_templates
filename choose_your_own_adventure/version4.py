@@ -23,12 +23,35 @@ Use this version to teach:
 
 Students should usually arrive here after they already understand the smaller,
 more direct versions.
+
+Reading guide
+-------------
+The architecture is the same as v3 — Effects (Command pattern),
+Controllers (Strategy), Engines (per-mode State pattern), inheritance
+between Character and NPC, Features as polymorphic interactables.
+Re-read v3's comments first if any of those names look unfamiliar.
+
+What v4 adds on top of v3:
+- More Effect kinds: bounty, gold, healing, damage, item-removal,
+  block/unblock paths, ChanceEffect (probability), ConditionalEffect
+  (gated by flags/items).
+- New data models: TradeOffer, Riddle, EncounterRule.
+- More NPC subclasses: Merchant, Bandit, Guardian, Elder, Guard.
+- New engines: TradeEngine, RiddleEngine.
+- A larger concrete world (search for `class StarCrystalWorld` /
+  the world-building methods to see the actual story content).
+
+If you are reading this top-to-bottom for the first time, jump to the
+"Engines" section first — those are the per-mode loops that drive the
+game. Everything above them is data + helpers the engines use.
 """
 
 from collections import Counter
 from dataclasses import dataclass, field
 import random
 import time
+# `Callable` is a type hint for "anything you can call like a function" —
+# used here for the function-shaped parameters EncounterRule accepts.
 from typing import Callable
 
 
@@ -70,6 +93,12 @@ def prompt_continue(prompt: str = "Press Enter to continue...") -> None:
 # ============================================================
 # Core data models
 # ============================================================
+# Pure data records. Same idea as v3, but with two new ones added:
+#   - TradeOffer: a "give X items + Y gold, get Z items" trade rule
+#     used by merchants and the bounty/jail systems.
+#   - Riddle: a question/answer challenge a Guardian-style NPC can pose.
+# Exit gains more conditional fields (gold cost, etc.) so the world
+# graph itself can encode richer gating than v3's "requires_item / flag".
 
 
 @dataclass
@@ -156,8 +185,19 @@ class Location:
 
 
 # ============================================================
-# Effects
+# Effects  (Command pattern — see v3 for the core idea)
 # ============================================================
+# v4 adds many more concrete Effect subclasses so the world data can
+# express richer outcomes without writing new Python every time. New
+# additions vs v3:
+#   - ClearFlagEffect / SetBountyEffect / ChangeBountyEffect
+#   - HealPlayerEffect / ChangeGoldEffect / DamageCharacterEffect
+#   - RemoveItemEffect / RemoveRandomItemEffect
+#   - BlockPathEffect / UnblockPathEffect (mutate the world graph)
+#   - ChanceEffect (run an inner effect with probability p — randomness
+#     becomes data, not control flow)
+# Each of these still answers the same question: "given a Game, do
+# something to it." That uniformity is what makes them composable.
 
 
 class Effect:
@@ -403,8 +443,13 @@ class CompositeEffect(Effect):
 
 
 # ============================================================
-# Controllers and characters
+# Controllers and characters  (Strategy pattern — see v3)
 # ============================================================
+# Same Controller/Character split as v3. Character grows substantially
+# in v4: it tracks gold, equipment slots that can affect attack/defense,
+# consumable usage, and a "bounty" stat that the guard system reacts to.
+# Read this section once and refer back; the methods are mostly
+# self-contained "manage one piece of state" helpers.
 
 
 class Controller:
@@ -649,6 +694,13 @@ class Character:
 # ============================================================
 # Shared NPC model
 # ============================================================
+# NPC inherits from Character (see v3 comments). v4 grows the NPC class
+# with: trade offers, riddles, surrender/bounty/jail behavior, and
+# "personality" knobs (aggression, courage, willingness_to_trade) that
+# the AIController reads when picking a combat move. The five concrete
+# subclasses below (Merchant, Bandit, Guardian, Elder, Guard) are mostly
+# convenience constructors — they preset NPC fields for common roles
+# instead of forcing every world definition to repeat the same kwargs.
 
 
 class NPC(Character):
@@ -936,6 +988,10 @@ class GuardNPC(NPC):
 # ============================================================
 # Features / world objects
 # ============================================================
+# Same Feature/TextFeature/ScriptedFeature split as v3. ScriptedFeature
+# stays the workhorse: pluggable Effects + flag/item gates let you
+# describe a locked door, a healing fountain, or a one-shot trap entirely
+# in data.
 
 
 class Feature:
@@ -999,6 +1055,11 @@ class ScriptedFeature(Feature):
 # ============================================================
 # Encounters
 # ============================================================
+# An EncounterRule fires randomly when the player enters certain rooms.
+# It bundles: which rooms it can fire in, how likely it is, what flags
+# gate it, and a handler function that decides what happens (returns
+# True if the encounter "consumed" the turn). This is how v4 supports
+# random events on top of the otherwise deterministic world graph.
 
 
 class EncounterRule:
@@ -1046,6 +1107,9 @@ class EncounterRule:
 # ============================================================
 # World base class
 # ============================================================
+# Holds the world graph (locations + exits), the item database, and the
+# list of encounter rules. Same role as v3's World, just bigger.
+# Subclass this to define a specific story (see "Concrete world" below).
 
 
 class World:
@@ -1152,6 +1216,16 @@ class World:
 # ============================================================
 # Concrete world
 # ============================================================
+# Below is the *content* of this game. The build_* methods set up items,
+# rooms, paths, features, and NPCs entirely as data + Effects — no new
+# engine code. This is where students who want to add new content
+# spend most of their time. The patterns to copy:
+#   - define_item(...) for new items
+#   - add_location(...) + connect(...) / connect_two_way(...) for the map
+#   - place_feature / place_npc / place_item to populate rooms
+#   - build dialogue topics and trade offers as data structures
+# If a quest needs an outcome the existing Effect kinds can't express,
+# add a new Effect subclass up in the Effects section.
 
 
 class StarCrystalWorld(World):
@@ -1915,8 +1989,14 @@ class StarCrystalWorld(World):
 
 
 # ============================================================
-# Engines
+# Engines  (per-mode loops — see v3 for the State pattern)
 # ============================================================
+# v4 adds two new engine modes:
+#   - TradeEngine: shop/barter UI when interacting with merchants.
+#   - RiddleEngine: ask a riddle and check the player's answer.
+# The other engines (Exploration, NPC, Dialogue, Combat, Menu, Loadout)
+# are evolved versions of v3's. ExplorationEngine now also rolls for
+# random encounters (see EncounterRule above) at the start of each turn.
 
 
 class Engine:
@@ -2374,6 +2454,10 @@ class LoadoutEngine(Engine):
 # ============================================================
 # Game director / router
 # ============================================================
+# Same conductor pattern as v3: owns player + world + flags, dispatches
+# to the active Engine each turn. v4 also tracks `bounty` (an integer
+# crime score the guard system reads) and seeds the engines dict with
+# the two new modes (trade, riddle).
 
 
 class Game:
