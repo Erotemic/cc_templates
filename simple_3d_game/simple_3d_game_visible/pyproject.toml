@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shadow-coin-hunt"
+version = "0.4.0"
+description = "A small high-contrast first-person Ursina game packaged for learning."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "ursina>=8.0.0",
+]
+
+[project.scripts]
+shadow-coin-hunt = "shadow_coin_hunt.game:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
