@@ -39,9 +39,6 @@ Other folders
 -------------
 
 * ``teaching``: instructor materials, handouts, and exercises.
-* ``science_study``: small science-themed Python explorations.
-* ``quantum_sandbox``: experiments with quantum computing concepts.
-* ``tpl``: third-party tools used by some templates.
 
 Further Reading and Interesting Tutorials
 -----------------------------------------
