@@ -1,4 +1,4 @@
-# Crystal Cavern Dash
+# First Person 3D Game
 
 A bright first-person 3D Python game built directly with Panda3D, a real Python
 game engine.
@@ -21,7 +21,7 @@ crystal-cavern-dash
 or:
 
 ```bash
-python -m crystal_cavern_dash
+python -m fpx3d
 ```
 
 ## Controls
@@ -35,7 +35,7 @@ python -m crystal_cavern_dash
 
 ## One-Hour Student Mods
 
-Open `src/crystal_cavern_dash/game.py` and try one of these:
+Open `src/fpx3d/game.py` and try one of these:
 
 - Add another crystal to `CRYSTAL_SPOTS`.
 - Move a hazard in `HAZARD_PADS`.
@@ -59,4 +59,4 @@ so the first edits can be simple level and rule changes.
 
 The game generates its own background music and sound effects from Python code,
 similar to the RPG template in this repository. The first run writes WAV files to
-`~/.cache/crystal_cavern_dash/audio/`, then Panda3D plays them from there.
+`~/.cache/fpx3d/audio/`, then Panda3D plays them from there.
