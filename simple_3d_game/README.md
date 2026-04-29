@@ -1,33 +1,62 @@
-# Simple 3D Game Templates
+# Crystal Cavern Dash
 
-This folder is for small Python 3D games that are meant to be changed by students.
+A bright first-person 3D Python game built directly with Panda3D, a real Python
+game engine.
 
-## Start Here
+Run through the cavern, collect every crystal, avoid the red hazard pads, and
+jump through the portal before time runs out.
 
-Use `crystal_cavern_dash` first. It is the cleanest current template:
-
-- built directly with Panda3D
-- colorful first-person 3D world
-- generated music and sound effects
-- collect crystals to unlock a portal
-- hazards, jump pads, landmarks, timer, and score
-- obvious places in the code to add a new level object or change the rules
+## Install
 
 ```bash
-cd crystal_cavern_dash
 pip install -e .
+```
+
+## Run
+
+```bash
 crystal-cavern-dash
 ```
 
-You can also run it as a module:
+or:
 
 ```bash
 python -m crystal_cavern_dash
 ```
 
-## Older Attempts
+## Controls
 
-The `simple_3d_game_clear`, `simple_3d_game_legible`, and
-`simple_3d_game_visible` folders are earlier experiments around the same idea.
-They are useful for comparison, but `crystal_cavern_dash` is the version to show
-students first.
+- `WASD`: move
+- `Mouse`: look around
+- `Space`: jump
+- `Left Shift`: sprint
+- `R`: restart
+- `Q` or `Esc`: quit
+
+## One-Hour Student Mods
+
+Open `src/crystal_cavern_dash/game.py` and try one of these:
+
+- Add another crystal to `CRYSTAL_SPOTS`.
+- Move a hazard in `HAZARD_PADS`.
+- Make the timer longer or shorter with `ROUND_TIME_SECONDS`.
+- Change the arena colors in `THEME`.
+- Turn music on or off with `AUDIO_ENABLED`.
+- Change `MUSIC_VOLUME` or `SFX_VOLUME`.
+- Add a new jump pad to `JUMP_PADS`.
+- Make crystals worth more points in `collect_crystal`.
+- Add another landmark tower in `LANDMARKS`.
+
+The best first mod is adding one crystal, then moving the portal farther away.
+
+## Why Panda3D?
+
+Panda3D is more professional than a beginner wrapper, but it still lets students
+write normal Python. This template keeps the engine details in helper functions
+so the first edits can be simple level and rule changes.
+
+## Music and Sound
+
+The game generates its own background music and sound effects from Python code,
+similar to the RPG template in this repository. The first run writes WAV files to
+`~/.cache/crystal_cavern_dash/audio/`, then Panda3D plays them from there.
