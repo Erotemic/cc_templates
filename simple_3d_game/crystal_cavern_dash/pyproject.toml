@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crystal-cavern-dash"
+version = "0.1.0"
+description = "A bright first-person 3D Python game template for students."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "panda3d>=1.10.15",
+]
+
+[project.scripts]
+crystal-cavern-dash = "crystal_cavern_dash.game:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
