@@ -22,6 +22,7 @@ from rpg_battle.catalog import (
 )
 from rpg_battle.core.models import CharacterSpec, EncounterSpec, MoveEffect, MoveKind, MoveSpec, TeamSpec, TargetMode
 from rpg_battle.core.scripting import (
+    AIStrategy,
     AddStatus,
     ChangeStat,
     CommandTarget,
@@ -552,6 +553,7 @@ class Team:
     members: Sequence[Character]
     controller: str = "human"
     active: Sequence[Character] | None = None
+    strategy: AIStrategy | None = None
     id: str | None = None
 
     @property
@@ -559,13 +561,16 @@ class Team:
         return _id(self.id, self.name)
 
     def compile(self) -> TeamSpec:
-        controller_type = "ai" if self.controller in {"ai", "computer"} else "human"
+        controller_type = (
+            "ai" if self.strategy is not None or self.controller in {"ai", "computer"} else "human"
+        )
         active = None if self.active is None else tuple(character.character_id for character in self.active)
         return TeamSpec(
             name=self.name,
             members=tuple(character.character_id for character in self.members),
             controller_type=controller_type,
             starting_active=active,
+            strategy=self.strategy,
         )
 
 

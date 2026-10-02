@@ -3,6 +3,7 @@ from __future__ import annotations
 """Battle-state construction and helper functions."""
 
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
@@ -16,6 +17,9 @@ from rpg_battle.core.models import (
     TeamSpec,
     InventoryEntry,
 )
+
+if TYPE_CHECKING:
+    from rpg_battle.teaching.trace import TeachingTrace
 
 
 def _build_team_state(
@@ -46,6 +50,7 @@ def _build_team_state(
             InventoryEntry(item_id=entry.item_id, quantity=entry.quantity)
             for entry in team_spec.inventory
         ],
+        strategy=team_spec.strategy,
     )
     combatants: dict[str, CombatantState] = {}
 
@@ -79,6 +84,7 @@ def new_battle(
     encounter: EncounterSpec | None = None,
     *,
     content: GameContent | None = None,
+    teaching_trace: "TeachingTrace | None" = None,
 ) -> BattleState:
     """Build a fresh battle state from an encounter and explicit content bundle."""
     content = content or get_default_content()
@@ -99,7 +105,12 @@ def new_battle(
         )
         teams.append(team_state)
         combatants.update(team_combatants)
-    state = BattleState(teams=teams, combatants=combatants, content=content)
+    state = BattleState(
+        teams=teams,
+        combatants=combatants,
+        content=content,
+        teaching_trace=teaching_trace,
+    )
     logger.info(
         "New battle ready: teams={} combatants={}",
         [team.name for team in teams],

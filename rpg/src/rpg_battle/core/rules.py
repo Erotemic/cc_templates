@@ -23,12 +23,15 @@ from rpg_battle.core.transforms import get_transform_spec, is_transform_status, 
 from rpg_battle.core.targeting import get_valid_target_groups
 from rpg_battle.core.scripting import (
     AddStatus,
+    BattlerView,
     ChangeStat,
     Damage,
     Heal,
     build_move_context,
+    command_target_id,
     normalize_commands,
 )
+from rpg_battle.teaching.trace import emit_trace
 
 ACTION_PRIORITY = {"switch": 2, "defend": 1, "attack": 0, "skill": 0}
 
@@ -313,12 +316,18 @@ def _process_defend(actor: CombatantState, events: list[dict]) -> None:
 
 
 def _command_target_ids(
-    command_target: str,
+    command_target: str | BattlerView,
     actor_id: str,
     target_ids: tuple[str, ...],
 ) -> tuple[str, ...]:
     if command_target == "user":
         return (actor_id,)
+    specific_id = command_target_id(command_target)
+    if specific_id is not None:
+        allowed = {actor_id, *target_ids}
+        if specific_id not in allowed:
+            raise ValueError("a scripted move targeted a battler outside its move context")
+        return (specific_id,)
     return target_ids
 
 
@@ -333,7 +342,21 @@ def _process_script_commands(
     if move.script is None:
         return
     context = build_move_context(state, actor.combatant_id, target_ids)
-    commands = normalize_commands(move.script(context))
+    script_name = getattr(move.script, "__name__", "custom move function")
+    emit_trace(state, f"calling {script_name} for {move.name}")
+    emit_trace(
+        state,
+        f"user {context.user.name}: hp={context.user.hp}/{context.user.max_hp} "
+        f"hp_ratio={context.user.hp_ratio:.2f}; round={context.round_number}",
+    )
+    if context.targets:
+        target_summary = ", ".join(
+            f"{target.name} hp={target.hp}/{target.max_hp}" for target in context.targets
+        )
+        emit_trace(state, f"targets: {target_summary}")
+    result = move.script(context)
+    commands = normalize_commands(result)
+    emit_trace(state, f"returned {commands!r}")
     for command in commands:
         command_target = getattr(command, "target", "targets")
         command_targets = _command_target_ids(
@@ -436,6 +459,10 @@ def _process_move(
     move_id = action.move_id or state.content.presentation.basic_attack_move_id
     move = state.content.moves[move_id]
     target_ids = tuple(action.target_ids) or _default_target_ids(state, actor.combatant_id, move_id)
+    emit_trace(
+        state,
+        f"{actor.spec.name} chose {move.name}; target ids={list(target_ids)}",
+    )
     logger.info(
         "Processing move: actor={} move={} targets={}",
         actor.spec.name,

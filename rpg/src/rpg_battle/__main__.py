@@ -55,6 +55,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Override the enemy active-frontline limit",
     )
     parser.add_argument(
+        "--teach",
+        action="store_true",
+        help="Print a readable trace when custom move/AI functions execute",
+    )
+    parser.add_argument(
         "--check",
         action="store_true",
         help="Validate game content and exit without opening pygame",
@@ -113,7 +118,7 @@ def main() -> None:
     encounter = build_encounter_from_args(args)
     from rpg_battle.game import run_game
 
-    run_game(encounter=encounter, content=CONTENT)
+    run_game(encounter=encounter, content=CONTENT, teach=args.teach)
 
 
 if __name__ == "__main__":

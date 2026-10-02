@@ -13,6 +13,7 @@ The controller serializes the battle into clear presentation steps:
 """
 
 import random
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
@@ -32,6 +33,9 @@ from rpg_battle.core.rules import (
     resolve_replacement,
 )
 
+if TYPE_CHECKING:
+    from rpg_battle.teaching.trace import TeachingTrace
+
 
 class BattleController:
     """Coordinate battle-state progression and controller decisions."""
@@ -42,11 +46,15 @@ class BattleController:
         seed: int = 0,
         *,
         content: GameContent | None = None,
+        teaching_trace: "TeachingTrace | None" = None,
     ) -> None:
         self.content = content or get_default_content()
         self.encounter = encounter or self.content.default_encounter
         self.rng = random.Random(seed)
-        self.state: BattleState = new_battle(self.encounter, content=self.content)
+        self.teaching_trace = teaching_trace
+        self.state: BattleState = new_battle(
+            self.encounter, content=self.content, teaching_trace=self.teaching_trace
+        )
         self.pending_turn_order: list[str] = []
         self.current_actor_id: str | None = None
         self.round_announced = False
@@ -58,7 +66,9 @@ class BattleController:
 
     def restart(self) -> None:
         logger.info("Restarting battle controller")
-        self.state = new_battle(self.encounter, content=self.content)
+        self.state = new_battle(
+            self.encounter, content=self.content, teaching_trace=self.teaching_trace
+        )
         self.pending_turn_order = []
         self.current_actor_id = None
         self.round_announced = False

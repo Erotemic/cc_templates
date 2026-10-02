@@ -19,6 +19,7 @@ def run_game(
     encounter: EncounterSpec | None = None,
     title: str = TITLE,
     content: GameContent | None = None,
+    teach: bool = False,
 ) -> None:
     """Run the main pygame loop for the battle scene.
 
@@ -38,8 +39,17 @@ def run_game(
     pygame.display.set_caption(title)
     screen = pygame.display.set_mode(DEFAULT_WINDOW_SIZE)
     clock = pygame.time.Clock()
+    teaching_trace = None
+    if teach:
+        from rpg_battle.teaching.trace import TeachingTrace
+
+        teaching_trace = TeachingTrace(echo=True)
     scene = BattleScene(
-        screen.get_rect(), audio=audio, encounter=encounter, content=content
+        screen.get_rect(),
+        audio=audio,
+        encounter=encounter,
+        content=content,
+        teaching_trace=teaching_trace,
     )
 
     running = True

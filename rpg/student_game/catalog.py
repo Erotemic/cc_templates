@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rpg_battle.api import Game, GamePresentation
 
-from student_game import art, audio, battles, characters, effects, moves
+from student_game import art, audio, battles, characters, effects, moves, workshop
 
 GAME = Game(
     title="RPG Battle Classroom Project",
@@ -13,10 +13,10 @@ GAME = Game(
     effects=effects.EFFECTS,
     sounds=audio.SOUNDS,
     music=audio.MUSIC,
-    moves=moves.MOVES,
-    characters=characters.CHARACTERS,
-    teams=battles.TEAMS,
-    battles=battles.BATTLES,
+    moves=[*moves.MOVES, *workshop.MOVES],
+    characters=[*characters.CHARACTERS, *workshop.CHARACTERS],
+    teams=[*battles.TEAMS, *workshop.TEAMS],
+    battles=[*battles.BATTLES, *workshop.BATTLES],
     presentation=GamePresentation(
         basic_attack=moves.strike,
         menu_move_sound=audio.menu_move,

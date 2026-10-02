@@ -2,6 +2,8 @@ from __future__ import annotations
 
 """Battle scene for the general active-frontline plus reserve battle system."""
 
+from typing import TYPE_CHECKING
+
 import pygame
 from loguru import logger
 
@@ -40,6 +42,10 @@ from rpg_battle.settings import (
     TEXT_COLOR,
 )
 
+if TYPE_CHECKING:
+    from rpg_battle.teaching.trace import TeachingTrace
+
+
 PLAYER_EVENT_COLOR = (130, 205, 255)
 ENEMY_EVENT_COLOR = (255, 170, 170)
 NEUTRAL_EVENT_COLOR = TEXT_COLOR
@@ -64,12 +70,16 @@ class BattleScene:
         audio: AudioEngine | None = None,
         encounter: EncounterSpec | None = None,
         content: GameContent | None = None,
+        teaching_trace: "TeachingTrace | None" = None,
     ) -> None:
         self.rect = rect
         self.content = content or get_default_content()
         self.audio = audio or AudioEngine(self.content)
         self.controller = BattleController(
-            encounter=encounter, seed=5, content=self.content
+            encounter=encounter,
+            seed=5,
+            content=self.content,
+            teaching_trace=teaching_trace,
         )
         track_id = self.controller.encounter.music_track_id or self.content.default_battle_track
         if track_id:

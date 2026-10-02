@@ -12,6 +12,11 @@ from typing import Mapping
 
 from rpg_battle.audio.library import FileTrackSpec, GeneratedTrackSpec, SynthSoundSpec
 from rpg_battle.core.models import CharacterSpec, EncounterSpec, MoveSpec, TeamSpec
+from rpg_battle.core.scripting import (
+    script_source_label,
+    smoke_test_ai_strategy,
+    smoke_test_move_script,
+)
 from rpg_battle.render.effect_builder import EffectSpec
 
 Color = tuple[int, int, int]
@@ -118,6 +123,15 @@ class GameContent:
                 issues.append(
                     ContentIssue(where, f'sound "{move.sound_id}" is not defined in student_game/audio.py')
                 )
+            if move.script is not None:
+                location = script_source_label(move.script)
+                for problem in smoke_test_move_script(move.script):
+                    issues.append(
+                        ContentIssue(
+                            f'{where} custom function at {location}',
+                            problem,
+                        )
+                    )
 
         for effect_id, effect in self.effects.items():
             where = f'effect "{effect_id}"'
@@ -162,6 +176,23 @@ class GameContent:
                     if char_id not in team.members:
                         issues.append(
                             ContentIssue(where, f'starting character "{char_id}" is not on the team')
+                        )
+            if team.strategy is not None:
+                location = script_source_label(team.strategy)
+                for char_id in team.members:
+                    character = self.characters.get(char_id)
+                    if character is None:
+                        continue
+                    for problem in smoke_test_ai_strategy(
+                        team.strategy,
+                        user_name=character.name,
+                        available_move_ids=frozenset(character.move_ids),
+                    ):
+                        issues.append(
+                            ContentIssue(
+                                f'{where} strategy at {location}',
+                                f'for {character.name}: {problem}',
+                            )
                         )
 
         for encounter_id, encounter in self.encounters.items():

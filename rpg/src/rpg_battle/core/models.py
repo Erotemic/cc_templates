@@ -13,7 +13,8 @@ from typing import Callable, Literal, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from rpg_battle.catalog import GameContent
-    from rpg_battle.core.scripting import MoveContext, MoveScriptResult
+    from rpg_battle.core.scripting import AIStrategy, MoveContext, MoveScriptResult
+    from rpg_battle.teaching.trace import TeachingTrace
 
 MoveKind = Literal["physical", "magical", "heal", "buff", "debuff", "status"]
 TargetMode = Literal[
@@ -107,6 +108,7 @@ class TeamSpec:
     controller_type: ControllerType = "human"
     starting_active: tuple[str, ...] | None = None
     inventory: tuple[InventoryEntry, ...] = ()
+    strategy: "AIStrategy | None" = None
 
 
 @dataclass(frozen=True)
@@ -175,6 +177,7 @@ class TeamBattleState:
     active_ids: list[str] = field(default_factory=list)
     reserve_ids: list[str] = field(default_factory=list)
     inventory: list[InventoryEntry] = field(default_factory=list)
+    strategy: "AIStrategy | None" = None
 
     def defeated(self) -> bool:
         return not self.active_ids and not self.reserve_ids
@@ -198,6 +201,7 @@ class BattleState:
     round_number: int = 1
     winner: int | None = None
     pending_replacements: list[ReplacementRequest] = field(default_factory=list)
+    teaching_trace: "TeachingTrace | None" = None
 
 
 @dataclass(frozen=True)
