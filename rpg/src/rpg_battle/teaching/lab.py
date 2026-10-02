@@ -1,45 +1,58 @@
 from __future__ import annotations
 
-"""Deterministic command-line laboratory for inspecting one move."""
+"""Deterministic command-line laboratory for explaining real RPG execution."""
 
 import argparse
+from dataclasses import dataclass
 import inspect
 import random
+from typing import Mapping
 
 from loguru import logger
-from dataclasses import dataclass
 
 from rpg_battle.catalog import ContentValidationError, GameContent
 from rpg_battle.core.actions import skill_action
+from rpg_battle.core.ai import choose_ai_action
 from rpg_battle.core.battle_state import new_battle
 from rpg_battle.core.models import EncounterSpec, StatusState, TeamSpec
 from rpg_battle.core.rules import resolve_action
-from rpg_battle.core.targeting import get_valid_target_groups
-from rpg_battle.teaching.trace import TeachingTrace
+from rpg_battle.teaching.scenarios import TeachingScenario
+from rpg_battle.teaching.trace import TeachingTrace, TraceRecord
 
 
 @dataclass(frozen=True)
 class MoveLabResult:
-    """Useful structured facts from one deterministic move experiment."""
+    """Structured facts from one deterministic move experiment."""
 
     seed: int
+    actor_name: str
     actor_before: int
     actor_after: int
+    actor_max_hp: int
+    actor_attack: int
+    actor_base_attack: int
+    actor_magic: int
+    actor_base_magic: int
     target_names: dict[str, str]
+    target_statuses: dict[str, tuple[str, ...]]
     targets_before: dict[str, int]
     targets_after: dict[str, int]
     events: list[dict]
     trace_lines: list[str]
+    trace_records: list[TraceRecord]
 
 
-def _default_targets(content: GameContent, move_id: str) -> list[str]:
+def _default_targets(content: GameContent, move_id: str, user_char_id: str) -> list[str]:
     move = content.moves[move_id]
-    preferred = [char_id for char_id in ("spirit", "guardian") if char_id in content.characters]
+    preferred = [
+        char_id
+        for char_id in ("spirit", "guardian", "ranger", "druid")
+        if char_id in content.characters and char_id != user_char_id
+    ]
     if not preferred:
-        preferred = [char_id for char_id in content.characters if char_id != "workshop_hero"]
-    if move.target_mode in {"all_enemies", "all_allies"}:
-        return preferred[:2] or list(content.characters)[:2]
-    return preferred[:1] or list(content.characters)[:1]
+        preferred = [char_id for char_id in content.characters if char_id != user_char_id]
+    count = 2 if move.target_mode in {"all_enemies", "all_allies"} else 1
+    return preferred[:count]
 
 
 def _apply_status_specs(state, target_ids: list[str], specs: list[str]) -> None:
@@ -67,6 +80,104 @@ def _apply_status_specs(state, target_ids: list[str], specs: list[str]) -> None:
             state.combatants[target_id].statuses[status_name] = StatusState(status_name, 3)
 
 
+def _combatant_id_for_char(state, team_index: int, char_id: str) -> str:
+    for combatant_id in state.teams[team_index].active_ids:
+        if state.combatants[combatant_id].spec.char_id == char_id:
+            return combatant_id
+    raise ValueError(f"character {char_id!r} is not active in the move lab")
+
+
+def _build_move_lab_state(
+    content: GameContent,
+    move_id: str,
+    user_char_id: str,
+    target_char_ids: list[str],
+    trace: TeachingTrace,
+):
+    move = content.moves[move_id]
+    if len(set(target_char_ids)) != len(target_char_ids):
+        raise ValueError("repeat targets are not supported in the move lab")
+    if user_char_id in target_char_ids and move.target_mode != "self":
+        raise ValueError("choose a different target character from the move user")
+
+    dummy_id = next(
+        (char_id for char_id in content.characters if char_id not in {user_char_id, *target_char_ids}),
+        user_char_id,
+    )
+
+    if move.target_mode in {"single_ally", "all_allies"}:
+        player_members = (user_char_id, *target_char_ids)
+        player = TeamSpec(
+            name="Move Lab Allies",
+            members=player_members,
+            starting_active=player_members,
+        )
+        enemy = TeamSpec(
+            name="Move Lab Dummy",
+            members=(dummy_id,),
+            controller_type="ai",
+            starting_active=(dummy_id,),
+        )
+        encounter = EncounterSpec(
+            encounter_id="move_lab",
+            title="Move Lab",
+            player_team=player,
+            enemy_team=enemy,
+            active_limits=(len(player_members), 1),
+            music_track_id=None,
+        )
+        state = new_battle(encounter, content=content, teaching_trace=trace)
+        actor_id = _combatant_id_for_char(state, 0, user_char_id)
+        requested_target_ids = [
+            _combatant_id_for_char(state, 0, char_id) for char_id in target_char_ids
+        ]
+    else:
+        player = TeamSpec(
+            name="Move Lab User",
+            members=(user_char_id,),
+            starting_active=(user_char_id,),
+        )
+        enemy_members = tuple(target_char_ids) or (dummy_id,)
+        enemy = TeamSpec(
+            name="Move Lab Targets",
+            members=enemy_members,
+            controller_type="ai",
+            starting_active=enemy_members,
+        )
+        encounter = EncounterSpec(
+            encounter_id="move_lab",
+            title="Move Lab",
+            player_team=player,
+            enemy_team=enemy,
+            active_limits=(1, len(enemy_members)),
+            music_track_id=None,
+        )
+        state = new_battle(encounter, content=content, teaching_trace=trace)
+        actor_id = state.teams[0].active_ids[0]
+        requested_target_ids = [
+            _combatant_id_for_char(state, 1, char_id) for char_id in target_char_ids
+        ]
+
+    if move.target_mode == "self":
+        selected_targets = (actor_id,)
+    elif move.target_mode == "none":
+        selected_targets = ()
+    elif move.target_mode == "all_allies":
+        selected_targets = tuple(state.teams[0].active_ids)
+    elif move.target_mode == "all_enemies":
+        selected_targets = tuple(requested_target_ids)
+    elif move.target_mode in {"single_ally", "single_enemy"}:
+        if len(requested_target_ids) != 1:
+            raise ValueError(
+                f"{move.name} requires exactly one target; received {len(requested_target_ids)}"
+            )
+        selected_targets = (requested_target_ids[0],)
+    else:
+        selected_targets = tuple(requested_target_ids)
+
+    return state, actor_id, requested_target_ids, selected_targets
+
+
 def run_move_lab(
     content: GameContent,
     move_id: str,
@@ -89,44 +200,38 @@ def run_move_lab(
     if unknown_targets:
         raise KeyError(f"unknown target character(s): {', '.join(unknown_targets)}")
 
-    move = content.moves[move_id]
-    player = TeamSpec(
-        name="Move Lab User",
-        members=(user_char_id,),
-        starting_active=(user_char_id,),
-    )
-    enemy = TeamSpec(
-        name="Move Lab Targets",
-        members=tuple(target_char_ids),
-        controller_type="ai",
-        starting_active=tuple(target_char_ids),
-    )
-    encounter = EncounterSpec(
-        encounter_id="move_lab",
-        title="Move Lab",
-        player_team=player,
-        enemy_team=enemy,
-        active_limits=(1, len(target_char_ids)),
-        music_track_id=None,
-    )
     trace = TeachingTrace(echo=False)
-    state = new_battle(encounter, content=content, teaching_trace=trace)
+    state, actor_id, requested_target_ids, selected_targets = _build_move_lab_state(
+        content,
+        move_id,
+        user_char_id,
+        target_char_ids,
+        trace,
+    )
     state.round_number = round_number
-    actor_id = state.teams[0].active_ids[0]
-    target_ids = list(state.teams[1].active_ids)
     actor = state.combatants[actor_id]
     if user_hp is not None:
-        actor.current_hp = max(0, min(user_hp, actor.spec.max_hp))
+        actor.current_hp = max(1, min(user_hp, actor.spec.max_hp))
     if target_hp is not None:
-        for target_id in target_ids:
+        for target_id in requested_target_ids:
             target = state.combatants[target_id]
-            target.current_hp = max(0, min(target_hp, target.spec.max_hp))
-    _apply_status_specs(state, target_ids, target_statuses or [])
+            target.current_hp = max(1, min(target_hp, target.spec.max_hp))
+    _apply_status_specs(state, requested_target_ids, target_statuses or [])
 
-    groups = get_valid_target_groups(state, actor_id, move.target_mode)
-    selected_targets = tuple(groups[0]) if groups else ()
+    from rpg_battle.core.effects import effective_stat
+
     actor_before = actor.current_hp
-    targets_before = {target_id: state.combatants[target_id].current_hp for target_id in target_ids}
+    actor_input_attack = effective_stat(actor, "attack")
+    actor_input_magic = effective_stat(actor, "magic")
+    actor_input_base_attack = actor.spec.attack
+    actor_input_base_magic = actor.spec.magic
+    targets_before = {
+        target_id: state.combatants[target_id].current_hp for target_id in requested_target_ids
+    }
+    target_status_snapshot = {
+        target_id: tuple(sorted(state.combatants[target_id].statuses))
+        for target_id in requested_target_ids
+    }
     events = resolve_action(
         state,
         skill_action(actor_id, move_id, target_ids=selected_targets),
@@ -134,15 +239,25 @@ def run_move_lab(
     )
     return MoveLabResult(
         seed=seed,
+        actor_name=actor.spec.name,
         actor_before=actor_before,
         actor_after=actor.current_hp,
-        target_names={target_id: state.combatants[target_id].spec.name for target_id in target_ids},
+        actor_max_hp=actor.spec.max_hp,
+        actor_attack=actor_input_attack,
+        actor_base_attack=actor_input_base_attack,
+        actor_magic=actor_input_magic,
+        actor_base_magic=actor_input_base_magic,
+        target_names={
+            target_id: state.combatants[target_id].spec.name for target_id in requested_target_ids
+        },
+        target_statuses=target_status_snapshot,
         targets_before=targets_before,
         targets_after={
-            target_id: state.combatants[target_id].current_hp for target_id in target_ids
+            target_id: state.combatants[target_id].current_hp for target_id in requested_target_ids
         },
         events=events,
         trace_lines=list(trace.lines),
+        trace_records=list(trace.records),
     )
 
 
@@ -159,35 +274,156 @@ def _print_script(move) -> None:
         print(f"    {line}")
 
 
+def _records(result: MoveLabResult, kind: str) -> list[TraceRecord]:
+    return [record for record in result.trace_records if record.kind == kind]
+
+
 def _print_result(content: GameContent, move_id: str, result: MoveLabResult) -> None:
     move = content.moves[move_id]
     print(f"\n{move.name} experiment")
     print("=" * (len(move.name) + 11))
     print(f"seed: {result.seed}")
-    print(f"user HP: {result.actor_before} -> {result.actor_after}")
+
+    print("\n1. Input")
+    ratio = result.actor_before / result.actor_max_hp
+    print(
+        f"   {result.actor_name}: HP {result.actor_before}/{result.actor_max_hp} "
+        f"-> ratio {ratio:.3f}"
+    )
+    print(
+        f"   effective attack={result.actor_attack} (base {result.actor_base_attack}); "
+        f"effective magic={result.actor_magic} (base {result.actor_base_magic})"
+    )
+    for target_id, before in result.targets_before.items():
+        statuses = result.target_statuses[target_id]
+        status_text = ", ".join(statuses) if statuses else "none"
+        print(
+            f"   target {result.target_names[target_id]}: HP {before}; statuses: {status_text}"
+        )
+
+    observations = _records(result, "observation")
+    if observations:
+        print("\n2. Values/conditions observed by the function")
+        for record in observations:
+            print(f"   {record.data['label']} -> {record.data['value']}")
+
+    returns = _records(result, "script_return")
+    normalized = _records(result, "normalized_commands")
+    if returns:
+        print("\n3. Function return")
+        print(f"   original return value: {returns[-1].data['result']}")
+        if normalized:
+            print("   commands the engine will execute:")
+            for command in normalized[-1].data["commands"]:
+                print(f"     - {command}")
+
+    calculations = [
+        record
+        for record in result.trace_records
+        if record.kind in {"damage_calculation", "heal_calculation"}
+    ]
+    if calculations:
+        print("\n4. Engine calculation (recorded by the real rules engine)")
+        for record in calculations:
+            data = record.data
+            if record.kind == "damage_calculation":
+                print(f"   target: {data['target_name']}")
+                print(
+                    "     base = power "
+                    f"{data['power']} + {data['attack_stat_name']} {data['attack_stat']} * 1.4 "
+                    f"- defense {data['defense_stat']} * 0.8 = {data['base']:.2f}"
+                )
+                print(
+                    f"     variance = {data['variance']:.3f}; "
+                    f"guard multiplier = {data['guard_multiplier']:.1f}; "
+                    f"damage = {data['damage']}"
+                )
+            else:
+                print(
+                    f"   {data['target_name']}: power {data['power']} + "
+                    f"effective magic {data['magic']} -> requested {data['requested']}; "
+                    f"restored {data['amount']}"
+                )
+
+    commands = _records(result, "script_command")
+    if len(commands) > 1:
+        print("\n   Loop/command trace")
+        for record in commands:
+            data = record.data
+            names = [
+                result.target_names.get(target_id, result.actor_name)
+                for target_id in data["target_ids"]
+            ]
+            print(
+                f"     command {data['command_index']}: {data['command_type']} "
+                f"-> {', '.join(names) or 'no target'}"
+            )
+
+    print("\n5. Result")
+    print(f"   user HP: {result.actor_before} -> {result.actor_after}")
     for target_id, before in result.targets_before.items():
         target_name = result.target_names[target_id]
-        print(f"target {target_name} HP: {before} -> {result.targets_after[target_id]}")
-
-    if result.trace_lines:
-        print("\nExecution trace:")
-        for line in result.trace_lines:
-            print(f"  {line}")
+        print(f"   {target_name} HP: {before} -> {result.targets_after[target_id]}")
 
     interesting = [
         event
         for event in result.events
         if event.get("type") in {"move", "damage", "heal", "status", "stat", "miss", "ko"}
     ]
-    print("\nEngine events:")
-    for event in interesting:
-        text = event.get("text") or repr(event)
-        print(f"  [{event.get('type')}] {text}")
+    if interesting:
+        print("\n   Battle events")
+        for event in interesting:
+            text = event.get("text") or repr(event)
+            print(f"     [{event.get('type')}] {text}")
 
 
-def build_parser(content: GameContent) -> argparse.ArgumentParser:
+def run_strategy_scenario(
+    content: GameContent,
+    scenario: TeachingScenario,
+) -> None:
+    encounter = content.encounters[scenario.encounter_id]
+    trace = TeachingTrace(echo=False)
+    state = new_battle(encounter, content=content, teaching_trace=trace)
+    scenario.apply_to_state(state)
+    team = state.teams[scenario.strategy_team_index]
+    actor_id = team.active_ids[0]
+    context_facts = [
+        state.combatants[cid]
+        for index, other_team in enumerate(state.teams)
+        if index != scenario.strategy_team_index
+        for cid in other_team.active_ids
+    ]
+    action = choose_ai_action(state, actor_id, random.Random(scenario.seed))
+    actor = state.combatants[actor_id]
+    print(f"\n{scenario.title}")
+    print("=" * len(scenario.title))
+    print(scenario.description)
+    print(f"\nStrategy actor: {actor.spec.name} HP {actor.current_hp}/{actor.spec.max_hp}")
+    print("Visible enemies:")
+    for enemy in context_facts:
+        print(
+            f"  {enemy.spec.name}: HP {enemy.current_hp}/{enemy.spec.max_hp} "
+            f"ratio={enemy.current_hp / enemy.spec.max_hp:.3f}"
+        )
+    print("\nStrategy chose:")
+    if action.kind == "skill" and action.move_id is not None:
+        move_name = content.moves[action.move_id].name
+        target_names = [state.combatants[target_id].spec.name for target_id in action.target_ids]
+        target_text = ", ".join(target_names) if target_names else "automatic target"
+        print(f"  use {move_name} -> {target_text}")
+    elif action.kind == "defend":
+        print("  defend")
+    else:
+        print(f"  {action.kind}")
+
+
+def build_parser(
+    content: GameContent,
+    scenarios: Mapping[str, TeachingScenario] | None = None,
+) -> argparse.ArgumentParser:
+    scenarios = scenarios or {}
     parser = argparse.ArgumentParser(
-        description="Run one RPG move deterministically and inspect what the engine does."
+        description="Run deterministic RPG experiments and inspect what the real engine does."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -232,19 +468,31 @@ def build_parser(content: GameContent) -> argparse.ArgumentParser:
     )
     move_parser.add_argument("--round", type=int, default=1, dest="round_number")
     move_parser.add_argument("--seed", type=int, default=0)
+
+    if scenarios:
+        scenario_parser = subparsers.add_parser(
+            "scenario", help="Run one deliberate classroom scenario"
+        )
+        scenario_parser.add_argument("scenario_id", choices=sorted(scenarios))
+        scenario_parser.add_argument("--seed", type=int)
     return parser
 
 
-def main(content: GameContent | None = None) -> None:
+def main(
+    content: GameContent | None = None,
+    scenarios: Mapping[str, TeachingScenario] | None = None,
+) -> None:
     logger.remove()
     if content is None:
         try:
-            from student_game import CONTENT
+            from student_game import CONTENT, SCENARIOS
         except ContentValidationError as exc:
             print(exc)
             raise SystemExit(2) from None
         content = CONTENT
-    parser = build_parser(content)
+        scenarios = SCENARIOS
+    scenarios = scenarios or {}
+    parser = build_parser(content, scenarios)
     args = parser.parse_args()
     if args.command == "list":
         for move_id, move in content.moves.items():
@@ -254,9 +502,53 @@ def main(content: GameContent | None = None) -> None:
             print(f"{move_id:28} {move.name}{suffix}")
         return
 
+    if args.command == "scenario":
+        scenario = scenarios[args.scenario_id]
+        if args.seed is not None:
+            from dataclasses import replace
+
+            scenario = replace(scenario, seed=args.seed)
+        print(f"\nScenario: {scenario.title}\n{scenario.description}")
+        print(
+            f"Play the same setup with:\n  python main.py --scenario {scenario.scenario_id}"
+        )
+        if scenario.inspect_mode == "strategy":
+            run_strategy_scenario(content, scenario)
+            return
+        if scenario.inspect_mode == "simulation":
+            from rpg_battle.teaching.simulate import simulate_once
+
+            result = simulate_once(
+                content,
+                scenario.encounter_id,
+                seed=scenario.seed,
+                state_setup=scenario.apply_to_state,
+            )
+            print(
+                f"\nOne deterministic simulation: winner={result.winner}, "
+                f"rounds={result.rounds}, remaining HP={result.remaining_hp}"
+            )
+            return
+        if scenario.move_id is None or scenario.user_char_id is None:
+            parser.error(f"scenario {scenario.scenario_id!r} has no move experiment")
+        move = content.moves[scenario.move_id]
+        _print_script(move)
+        result = run_move_lab(
+            content,
+            scenario.move_id,
+            user_char_id=scenario.user_char_id,
+            target_char_ids=list(scenario.target_char_ids),
+            user_hp=scenario.user_hp,
+            target_hp=scenario.target_hp,
+            target_statuses=list(scenario.target_statuses),
+            seed=scenario.seed,
+        )
+        _print_result(content, scenario.move_id, result)
+        return
+
     move = content.moves[args.move_id]
     _print_script(move)
-    target_char_ids = args.target or _default_targets(content, args.move_id)
+    target_char_ids = args.target or _default_targets(content, args.move_id, args.user)
     try:
         result = run_move_lab(
             content,

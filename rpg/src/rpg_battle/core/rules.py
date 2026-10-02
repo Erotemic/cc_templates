@@ -27,11 +27,16 @@ from rpg_battle.core.scripting import (
     ChangeStat,
     Damage,
     Heal,
+    StudentCodeError,
     build_move_context,
     command_target_id,
+    describe_command,
+    describe_script_result,
     normalize_commands,
+    script_source_label,
+    validate_script_commands,
 )
-from rpg_battle.teaching.trace import emit_trace
+from rpg_battle.teaching.trace import emit_trace, record_trace
 
 ACTION_PRIORITY = {"switch": 2, "defend": 1, "attack": 0, "skill": 0}
 
@@ -49,6 +54,42 @@ def _accuracy_check(rng: random.Random, accuracy: float) -> bool:
     return rng.random() <= accuracy
 
 
+def _damage_calculation(
+    move_power: int,
+    attacker: CombatantState,
+    defender: CombatantState,
+    magical: bool,
+    rng: random.Random,
+) -> tuple[int, dict[str, object]]:
+    """Calculate damage and return the exact factors used by the real engine."""
+
+    attack_stat_name = "magic" if magical else "attack"
+    attack_stat = effective_stat(attacker, attack_stat_name)
+    defense_stat = effective_stat(defender, "defense")
+    base = move_power + attack_stat * 1.4 - defense_stat * 0.8
+    variance = rng.uniform(0.9, 1.1)
+    before_guard = max(1, int(base * variance))
+    damage = before_guard
+    guard_multiplier = 1.0
+    if defender.defending:
+        guard_multiplier = 0.6
+        damage = max(1, int(damage * guard_multiplier))
+    details = {
+        "power": move_power,
+        "magical": magical,
+        "attack_stat_name": attack_stat_name,
+        "attack_stat": attack_stat,
+        "defense_stat": defense_stat,
+        "base": base,
+        "variance": variance,
+        "before_guard": before_guard,
+        "defending": defender.defending,
+        "guard_multiplier": guard_multiplier,
+        "damage": damage,
+    }
+    return damage, details
+
+
 def _damage_amount(
     move_power: int,
     attacker: CombatantState,
@@ -56,13 +97,7 @@ def _damage_amount(
     magical: bool,
     rng: random.Random,
 ) -> int:
-    attack_stat = effective_stat(attacker, "magic" if magical else "attack")
-    defense_stat = effective_stat(defender, "defense")
-    base = move_power + attack_stat * 1.4 - defense_stat * 0.8
-    variance = rng.uniform(0.9, 1.1)
-    damage = max(1, int(base * variance))
-    if defender.defending:
-        damage = max(1, int(damage * 0.6))
+    damage, _ = _damage_calculation(move_power, attacker, defender, magical, rng)
     return damage
 
 
@@ -322,13 +357,20 @@ def _command_target_ids(
 ) -> tuple[str, ...]:
     if command_target == "user":
         return (actor_id,)
+    if command_target == "targets":
+        return target_ids
+    if isinstance(command_target, str):
+        raise ValueError(
+            f"unknown scripted command target {command_target!r}; "
+            "use 'user', 'targets', or a BattlerView from ctx.targets"
+        )
     specific_id = command_target_id(command_target)
     if specific_id is not None:
         allowed = {actor_id, *target_ids}
         if specific_id not in allowed:
             raise ValueError("a scripted move targeted a battler outside its move context")
         return (specific_id,)
-    return target_ids
+    raise TypeError(f"unsupported scripted command target {command_target!r}")
 
 
 def _process_script_commands(
@@ -341,47 +383,152 @@ def _process_script_commands(
 ) -> None:
     if move.script is None:
         return
-    context = build_move_context(state, actor.combatant_id, target_ids)
+
+    def observe(label: str, value: object) -> None:
+        record_trace(
+            state,
+            "observation",
+            message=f"{label} -> {value}",
+            label=label,
+            value=value,
+        )
+
+    context = build_move_context(
+        state,
+        actor.combatant_id,
+        target_ids,
+        observer=observe,
+    )
     script_name = getattr(move.script, "__name__", "custom move function")
-    emit_trace(state, f"calling {script_name} for {move.name}")
+    record_trace(
+        state,
+        "script_input",
+        message=f"calling {script_name} for {move.name}",
+        move_id=move.move_id,
+        move_name=move.name,
+        script_name=script_name,
+        user_name=context.user.name,
+        user_hp=context.user.hp,
+        user_max_hp=context.user.max_hp,
+        user_hp_ratio=context.user.hp_ratio,
+        user_attack=context.user.attack,
+        user_base_attack=context.user.base_attack,
+        user_magic=context.user.magic,
+        user_base_magic=context.user.base_magic,
+        round_number=context.round_number,
+        targets=tuple(
+            {
+                "name": target.name,
+                "hp": target.hp,
+                "max_hp": target.max_hp,
+                "statuses": tuple(sorted(target.statuses)),
+                "defense": target.defense,
+                "base_defense": target.base_defense,
+            }
+            for target in context.targets
+        ),
+    )
     emit_trace(
         state,
         f"user {context.user.name}: hp={context.user.hp}/{context.user.max_hp} "
-        f"hp_ratio={context.user.hp_ratio:.2f}; round={context.round_number}",
+        f"hp_ratio={context.user.hp_ratio:.3f}; round={context.round_number}",
     )
     if context.targets:
         target_summary = ", ".join(
-            f"{target.name} hp={target.hp}/{target.max_hp}" for target in context.targets
+            f"{target.name} hp={target.hp}/{target.max_hp} "
+            f"statuses={sorted(target.statuses)}"
+            for target in context.targets
         )
         emit_trace(state, f"targets: {target_summary}")
-    result = move.script(context)
+
+    try:
+        result = move.script(context)
+    except Exception as exc:
+        location = script_source_label(move.script)
+        raise StudentCodeError(
+            f"{move.name} custom function at {location} crashed: "
+            f"{type(exc).__name__}: {exc}"
+        ) from exc
+    record_trace(
+        state,
+        "script_return",
+        message=f"function returned {result!r}",
+        result=describe_script_result(result),
+    )
     commands = normalize_commands(result)
-    emit_trace(state, f"returned {commands!r}")
-    for command in commands:
+    problems = validate_script_commands(commands, context)
+    if problems:
+        location = script_source_label(move.script)
+        raise StudentCodeError(
+            f"{move.name} custom function at {location} returned invalid commands: "
+            + "; ".join(problems)
+        )
+    record_trace(
+        state,
+        "normalized_commands",
+        message=f"normalized commands: {commands!r}",
+        commands=tuple(describe_command(command) for command in commands),
+    )
+
+    for command_index, command in enumerate(commands, start=1):
         command_target = getattr(command, "target", "targets")
         command_targets = _command_target_ids(
             command_target, actor.combatant_id, target_ids
+        )
+        record_trace(
+            state,
+            "script_command",
+            command_index=command_index,
+            command_type=type(command).__name__,
+            command=describe_command(command),
+            target_ids=command_targets,
         )
         for target_id in command_targets:
             target = get_combatant(state, target_id)
             if not target.alive:
                 continue
+            before_hp = target.current_hp
             if isinstance(command, Damage):
                 if not _accuracy_check(rng, move.accuracy):
+                    record_trace(
+                        state,
+                        "miss",
+                        target_id=target_id,
+                        target_name=target.spec.name,
+                        accuracy=move.accuracy,
+                    )
                     events.append(
                         make_event(
                             "miss",
                             team=actor.team_index,
                             actor_id=actor.combatant_id,
                             target_id=target_id,
+                            move_id=move.move_id,
+                            move_name=move.name,
+                            scripted=True,
                             text=f"{actor.spec.name}'s move misses {target.spec.name}.",
                         )
                     )
                     continue
-                amount = _damage_amount(
+                amount, calculation = _damage_calculation(
                     command.power, actor, target, command.magical, rng
                 )
                 _apply_damage(target, amount)
+                record_trace(
+                    state,
+                    "damage_calculation",
+                    message=(
+                        f"damage to {target.spec.name}: power={calculation['power']} + "
+                        f"{calculation['attack_stat_name']}={calculation['attack_stat']}*1.4 - "
+                        f"defense={calculation['defense_stat']}*0.8; "
+                        f"variance={calculation['variance']:.3f}; damage={amount}"
+                    ),
+                    target_id=target_id,
+                    target_name=target.spec.name,
+                    before_hp=before_hp,
+                    after_hp=target.current_hp,
+                    **calculation,
+                )
                 events.append(
                     make_event(
                         "damage",
@@ -389,13 +536,33 @@ def _process_script_commands(
                         actor_id=actor.combatant_id,
                         target_id=target_id,
                         target_name=target.spec.name,
+                        move_id=move.move_id,
+                        move_name=move.name,
+                        scripted=True,
+                        command_power=command.power,
                         amount=amount,
                         text=f"{target.spec.name} takes {amount} damage.",
                     )
                 )
             elif isinstance(command, Heal):
-                amount = _apply_heal(
-                    target, max(1, command.power + effective_stat(actor, "magic"))
+                magic = effective_stat(actor, "magic")
+                requested = max(1, command.power + magic)
+                amount = _apply_heal(target, requested)
+                record_trace(
+                    state,
+                    "heal_calculation",
+                    message=(
+                        f"heal {target.spec.name}: power={command.power} + "
+                        f"effective magic={magic}; restored={amount}"
+                    ),
+                    target_id=target_id,
+                    target_name=target.spec.name,
+                    power=command.power,
+                    magic=magic,
+                    requested=requested,
+                    amount=amount,
+                    before_hp=before_hp,
+                    after_hp=target.current_hp,
                 )
                 events.append(
                     make_event(
@@ -404,6 +571,10 @@ def _process_script_commands(
                         actor_id=actor.combatant_id,
                         target_id=target_id,
                         target_name=target.spec.name,
+                        move_id=move.move_id,
+                        move_name=move.name,
+                        scripted=True,
+                        command_power=command.power,
                         amount=amount,
                         text=f"{target.spec.name} recovers {amount} HP.",
                     )
@@ -423,10 +594,21 @@ def _process_script_commands(
                                 team=target.team_index,
                                 target_id=target_id,
                                 target_name=target.spec.name,
+                                move_id=move.move_id,
+                                move_name=move.name,
+                                scripted=True,
                                 status=command.name,
                                 text=f"{target.spec.name} is affected by {command.name.title()}!",
                             )
                         )
+                    record_trace(
+                        state,
+                        "status_applied",
+                        target_id=target_id,
+                        target_name=target.spec.name,
+                        status=command.name,
+                        duration=command.duration,
+                    )
             elif isinstance(command, ChangeStat):
                 if rng.random() <= command.chance:
                     target.temp_bonuses[command.stat] = (
@@ -439,12 +621,23 @@ def _process_script_commands(
                             team=target.team_index,
                             target_id=target_id,
                             target_name=target.spec.name,
+                            move_id=move.move_id,
+                            move_name=move.name,
+                            scripted=True,
                             stat=command.stat,
                             stages=command.stages,
                             text=f"{target.spec.name}'s {command.stat.title()} {sign}{command.stages}.",
                         )
                     )
-
+                    record_trace(
+                        state,
+                        "stat_changed",
+                        target_id=target_id,
+                        target_name=target.spec.name,
+                        stat=command.stat,
+                        stages=command.stages,
+                        effective_value=effective_stat(target, command.stat),
+                    )
 
 def _process_move(
     state: BattleState,
@@ -507,8 +700,27 @@ def _process_move(
             )
             continue
         if move.kind == "heal":
-            amount = _apply_heal(target, max(8, move.power + effective_stat(actor, "magic")))
+            magic = effective_stat(actor, "magic")
+            requested = max(8, move.power + magic)
+            before_hp = target.current_hp
+            amount = _apply_heal(target, requested)
             logger.debug("Heal applied: target={} amount={}", target.spec.name, amount)
+            record_trace(
+                state,
+                "heal_calculation",
+                message=(
+                    f"heal {target.spec.name}: power={move.power} + effective magic={magic}; "
+                    f"restored={amount}"
+                ),
+                target_id=target_id,
+                target_name=target.spec.name,
+                power=move.power,
+                magic=magic,
+                requested=requested,
+                amount=amount,
+                before_hp=before_hp,
+                after_hp=target.current_hp,
+            )
             events.append(
                 make_event(
                     "heal",
@@ -516,6 +728,8 @@ def _process_move(
                     actor_id=actor.combatant_id,
                     target_id=target_id,
                     target_name=target.spec.name,
+                    move_id=move.move_id,
+                    move_name=move.name,
                     amount=amount,
                     text=f"{target.spec.name} recovers {amount} HP.",
                 )
@@ -524,8 +738,24 @@ def _process_move(
             continue
         if move.kind in {"physical", "magical"}:
             magical = move.kind == "magical"
-            damage = _damage_amount(move.power, actor, target, magical, rng)
+            before_hp = target.current_hp
+            damage, calculation = _damage_calculation(move.power, actor, target, magical, rng)
             _apply_damage(target, damage)
+            record_trace(
+                state,
+                "damage_calculation",
+                message=(
+                    f"damage to {target.spec.name}: power={calculation['power']} + "
+                    f"{calculation['attack_stat_name']}={calculation['attack_stat']}*1.4 - "
+                    f"defense={calculation['defense_stat']}*0.8; "
+                    f"variance={calculation['variance']:.3f}; damage={damage}"
+                ),
+                target_id=target_id,
+                target_name=target.spec.name,
+                before_hp=before_hp,
+                after_hp=target.current_hp,
+                **calculation,
+            )
             logger.debug("Damage applied: target={} amount={}", target.spec.name, damage)
             events.append(
                 make_event(
@@ -534,6 +764,8 @@ def _process_move(
                     actor_id=actor.combatant_id,
                     target_id=target_id,
                     target_name=target.spec.name,
+                    move_id=move.move_id,
+                    move_name=move.name,
                     amount=damage,
                     text=f"{target.spec.name} takes {damage} damage.",
                 )

@@ -1,225 +1,113 @@
 # RPG Battle Classroom Project
 
-A real pygame fantasy battle game designed to be **changed by students**.
+A pygame fantasy battle engine designed so high-school students can learn real
+Python by modifying and extending a rich game.
 
-The project deliberately has two layers:
+## Start here
 
-```text
-student_game/workshop.py      <- start here: one small editable slice of the real game
-student_game/                  <- full authored game: characters, moves, art, battles, audio
-src/rpg_battle/                <- engine: turn rules, AI, rendering, menus, audio playback
-```
-
-The engine is still normal Python and is meant to be explored later. The important
-change is that students can now build a substantial game without first editing the
-engine's internal registries.
-
-## What the game already supports
-
-- active + reserve party battles, including 1v1, 2v2, and 3v3 setups
-- switching, defending, knockouts, and replacement characters
-- physical, magical, healing, buff, debuff, and status moves
-- temporary stat stages and statuses such as burn, slow, stun, guard, and focus
-- built-in AI plus student-authored enemy strategy functions
-- procedural characters drawn from circles, rectangles, polygons, and lines
-- graph-based spell effects, including sine, square, staircase, and transform effects
-- custom mathematical path functions written in ordinary Python
-- synthesized sound effects and generated music
-- fast character, battle, effect, and audio preview tools
-- custom move functions that use ordinary Python control flow
-- deterministic move experiments and headless balance simulations
-
-## Quick start
-
-From this folder:
+From the `rpg` directory:
 
 ```bash
 python main.py --check
-python main.py
+python lab.py scenario threshold_25
+python main.py --scenario threshold_25 --teach
 ```
 
-`--check` validates the student's game without opening pygame. It catches content
-problems such as a missing move, unknown sprite, impossible battle lineup, or missing
-music track and reports them together.
-
-If a Python dependency is missing, `main.py` prints the packages to install.
-
-For a first coding session, launch the deliberately small workshop battle:
-
-```bash
-python main.py --encounter workshop
-```
-
-Then inspect one function without the rest of the game getting in the way:
-
-```bash
-python lab.py move workshop_power_strike --user-hp 50 --seed 3
-python lab.py move workshop_power_strike --user-hp 10 --seed 3
-```
-
-## Where students should start
-
-The top-level `student_game/` directory is the authored game. Beginners only need
-the first file at first:
+Then open:
 
 ```text
-student_game/
-├── workshop.py     START HERE: if, loops, one hero, one AI strategy, one battle
-├── art.py          palettes and procedural character drawings
-├── audio.py        songs and synthesized sound effects
-├── effects.py      attack animations and graph-shaped spell paths
-├── moves.py        complete move library and more programmable examples
-├── characters.py   complete character roster
-├── battles.py      larger teams and launchable battles
-└── catalog.py      combines the workshop and full game into one Game
+student_game/workshop.py
 ```
 
-`workshop.py` is not a reduced engine or disposable tutorial. Its objects are part
-of the same `GameContent` used by the full RPG. The larger files are a library the
-student can gradually pull from as their project grows.
+The workshop is a small starting surface inside the full game. It contains a
+complete example of original art, effects, sound, music, moves, a character,
+teams, and battles.
 
-A character now uses direct Python references:
+## Trustworthy feedback
 
-```python
-knight = Character(
-    "Knight of Dawn",
-    role="defender",
-    hp=58,
-    attack=10,
-    defense=9,
-    magic=4,
-    speed=4,
-    sprite=art.knight_dawn,
-    moves=[moves.shield_bash, moves.stone_ward, moves.strike],
-)
-```
+The teaching tools are intended to agree with the actual engine:
 
-There is no string like `"shield_bash"` that must secretly match a registry elsewhere.
-The variable `moves.shield_bash` refers to the move itself.
+- command targets are validated both before play and at runtime;
+- custom-move smoke tests respect the move's real target mode;
+- AI strategy targets are checked for legality;
+- scripting views expose effective stats used by the rules, plus `base_*` stats;
+- importing the game performs structural validation without executing student
+  behavior functions;
+- `python main.py --check` explicitly tests those behaviors;
+- the move lab's damage/healing explanation is recorded by the real rules
+  engine while the move resolves.
 
-## From changing values to programming mechanics
-
-Most moves are intentionally simple data:
-
-```python
-shield_bash = Move(
-    "Shield Bash",
-    kind="physical",
-    power=11,
-    animation=effects.impact,
-    sound=audio.shield_bash,
-    effects=[status("stun", turns=1, chance=0.20)],
-)
-```
-
-Students can then graduate to writing behavior:
-
-```python
-def desperate_strike_logic(ctx):
-    if ctx.user.hp_ratio < 0.5:
-        return damage(18)
-    return damage(8)
-
-
-desperate_strike = Move(
-    "Desperate Strike",
-    kind="physical",
-    animation=effects.impact,
-    sound=audio.attack_basic,
-    action=desperate_strike_logic,
-)
-```
-
-The function decides *what the move means*. The engine still handles HP mutation,
-combat events, knockouts, animation, and battle flow. This keeps the extension point
-small enough to learn while allowing real programming.
-
-## Observe code while it runs
-
-Use the deterministic lab when the lesson is about one move function:
+## Deliberate teaching scenarios
 
 ```bash
-python lab.py list --scripted
-python lab.py move workshop_chain_lightning \
-    --target spirit --target guardian --target-status 2:burn --seed 3
+python lab.py scenario threshold_25
+python lab.py scenario threshold_26
+python lab.py scenario threshold_27
+python lab.py scenario chain_lightning
+python lab.py scenario target_selection
+python lab.py scenario healing
 ```
 
-Use teaching trace mode when the lesson is about code inside a playable battle:
+Play the same setup by replacing `lab.py scenario` with:
 
 ```bash
-python main.py --encounter workshop --teach
+python main.py --scenario <scenario> --teach
 ```
 
-The trace shows the read-only values passed into custom move/AI functions and the
-commands or decisions they return. Engine mutation remains behind the API.
-
-For repeatable balance experiments, skip pygame entirely:
+For a balance experiment:
 
 ```bash
-python simulate.py --encounter workshop --runs 100 --seed 0
+python simulate.py --scenario balance --runs 50
 ```
 
-The simulator uses the real battle controller and rules. Reusing the same seed range
-lets students compare two code changes as an experiment instead of relying on one
-playthrough.
+The simulator reports wins, average rounds, remaining HP, damage, move usage,
+and scripted command powers so students can see changes hidden by win rate.
 
-## Preview tools
+## Curriculum and references
 
-Students do not need to play an entire battle after every edit:
+- `docs/student_guide.md` — student workflow and scenarios
+- `docs/CHEATSHEET.md` — scripting patterns and commands
+- `docs/lessons/` — six common lessons from prediction to independent creation
+- `docs/projects.md` — parallel creative project directions
+- `docs/teacher_notes.md` — teaching contracts and classroom guidance
+- `docs/setup.md` — classroom setup
+
+## Full game features
+
+The reference game remains deliberately rich:
+
+- active/reserve party battles and switching;
+- status effects and temporary stat changes;
+- student-programmable move behavior and enemy strategies;
+- procedural character art;
+- mathematical path effects;
+- generated sound effects and music;
+- deterministic labs, named scenarios, and headless simulation;
+- render/preview tools;
+- a reusable engine that advanced students can inspect.
+
+Students are not expected to understand all of this before starting. The engine
+is a destination for deeper investigation, not a prerequisite for changing the
+game.
+
+## Setup
+
+See `docs/setup.md`. The shortest editable install is:
 
 ```bash
-python render_character.py knight
-python render_battle_state.py --encounter boss_ai_slop
-python render_effect.py sine_wave
-python render_audio.py bluesy_overhaul --kind music
+python -m pip install -e ".[classroom]"
+python main.py --check
 ```
 
-Most render tools show/play the result by default and also save the generated artifact.
-Use `--no-show` where supported when only the file is wanted.
-
-## Launch different battles
+## Development / previews
 
 ```bash
-python main.py --encounter training_duel
-python main.py --encounter frontline_brawl
-python main.py --encounter boss_ai_slop
-python main.py --encounter boss_null_hydra
+python render_character.py workshop_hero
+python render_effect.py classroom_wave
+python render_battle_state.py --encounter workshop
+python render_audio.py --kind music workshop_theme
+python -m pytest -q
 ```
 
-The CLI can also override teams, active limits, and music:
-
-```bash
-python main.py --encounter default --music-track soft_dungeon_crawl
-python main.py --player-team extra --enemy-team duel_enemy --player-limit 2 --enemy-limit 1
-```
-
-## Installed-project mode
-
-Direct execution is the beginner path. Later, students can learn packaging:
-
-```bash
-python -m pip install -e .
-rpg-battle --check
-rpg-battle
-```
-
-The top-level `student_game` package is installed alongside the reusable `rpg_battle` engine,
-so the same authored game is used in both modes.
-
-## Going deeper
-
-The engine consumes one explicit normalized `GameContent` object. Core battle rules,
-AI, audio, rendering, and scene code do not import this particular game's content.
-`student_game/catalog.py` also wires the basic attack, menu/combat sounds, and standard
-heal effect through a `GamePresentation` object, so those choices are not hidden engine
-string conventions either. That separation gives advanced students several natural next
-steps:
-
-1. inspect how their `Character` becomes a `CharacterSpec`;
-2. trace a `Move` through the action/event pipeline;
-3. modify AI or battle rules in `src/rpg_battle/core/`;
-4. add a new authoring primitive to `rpg_battle.api`;
-5. build an entirely different `student_game/` on the same engine.
-
-See `docs/student_guide.md` for a progression of classroom projects and
-`docs/teacher_notes.md` for suggested lesson sequencing.
+Installed equivalents include `rpg-battle`, `rpg-battle-lab`, and
+`rpg-battle-simulate`.

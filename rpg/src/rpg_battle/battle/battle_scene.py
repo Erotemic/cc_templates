@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Battle scene for the general active-frontline plus reserve battle system."""
 
-from typing import TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 
 import pygame
 from loguru import logger
@@ -13,7 +13,7 @@ from rpg_battle.battle.battle_controller import BattleController
 from rpg_battle.battle.combat_log import CombatLog
 from rpg_battle.battle.menu_state import MenuState
 from rpg_battle.core.actions import attack_action, defend_action, skill_action, switch_action
-from rpg_battle.core.models import EncounterSpec
+from rpg_battle.core.models import BattleState, EncounterSpec
 from rpg_battle.core.transforms import TRANSFORM_STATUS_INFO
 from rpg_battle.core.battle_state import get_combatant
 from rpg_battle.core.targeting import get_valid_target_groups
@@ -71,15 +71,18 @@ class BattleScene:
         encounter: EncounterSpec | None = None,
         content: GameContent | None = None,
         teaching_trace: "TeachingTrace | None" = None,
+        seed: int = 5,
+        state_setup: Callable[[BattleState], None] | None = None,
     ) -> None:
         self.rect = rect
         self.content = content or get_default_content()
         self.audio = audio or AudioEngine(self.content)
         self.controller = BattleController(
             encounter=encounter,
-            seed=5,
+            seed=seed,
             content=self.content,
             teaching_trace=teaching_trace,
+            state_setup=state_setup,
         )
         track_id = self.controller.encounter.music_track_id or self.content.default_battle_track
         if track_id:

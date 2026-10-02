@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Final
+from typing import Callable, Final
 
 import pygame
 from loguru import logger
@@ -8,7 +8,7 @@ from loguru import logger
 from rpg_battle.audio.engine import AudioEngine
 from rpg_battle.catalog import GameContent, get_default_content
 from rpg_battle.battle.battle_scene import BattleScene
-from rpg_battle.core.models import EncounterSpec
+from rpg_battle.core.models import BattleState, EncounterSpec
 from rpg_battle.settings import FPS, SCREEN_HEIGHT, SCREEN_WIDTH, TITLE
 
 DEFAULT_WINDOW_SIZE: Final[tuple[int, int]] = (SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -20,6 +20,8 @@ def run_game(
     title: str = TITLE,
     content: GameContent | None = None,
     teach: bool = False,
+    seed: int = 5,
+    state_setup: Callable[[BattleState], None] | None = None,
 ) -> None:
     """Run the main pygame loop for the battle scene.
 
@@ -50,24 +52,27 @@ def run_game(
         encounter=encounter,
         content=content,
         teaching_trace=teaching_trace,
+        seed=seed,
+        state_setup=state_setup,
     )
 
     running = True
-    while running:
-        dt = clock.tick(FPS) / 1000.0
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                logger.info("Received window close event")
+    try:
+        while running:
+            dt = clock.tick(FPS) / 1000.0
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    logger.info("Received window close event")
+                    running = False
+                else:
+                    scene.handle_event(event)
+            scene.update(dt)
+            scene.draw(screen)
+            pygame.display.flip()
+            if scene.should_quit:
+                logger.info("Scene requested quit")
                 running = False
-            else:
-                scene.handle_event(event)
-        scene.update(dt)
-        scene.draw(screen)
-        pygame.display.flip()
-        if scene.should_quit:
-            logger.info("Scene requested quit")
-            running = False
-
-    audio.stop_music()
-    pygame.quit()
-    logger.info("Game shut down cleanly")
+    finally:
+        audio.stop_music()
+        pygame.quit()
+        logger.info("Game shut down cleanly")

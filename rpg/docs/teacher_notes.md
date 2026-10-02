@@ -2,184 +2,122 @@
 
 ## Teaching objective
 
-The RPG should support a long runway inside one coherent project. A student can
-begin by changing a number in a short file and later program control flow,
-loops, algorithms, procedural graphics, mathematical functions, simulations,
-and engine internals.
+The RPG is intended to support grades 9–12 with different prior experience
+inside one coherent project. Differentiate by demonstrated knowledge, not grade
+number alone.
 
-The project is intentionally richer than a minimal tutorial. We reduce the size
-of the **starting surface**, not the capability of the underlying game.
+The central requirement is **trustworthy causal feedback**: when a student
+predicts what code will do, the check/lab/game should agree about the semantics.
 
-## The starting surface
+## Validation has two explicit layers
 
-Use `student_game/workshop.py` first.
+### Structural validation
 
-It is intentionally small and contributes directly to the full `Game` catalog:
+Importing/compiling `student_game` checks references, ids, target modes, art,
+audio, teams, and battles. It does **not** execute student behavior functions.
 
-```text
-student_game/workshop.py
-       +
-student_game/{moves,characters,art,effects,audio,battles}.py
-       |
-       v
-rpg_battle.api.Game.compile()
-       |
-       v
-validated GameContent
-       |
-       v
-engine (rules / AI / rendering / audio)
-```
-
-There is no separate tutorial engine. A concept learned in the workshop carries
-into the complete game.
-
-## Three feedback loops
-
-The project now deliberately offers three different feedback loops.
-
-### 1. Validation
+### Behavior validation
 
 ```bash
 python main.py --check
 ```
 
-Use this for syntax/content authoring sessions. Custom move functions are
-smoke-tested against several deterministic read-only contexts. Structural
-mistakes such as returning an integer instead of `damage(...)` appear in the
-validation report with the function's source location.
+also runs custom move and AI functions in deterministic contexts that match the
+move's targeting rules. Single-target moves receive one target; multi-target
+moves receive multiple targets; AI choices are checked against actual target
+modes.
 
-### 2. Deterministic move lab
+This distinction makes it easier to explain *when* student code runs.
 
-```bash
-python lab.py move workshop_power_strike --user-hp 50 --seed 3
-python lab.py move workshop_power_strike --user-hp 10 --seed 3
-```
+## Trustworthy scripting contracts
 
-This is the preferred tool when teaching variables, expressions, `if`, return
-values, and debugging. It executes the actual rules engine, not a duplicate
-formula.
+- misspelled command targets are rejected; they never fall through to an
+  opponent;
+- runtime command validation uses the same rules as `--check`;
+- `BattlerView.attack/defense/magic/speed` are effective values used by the
+  engine;
+- `base_attack/base_defense/base_magic/base_speed` expose original stats;
+- AI strategies cannot choose an illegal explicit target for a move;
+- scripted moves receive non-fatal advisories when `Move.power` or declarative
+  effects are likely to be mistaken for runtime scripted behavior.
 
-For loops and per-object decisions:
+## The move lab explains the real engine
 
-```bash
-python lab.py move workshop_chain_lightning \
-    --target spirit --target guardian --target-status 2:burn --seed 3
-```
-
-### 3. Play and observe
-
-```bash
-python main.py --encounter workshop --teach
-```
-
-`--teach` prints a high-level trace only when student-authored move functions or
-AI strategies execute. Keep `RPG_BATTLE_LOG_LEVEL=DEBUG` as the deeper engine
-trace for students who are ready for it.
-
-## Suggested progression
-
-### Values and prediction
-
-Change HP, power, thresholds, colors, or sound frequency. Require a prediction
-before the run.
-
-### References and composition
-
-Swap `Move`, `Character`, `Sprite`, `Music`, and `Team` objects. Reinforce that a
-variable can refer to a structured object and that programs are composed from
-those references.
-
-### Conditionals
-
-Use `power_strike_logic`. Compare two fixed-seed lab runs on opposite sides of
-the threshold.
-
-### Loops and lists
-
-Use `chain_lightning_logic`. `BattlerView` objects can safely be passed back as
-specific command targets, which makes `for target in ctx.targets:` genuinely
-useful rather than decorative syntax.
-
-### Algorithms
-
-Modify `practice_enemy_strategy`. Students can implement threshold policies,
-priority rules, target selection, and multi-phase boss behavior using ordinary
-Python. Strategy code receives read-only state and returns an action choice.
-
-### Geometry and mathematics
-
-Move into procedural sprites and path effects once students have a reason to
-use coordinates, functions, and iteration.
-
-### Experiments and statistics
+The lab's damage/healing details are emitted by `core/rules.py` while the move
+actually resolves. Do not duplicate the damage formula in worksheets.
 
 Use:
 
 ```bash
-python simulate.py --encounter workshop --runs 100 --seed 0
+python lab.py scenario threshold_25
+python lab.py scenario threshold_26
+python lab.py scenario threshold_27
+python lab.py scenario chain_lightning
 ```
 
-Hold the seed range constant across a change. Discuss independent variables,
-randomness, sample size, averages, and why one anecdotal playthrough does not
-measure game balance.
+Require a prediction before execution and an explanation afterward.
 
-### Software architecture
+## Deliberate scenarios
 
-Trace a workshop object through `api.py`, normalized specs, `GameContent`, and
-then `rules.py` or `ai.py`. Discuss why the engine accepts content rather than
-importing the shipped game.
+The default gentle workshop battle remains useful for play, but concept lessons
+use purposeful setups:
 
-## Read-only scripting boundary
+- **threshold_25 / 26 / 27** — boundary conditions;
+- **chain_lightning** — two loop iterations, exactly one burned target;
+- **target_selection** — raw HP and HP ratio disagree;
+- **healing** — injured self and injured ally;
+- **balance** — 2v2 experiment where outcomes and scripted branches vary.
 
-Move functions receive `MoveContext` / `BattlerView` objects and return command
-objects. AI functions receive `TurnContext` and return `turn.use(...)` or
-`turn.defend()`.
+The same scenario can be inspected and played:
 
-This is deliberate:
+```bash
+python lab.py scenario chain_lightning
+python main.py --scenario chain_lightning --teach
+```
 
-- students write normal control flow;
-- functions are easy to run deterministically;
-- engine mutation remains centralized;
-- one bad function cannot arbitrarily corrupt unrelated battle state;
-- later lessons can inspect the implementation of that boundary.
+## Common curriculum
 
-The boundary is a teaching aid, but it is also legitimate software design.
+Use [lessons/README.md](lessons/README.md) rather than treating a feature ladder
+as the curriculum. The common sequence progresses from supported reading to
+independent programming and includes explicit debugging.
 
-## Keep the engine rich
+Every lesson has prerequisites, prediction, investigation, modification,
+independent work, and explanation/transfer. Expected results and common
+misconceptions are in [lessons/teacher_key.md](lessons/teacher_key.md).
 
-Do not remove advanced content merely because a beginner does not understand it
-yet. Distinguish:
+## Parallel project paths
 
-- what students are expected to edit now;
-- what they may reuse without understanding yet;
-- what they can inspect when they want to go deeper.
+After the common sequence, let students choose mechanics/boss design,
+procedural art, mathematical effects, sound, balance experiments, or software
+engineering. See [projects.md](projects.md).
 
-The large `student_game/*.py` files are now primarily **libraries and examples**.
-Their size is no longer the beginner's starting cognitive load.
+This lets students use the same language concepts for different creative
+interests instead of forcing every student through AI, trigonometry, and audio
+in the same order.
 
-## Good project prompts
+## Repeatable experiments
 
-- Make Power Strike have three health ranges instead of two.
-- Write a multi-target move that makes a decision separately for each target.
-- Program a boss with at least two visible phases.
-- Make an enemy target the battler for which its chosen move is most effective.
-- Design a three-character party with distinct roles.
-- Create a sprite from at least three geometric primitive types.
-- Implement and visualize a mathematical function as a spell path.
-- Run 100 fixed-seed simulations before and after a balance change and explain
-  what the data does and does not show.
+`BattleController.restart()` resets the RNG to the battle's original seed.
+`--scenario` also reapplies the initial HP/status setup. This makes classroom
+comparisons reproducible.
 
-## Advanced areas
+The simulator reports policies and multiple outcomes:
 
-These remain appropriate for deeper students or instructor-guided exploration:
+```bash
+python simulate.py --scenario balance --runs 50
+```
 
-- `src/rpg_battle/core/rules.py`
-- `src/rpg_battle/core/ai.py`
-- `src/rpg_battle/core/scripting.py`
-- `src/rpg_battle/battle/battle_scene.py`
-- `src/rpg_battle/audio/tracks.py`
-- `src/rpg_battle/render/`
+Discuss that reusing seeds reproduces an experiment setup; code changes can
+consume random draws in a different order, so seeds do not promise event-by-
+event alignment across different programs.
 
-They are not off-limits; they simply are not prerequisites for creating
-meaningful new content.
+## Classroom workflow
+
+See [setup.md](setup.md). If using VS Code, `.vscode/tasks.json` exposes Check,
+Lab, Play, Preview, and Simulate without requiring students to repeatedly type
+long commands.
+
+Before a course, validate a known-good environment and freeze it for that term.
+For the first classroom use, follow [classroom_pilot.md](classroom_pilot.md) and
+measure setup time, time to first meaningful edit, prediction/explanation,
+independent debugging, and transfer to a new problem.

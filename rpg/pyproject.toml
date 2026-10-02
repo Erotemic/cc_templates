@@ -10,6 +10,9 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = ["pygame>=2.5", "numpy>=1.24", "loguru>=0.7", "rich>=13.7"]
 
+[project.optional-dependencies]
+classroom = ["pytest>=8", "ruff>=0.12"]
+
 [project.scripts]
 rpg-battle = "rpg_battle.__main__:main"
 rpg-battle-render-character = "rpg_battle.cli.render_character:main"

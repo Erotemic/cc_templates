@@ -158,9 +158,11 @@ def evaluate_path_y(profile: PathProfile, x: float) -> float:
     if profile.function is not None:
         return float(profile.function(x))
     if profile.mode == "sine":
-        return math.sin(x * math.pi * profile.cycles) * profile.amplitude
+        # ``cycles=1`` means one complete period from x=0 to x=1. Keep this
+        # convention consistent with the triangle/zigzag modes used in lessons.
+        return math.sin(x * math.tau * profile.cycles) * profile.amplitude
     if profile.mode == "square":
-        sign = 1.0 if math.sin(x * math.pi * profile.cycles) >= 0 else -1.0
+        sign = 1.0 if math.sin(x * math.tau * profile.cycles) >= 0 else -1.0
         return sign * profile.amplitude
     if profile.mode == "stairs":
         step_index = int(x * profile.stair_steps)

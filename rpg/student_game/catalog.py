@@ -8,11 +8,11 @@ from student_game import art, audio, battles, characters, effects, moves, worksh
 
 GAME = Game(
     title="RPG Battle Classroom Project",
-    palettes=art.PALETTES,
-    sprites=art.SPRITES,
-    effects=effects.EFFECTS,
-    sounds=audio.SOUNDS,
-    music=audio.MUSIC,
+    palettes=[*art.PALETTES, *workshop.PALETTES],
+    sprites=[*art.SPRITES, *workshop.SPRITES],
+    effects=[*effects.EFFECTS, *workshop.EFFECTS],
+    sounds=[*audio.SOUNDS, *workshop.SOUNDS],
+    music=[*audio.MUSIC, *workshop.MUSIC],
     moves=[*moves.MOVES, *workshop.MOVES],
     characters=[*characters.CHARACTERS, *workshop.CHARACTERS],
     teams=[*battles.TEAMS, *workshop.TEAMS],

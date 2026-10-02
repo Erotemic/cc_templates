@@ -15,7 +15,14 @@ from rpg_battle.core.actions import attack_action, defend_action, skill_action, 
 from rpg_battle.core.battle_state import get_combatant, living_ally_ids, living_enemy_ids
 from rpg_battle.core.models import BattleAction, BattleState
 from rpg_battle.core.rules import legal_replacement_targets, legal_switch_targets
-from rpg_battle.core.scripting import BattlerView, Defend, UseMove, build_turn_context
+from rpg_battle.core.scripting import (
+    BattlerView,
+    Defend,
+    StudentCodeError,
+    UseMove,
+    build_turn_context,
+    script_source_label,
+)
 from rpg_battle.core.targeting import get_valid_target_groups
 from rpg_battle.teaching.trace import emit_trace
 
@@ -79,9 +86,18 @@ def _choose_student_strategy_action(state: BattleState, actor_id: str) -> Battle
                 f"{enemy.name} hp={enemy.hp}/{enemy.max_hp}" for enemy in context.enemies
             ),
         )
-    decision = strategy(context)
-    emit_trace(state, f"AI strategy returned {decision!r}")
-    return _action_from_strategy(state, actor_id, decision)
+    try:
+        decision = strategy(context)
+        emit_trace(state, f"AI strategy returned {decision!r}")
+        return _action_from_strategy(state, actor_id, decision)
+    except StudentCodeError:
+        raise
+    except Exception as exc:
+        location = script_source_label(strategy)
+        raise StudentCodeError(
+            f"AI strategy {strategy_name} at {location} crashed for {actor.spec.name}: "
+            f"{type(exc).__name__}: {exc}"
+        ) from exc
 
 
 def choose_ai_action(

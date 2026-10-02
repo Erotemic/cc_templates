@@ -3,15 +3,20 @@ from __future__ import annotations
 """Small, read-only scripting vocabulary for student-authored game logic.
 
 Custom move functions and AI strategies receive immutable views of battle state.
-They return small command objects instead of mutating the engine directly.  That
+They return small command objects instead of mutating the engine directly. That
 keeps ordinary Python control flow front-and-center while the engine remains
 responsible for state changes, event generation, knockouts, and presentation.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable, Literal, Protocol, TypeAlias
 
-from rpg_battle.core.models import BattleState, CombatantState
+from rpg_battle.core.effects import effective_stat
+from rpg_battle.core.models import BattleState, CombatantState, TargetMode
+
+
+class StudentCodeError(RuntimeError):
+    """Concise error raised when student-authored behavior fails at runtime."""
 
 
 class MoveLike(Protocol):
@@ -25,7 +30,12 @@ class MoveLike(Protocol):
 class BattlerView:
     """Read-only facts about a combatant exposed to student scripts.
 
-    A view can also be passed back as a command target.  The private id is an
+    ``attack``, ``defense``, ``magic``, and ``speed`` are the *effective* values
+    the rules engine will use right now, after temporary stages and statuses.
+    The corresponding ``base_*`` fields expose the character-sheet values for
+    lessons that need to compare base and effective statistics.
+
+    A view can also be passed back as a command target. The private id is an
     opaque engine handle; students can reason about the visible facts without
     receiving the mutable ``CombatantState`` object.
     """
@@ -39,6 +49,22 @@ class BattlerView:
     speed: int
     statuses: frozenset[str]
     _combatant_id: str = field(repr=False, compare=False)
+    base_attack: int | None = None
+    base_defense: int | None = None
+    base_magic: int | None = None
+    base_speed: int | None = None
+
+    def __post_init__(self) -> None:
+        # Synthetic teaching views may only supply the effective values. In that
+        # case the same values are also the best available base-stat description.
+        if self.base_attack is None:
+            object.__setattr__(self, "base_attack", self.attack)
+        if self.base_defense is None:
+            object.__setattr__(self, "base_defense", self.defense)
+        if self.base_magic is None:
+            object.__setattr__(self, "base_magic", self.magic)
+        if self.base_speed is None:
+            object.__setattr__(self, "base_speed", self.speed)
 
     @property
     def hp_ratio(self) -> float:
@@ -46,8 +72,25 @@ class BattlerView:
             return 0.0
         return self.hp / self.max_hp
 
+    @property
+    def effective_attack(self) -> int:
+        return self.attack
+
+    @property
+    def effective_defense(self) -> int:
+        return self.defense
+
+    @property
+    def effective_magic(self) -> int:
+        return self.magic
+
+    @property
+    def effective_speed(self) -> int:
+        return self.speed
+
 
 CommandTarget: TypeAlias = Literal["targets", "user"] | BattlerView
+VALID_COMMAND_TARGET_NAMES = frozenset({"targets", "user"})
 
 
 @dataclass(frozen=True)
@@ -57,12 +100,26 @@ class MoveContext:
     user: BattlerView
     targets: tuple[BattlerView, ...]
     round_number: int
+    _observer: Callable[[str, object], None] | None = field(
+        default=None, repr=False, compare=False
+    )
 
     @property
     def target(self) -> BattlerView | None:
         """Convenience accessor for the first target, if the move has one."""
 
         return self.targets[0] if self.targets else None
+
+    def observe(self, label: str, value: object) -> object:
+        """Record one value in teaching traces and return it unchanged.
+
+        This is optional. A move works the same without ``observe``. It is handy
+        when a lesson wants the lab to show the exact boolean a branch used.
+        """
+
+        if self._observer is not None:
+            self._observer(label, value)
+        return value
 
 
 @dataclass(frozen=True)
@@ -159,12 +216,16 @@ def _view(combatant: CombatantState) -> BattlerView:
         name=combatant.spec.name,
         hp=combatant.current_hp,
         max_hp=combatant.spec.max_hp,
-        attack=combatant.spec.attack,
-        defense=combatant.spec.defense,
-        magic=combatant.spec.magic,
-        speed=combatant.spec.speed,
+        attack=effective_stat(combatant, "attack"),
+        defense=effective_stat(combatant, "defense"),
+        magic=effective_stat(combatant, "magic"),
+        speed=effective_stat(combatant, "speed"),
         statuses=frozenset(combatant.statuses),
         _combatant_id=combatant.combatant_id,
+        base_attack=combatant.spec.attack,
+        base_defense=combatant.spec.defense,
+        base_magic=combatant.spec.magic,
+        base_speed=combatant.spec.speed,
     )
 
 
@@ -172,6 +233,8 @@ def build_move_context(
     state: BattleState,
     actor_id: str,
     target_ids: tuple[str, ...],
+    *,
+    observer: Callable[[str, object], None] | None = None,
 ) -> MoveContext:
     """Create the immutable view passed to a student-authored move function."""
 
@@ -181,6 +244,7 @@ def build_move_context(
         user=_view(actor),
         targets=tuple(_view(target) for target in targets),
         round_number=state.round_number,
+        _observer=observer,
     )
 
 
@@ -266,11 +330,49 @@ def validate_script_commands(
                 problems.append(f"{prefix}: unknown stat {command.stat!r}")
             if not 0.0 <= command.chance <= 1.0:
                 problems.append(f"{prefix}: chance must be between 0.0 and 1.0")
-        target_id = command_target_id(command.target)
+        target = command.target
+        if isinstance(target, str) and target not in VALID_COMMAND_TARGET_NAMES:
+            problems.append(
+                f"{prefix}: unknown target {target!r}; use 'user', 'targets', "
+                "or a BattlerView from ctx.targets"
+            )
+            continue
+        target_id = command_target_id(target)
         if target_id is not None and target_id not in valid_target_ids:
             problems.append(f"{prefix}: target does not belong to this move context")
     return problems
 
+
+def _target_ids_from_ai_decision(
+    target: BattlerView | tuple[BattlerView, ...] | Literal["auto"],
+) -> tuple[str, ...] | Literal["auto"]:
+    if target == "auto":
+        return "auto"
+    if isinstance(target, BattlerView):
+        return (target._combatant_id,)
+    return tuple(view._combatant_id for view in target)
+
+
+def _legal_synthetic_ai_targets(
+    context: TurnContext,
+    target_mode: TargetMode,
+) -> set[tuple[str, ...]]:
+    user_id = context.user._combatant_id
+    ally_ids = [ally._combatant_id for ally in context.allies]
+    enemy_ids = [enemy._combatant_id for enemy in context.enemies]
+    if target_mode == "self":
+        return {(user_id,)}
+    if target_mode == "single_enemy":
+        return {(target_id,) for target_id in enemy_ids}
+    if target_mode == "single_ally":
+        return {(target_id,) for target_id in [user_id, *ally_ids]}
+    if target_mode == "all_enemies":
+        return {tuple(enemy_ids)} if enemy_ids else set()
+    if target_mode == "all_allies":
+        return {(user_id, *ally_ids)}
+    if target_mode == "none":
+        return {()}
+    return set()
 
 
 def smoke_test_ai_strategy(
@@ -278,36 +380,75 @@ def smoke_test_ai_strategy(
     *,
     user_name: str,
     available_move_ids: frozenset[str],
+    move_target_modes: dict[str, TargetMode] | None = None,
+    user: BattlerView | None = None,
+    allies: tuple[BattlerView, ...] | None = None,
+    enemies: tuple[BattlerView, ...] | None = None,
 ) -> list[str]:
-    """Exercise a student AI strategy in high- and low-health scenarios."""
+    """Exercise a student AI strategy in high- and low-health scenarios.
 
+    The game validator supplies views built from the authored characters so a
+    strategy sees realistic HP/stat ranges instead of unrelated magic numbers.
+    Synthetic views remain as a compatibility fallback for direct callers.
+    """
+
+    healthy_user = user or BattlerView(
+        user_name, 50, 50, 9, 7, 8, 6, frozenset(), "strategy_user"
+    )
+    healthy_user = replace(healthy_user, hp=healthy_user.max_hp, statuses=frozenset())
+    low_user = replace(
+        healthy_user,
+        hp=max(1, healthy_user.max_hp // 4),
+        statuses=frozenset({"burn"}),
+    )
+
+    if allies is None:
+        allies = (
+            BattlerView(
+                "Practice Ally", 22, 50, 7, 8, 6, 5, frozenset(), "strategy_ally"
+            ),
+        )
+    if enemies is None:
+        enemies = (
+            BattlerView(
+                "Practice Enemy A", 40, 40, 7, 6, 5, 5, frozenset(), "strategy_a"
+            ),
+            BattlerView(
+                "Practice Enemy B",
+                15,
+                40,
+                7,
+                6,
+                5,
+                5,
+                frozenset({"burn"}),
+                "strategy_b",
+            ),
+        )
+
+    high_enemies = tuple(
+        replace(enemy, hp=enemy.max_hp, statuses=frozenset()) for enemy in enemies
+    )
+    low_enemies = tuple(
+        replace(
+            enemy,
+            hp=max(1, enemy.max_hp // (2 + index)),
+            statuses=frozenset({"burn"}) if index == 1 else frozenset(),
+        )
+        for index, enemy in enumerate(enemies)
+    )
     contexts = [
         TurnContext(
-            user=BattlerView(
-                user_name, 50, 50, 9, 7, 8, 6, frozenset(), "strategy_user"
-            ),
-            allies=(),
-            enemies=(
-                BattlerView(
-                    "Practice Enemy A", 40, 40, 7, 6, 5, 5, frozenset(), "strategy_a"
-                ),
-                BattlerView(
-                    "Practice Enemy B", 15, 40, 7, 6, 5, 5, frozenset({"burn"}), "strategy_b"
-                ),
-            ),
+            user=healthy_user,
+            allies=allies,
+            enemies=high_enemies,
             available_move_ids=available_move_ids,
             round_number=1,
         ),
         TurnContext(
-            user=BattlerView(
-                user_name, 8, 50, 9, 7, 8, 6, frozenset(), "strategy_user"
-            ),
-            allies=(),
-            enemies=(
-                BattlerView(
-                    "Practice Enemy A", 12, 40, 7, 6, 5, 5, frozenset(), "strategy_a"
-                ),
-            ),
+            user=low_user,
+            allies=allies,
+            enemies=low_enemies,
             available_move_ids=available_move_ids,
             round_number=4,
         ),
@@ -322,27 +463,39 @@ def smoke_test_ai_strategy(
                     f"turn.use(...) or turn.defend(); received {type(decision).__name__}"
                 )
                 continue
-            if isinstance(decision, UseMove) and decision.move_id not in available_move_ids:
-                problems.append(
-                    f"scenario {scenario_index}: chose unknown move {decision.move_id!r}"
-                )
+            if isinstance(decision, UseMove):
+                if decision.move_id not in available_move_ids:
+                    problems.append(
+                        f"scenario {scenario_index}: chose unknown move {decision.move_id!r}"
+                    )
+                    continue
+                if move_target_modes is not None and decision.move_id in move_target_modes:
+                    target_ids = _target_ids_from_ai_decision(decision.target)
+                    if target_ids != "auto":
+                        legal = _legal_synthetic_ai_targets(
+                            context, move_target_modes[decision.move_id]
+                        )
+                        if target_ids not in legal:
+                            problems.append(
+                                f"scenario {scenario_index}: chose an invalid target for "
+                                f"move {decision.move_id!r}"
+                            )
         except Exception as exc:
-            problems.append(
-                f"scenario {scenario_index}: {type(exc).__name__}: {exc}"
-            )
+            problems.append(f"scenario {scenario_index}: {type(exc).__name__}: {exc}")
     return problems
+
 
 def script_source_label(script: object) -> str:
     """Return a compact file:line label for a student-authored function."""
 
     import inspect
+    from pathlib import Path
 
     try:
         filename = inspect.getsourcefile(script) or inspect.getfile(script)
         _, line = inspect.getsourcelines(script)
     except (OSError, TypeError):
         return getattr(script, "__name__", "custom function")
-    from pathlib import Path
 
     path = Path(filename)
     try:
@@ -355,33 +508,78 @@ def script_source_label(script: object) -> str:
     return f"{short}:{line}"
 
 
-def smoke_test_move_script(script: object) -> list[str]:
-    """Exercise a custom move function against a few deterministic read-only contexts."""
+def _synthetic_targets_for_mode(target_mode: TargetMode) -> tuple[BattlerView, ...]:
+    target_a = BattlerView(
+        "Practice Target A", 40, 40, 7, 6, 5, 4, frozenset(), "practice_a"
+    )
+    target_b = BattlerView(
+        "Practice Target B", 18, 40, 7, 6, 5, 4, frozenset({"burn"}), "practice_b"
+    )
+    if target_mode == "none":
+        return ()
+    if target_mode in {"single_enemy", "single_ally"}:
+        return (target_a,)
+    if target_mode in {"all_enemies", "all_allies"}:
+        return (target_a, target_b)
+    # ``self`` is filled from the scenario's user view below.
+    return ()
+
+
+def smoke_test_move_script(
+    script: object,
+    *,
+    target_mode: TargetMode = "single_enemy",
+    user: BattlerView | None = None,
+    targets: tuple[BattlerView, ...] | None = None,
+) -> list[str]:
+    """Exercise a move function with contexts matching its targeting rule.
+
+    When the catalog supplies ``targets``, these views come from actual authored
+    characters. Only the number/HP/statuses are adjusted to deliberately exercise
+    useful branches.
+    """
+
+    healthy_user = user or BattlerView(
+        "Practice Hero", 50, 50, 10, 8, 7, 6, frozenset(), "practice_user"
+    )
+    healthy_user = replace(healthy_user, hp=healthy_user.max_hp, statuses=frozenset())
+    low_user = replace(
+        healthy_user,
+        hp=max(1, healthy_user.max_hp // 4),
+        statuses=frozenset({"burn"}),
+    )
+
+    def targets_for(user_view: BattlerView, *, low: bool) -> tuple[BattlerView, ...]:
+        if target_mode == "self":
+            return (user_view,)
+        if target_mode == "none":
+            return ()
+        pool = targets or _synthetic_targets_for_mode(target_mode)
+        needed = 1 if target_mode in {"single_enemy", "single_ally"} else 2
+        selected = pool[:needed]
+        if len(selected) < needed:
+            fallback = _synthetic_targets_for_mode(target_mode)
+            selected = (*selected, *fallback[len(selected):needed])
+        adjusted = []
+        for index, target in enumerate(selected):
+            if low:
+                hp = max(1, target.max_hp // (2 + index))
+                statuses = frozenset({"burn"}) if index == 1 else frozenset()
+            else:
+                hp = target.max_hp
+                statuses = frozenset()
+            adjusted.append(replace(target, hp=hp, statuses=statuses))
+        return tuple(adjusted)
 
     contexts = [
         MoveContext(
-            user=BattlerView(
-                "Practice Hero", 50, 50, 10, 8, 7, 6, frozenset(), "practice_user"
-            ),
-            targets=(
-                BattlerView(
-                    "Practice Target A", 40, 40, 7, 6, 5, 4, frozenset(), "practice_a"
-                ),
-                BattlerView(
-                    "Practice Target B", 18, 40, 7, 6, 5, 4, frozenset({"burn"}), "practice_b"
-                ),
-            ),
+            user=healthy_user,
+            targets=targets_for(healthy_user, low=False),
             round_number=1,
         ),
         MoveContext(
-            user=BattlerView(
-                "Practice Hero", 12, 50, 10, 8, 7, 6, frozenset({"burn"}), "practice_user"
-            ),
-            targets=(
-                BattlerView(
-                    "Practice Target A", 12, 40, 7, 6, 5, 4, frozenset(), "practice_a"
-                ),
-            ),
+            user=low_user,
+            targets=targets_for(low_user, low=True),
             round_number=4,
         ),
     ]
@@ -393,7 +591,54 @@ def smoke_test_move_script(script: object) -> list[str]:
             for problem in validate_script_commands(commands, context):
                 problems.append(f"scenario {scenario_index}: {problem}")
         except Exception as exc:  # student code should become a validation report
-            problems.append(
-                f"scenario {scenario_index}: {type(exc).__name__}: {exc}"
-            )
+            problems.append(f"scenario {scenario_index}: {type(exc).__name__}: {exc}")
     return problems
+
+
+def describe_command_target(target: CommandTarget) -> str:
+    """Return a compact student-facing target description."""
+
+    if isinstance(target, BattlerView):
+        return target.name
+    return target
+
+
+def describe_command(command: MoveCommand) -> str:
+    """Return a compact command description without dumping opaque view ids."""
+
+    target = describe_command_target(command.target)
+    if isinstance(command, Damage):
+        extra = ", magical=True" if command.magical else ""
+        return f"damage(power={command.power}{extra}, target={target})"
+    if isinstance(command, Heal):
+        return f"heal(power={command.power}, target={target})"
+    if isinstance(command, AddStatus):
+        return (
+            f"add_status({command.name!r}, turns={command.duration}, "
+            f"chance={command.chance}, target={target})"
+        )
+    if isinstance(command, ChangeStat):
+        return (
+            f"change_stat({command.stat!r}, stages={command.stages}, "
+            f"chance={command.chance}, target={target})"
+        )
+    return repr(command)
+
+
+def describe_script_result(result: MoveScriptResult) -> str:
+    """Summarize the value returned directly by a student move function."""
+
+    if result is None:
+        return "None"
+    if isinstance(result, (Damage, Heal, AddStatus, ChangeStat)):
+        return describe_command(result)
+    if isinstance(result, (list, tuple)):
+        inner = ", ".join(
+            describe_command(item)
+            if isinstance(item, (Damage, Heal, AddStatus, ChangeStat))
+            else repr(item)
+            for item in result
+        )
+        opening, closing = ("[", "]") if isinstance(result, list) else ("(", ")")
+        return f"{opening}{inner}{closing}"
+    return repr(result)

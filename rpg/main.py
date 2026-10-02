@@ -33,8 +33,8 @@ def _missing_dependency(exc: ModuleNotFoundError) -> None:
         print(f"  - {dep}", file=sys.stderr)
     print(file=sys.stderr)
     print("Install them with:", file=sys.stderr)
-    quoted = " ".join(f"'{dep}'" for dep in DEPENDENCIES)
-    print(f"  pip install {quoted}", file=sys.stderr)
+    quoted = " ".join(f'"{dep}"' for dep in DEPENDENCIES)
+    print(f"  python -m pip install {quoted}", file=sys.stderr)
     sys.exit(1)
 
 

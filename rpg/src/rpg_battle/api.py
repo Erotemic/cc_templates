@@ -708,5 +708,8 @@ class Game:
             default_defeat_track=self.defeat_music.music_id,
         )
         if validate:
-            content.require_valid()
+            # Importing/compiling content validates the object graph but does not
+            # execute student-authored move or AI functions. Explicit checks run
+            # those behaviors later through ``python main.py --check``.
+            content.require_valid(include_behaviors=False)
         return content
