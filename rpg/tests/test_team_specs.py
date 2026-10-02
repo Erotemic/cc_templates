@@ -6,7 +6,7 @@ def test_team_spec_controls_starting_active_members() -> None:
     state = new_battle(DEFAULT_ENCOUNTER)
     player_names = [state.combatants[cid].spec.char_id for cid in state.teams[0].active_ids]
     enemy_names = [state.combatants[cid].spec.char_id for cid in state.teams[1].active_ids]
-    assert player_names == ["knight", "druid"]
+    assert player_names == ["knight", "runesage"]
     assert enemy_names == ["ai_slop", "spirit"]
 
 

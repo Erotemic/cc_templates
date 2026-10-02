@@ -7,7 +7,9 @@ from dataclasses import dataclass
 
 import pygame
 
-from rpg_battle.content.effects import EFFECTS
+from collections.abc import Mapping
+
+from rpg_battle.catalog import get_default_content
 from rpg_battle.render.effect_builder import EffectSpec, sample_path_points
 
 
@@ -87,10 +89,13 @@ def make_effect(
     animation: str,
     start: tuple[float, float],
     end: tuple[float, float],
+    *,
+    effects: Mapping[str, EffectSpec] | None = None,
 ) -> VisualEffect:
     """Create a runtime effect from the declarative effect catalog."""
 
-    spec = EFFECTS.get(animation)
+    effect_catalog = effects if effects is not None else get_default_content().effects
+    spec = effect_catalog.get(animation)
     if spec is None:
         spec = EffectSpec(effect_id=animation, style="ring")
     points = sample_path_points(spec.path) if spec.path else None

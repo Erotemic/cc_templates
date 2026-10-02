@@ -12,7 +12,7 @@ renderer later stretches that normalized graph between battlefield points.
 
 from dataclasses import dataclass, replace
 import math
-from typing import Literal
+from typing import Callable, Literal
 
 EffectStyle = Literal["ring", "projectile", "path", "burst_rect", "wind_arcs"]
 PathMode = Literal["sine", "square", "stairs", "zigzag", "triangle"]
@@ -33,6 +33,7 @@ class PathProfile:
     steps: int = 40
     width: int = 4
     stair_steps: int = 6
+    function: Callable[[float], float] | None = None
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,7 @@ class EffectBuilder:
         steps: int = 40,
         width: int = 4,
         stair_steps: int = 6,
+        function: Callable[[float], float] | None = None,
     ) -> "EffectBuilder":
         self._spec = replace(
             self._spec,
@@ -108,6 +110,7 @@ class EffectBuilder:
                 steps=steps,
                 width=width,
                 stair_steps=stair_steps,
+                function=function,
             ),
         )
         return self
@@ -152,6 +155,8 @@ def evaluate_path_y(profile: PathProfile, x: float) -> float:
     - zigzag/triangle: triangle wave
     """
 
+    if profile.function is not None:
+        return float(profile.function(x))
     if profile.mode == "sine":
         return math.sin(x * math.pi * profile.cycles) * profile.amplitude
     if profile.mode == "square":

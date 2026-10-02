@@ -16,7 +16,7 @@ import random
 
 from loguru import logger
 
-from rpg_battle.content.encounters import DEFAULT_ENCOUNTER
+from rpg_battle.catalog import GameContent, get_default_content
 from rpg_battle.core.ai import choose_ai_action, choose_ai_replacement
 from rpg_battle.core.battle_state import get_combatant, new_battle
 from rpg_battle.core.models import BattleAction, BattleState, EncounterSpec
@@ -36,22 +36,29 @@ from rpg_battle.core.rules import (
 class BattleController:
     """Coordinate battle-state progression and controller decisions."""
 
-    def __init__(self, encounter: EncounterSpec = DEFAULT_ENCOUNTER, seed: int = 0) -> None:
-        self.encounter = encounter
+    def __init__(
+        self,
+        encounter: EncounterSpec | None = None,
+        seed: int = 0,
+        *,
+        content: GameContent | None = None,
+    ) -> None:
+        self.content = content or get_default_content()
+        self.encounter = encounter or self.content.default_encounter
         self.rng = random.Random(seed)
-        self.state: BattleState = new_battle(encounter)
+        self.state: BattleState = new_battle(self.encounter, content=self.content)
         self.pending_turn_order: list[str] = []
         self.current_actor_id: str | None = None
         self.round_announced = False
         logger.debug(
             "BattleController initialized with seed={} encounter={}",
             seed,
-            encounter.encounter_id,
+            self.encounter.encounter_id,
         )
 
     def restart(self) -> None:
         logger.info("Restarting battle controller")
-        self.state = new_battle(self.encounter)
+        self.state = new_battle(self.encounter, content=self.content)
         self.pending_turn_order = []
         self.current_actor_id = None
         self.round_announced = False

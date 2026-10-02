@@ -6,15 +6,10 @@ import pygame
 from loguru import logger
 
 from rpg_battle.audio.engine import AudioEngine
-from rpg_battle.content.audio import (
-    DEFAULT_BATTLE_TRACK,
-    DEFAULT_DEFEAT_TRACK,
-    DEFAULT_VICTORY_TRACK,
-)
+from rpg_battle.catalog import GameContent, get_default_content
 from rpg_battle.battle.battle_controller import BattleController
 from rpg_battle.battle.combat_log import CombatLog
 from rpg_battle.battle.menu_state import MenuState
-from rpg_battle.content.moves import MOVES
 from rpg_battle.core.actions import attack_action, defend_action, skill_action, switch_action
 from rpg_battle.core.models import EncounterSpec
 from rpg_battle.core.transforms import TRANSFORM_STATUS_INFO
@@ -68,14 +63,15 @@ class BattleScene:
         rect: pygame.Rect,
         audio: AudioEngine | None = None,
         encounter: EncounterSpec | None = None,
+        content: GameContent | None = None,
     ) -> None:
         self.rect = rect
-        self.audio = audio or AudioEngine()
-        if encounter is None:
-            self.controller = BattleController(seed=5)
-        else:
-            self.controller = BattleController(encounter=encounter, seed=5)
-        track_id = self.controller.encounter.music_track_id or DEFAULT_BATTLE_TRACK
+        self.content = content or get_default_content()
+        self.audio = audio or AudioEngine(self.content)
+        self.controller = BattleController(
+            encounter=encounter, seed=5, content=self.content
+        )
+        track_id = self.controller.encounter.music_track_id or self.content.default_battle_track
         if track_id:
             self.audio.play_music(track_id)
         self.log = CombatLog(max_lines=18)
@@ -114,7 +110,7 @@ class BattleScene:
 
     def reset(self) -> None:
         self.controller.restart()
-        track_id = self.controller.encounter.music_track_id or DEFAULT_BATTLE_TRACK
+        track_id = self.controller.encounter.music_track_id or self.content.default_battle_track
         if track_id:
             self.audio.play_music(track_id)
         self.log = CombatLog(max_lines=18)
@@ -150,7 +146,9 @@ class BattleScene:
         for combatant_id, combatant in self.controller.state.combatants.items():
             if combatant_id not in self.sprite_actors:
                 side = "left" if combatant.team_index == 0 else "right"
-                self.sprite_actors[combatant_id] = SpriteActor(side)
+                self.sprite_actors[combatant_id] = SpriteActor(
+                    side, sprites=self.content.sprites, palettes=self.content.palettes
+                )
             if combatant_id not in self.hp_bars:
                 self.hp_bars[combatant_id] = HPBar(combatant.hp_ratio())
             if combatant_id not in self.displayed_hp_current:
@@ -327,18 +325,18 @@ class BattleScene:
         if event.key in UP_KEYS | LEFT_KEYS:
             logger.debug("Menu navigation: left/up on {}", menu.title)
             menu.move(-1)
-            self.audio.play_sfx("menu_move")
+            self.audio.play_sfx(self.content.presentation.menu_move_sound_id)
         elif event.key in DOWN_KEYS | RIGHT_KEYS:
             logger.debug("Menu navigation: right/down on {}", menu.title)
             menu.move(1)
-            self.audio.play_sfx("menu_move")
+            self.audio.play_sfx(self.content.presentation.menu_move_sound_id)
         elif event.key in CANCEL_KEYS and len(self.menu_stack) > 1:
             logger.debug("Menu cancel on {}", menu.title)
             self.menu_stack.pop()
-            self.audio.play_sfx("menu_back")
+            self.audio.play_sfx(self.content.presentation.menu_back_sound_id)
         elif event.key in CONFIRM_KEYS:
             logger.debug("Menu confirm on {} choice={}", menu.title, menu.current())
-            self.audio.play_sfx("menu_confirm")
+            self.audio.play_sfx(self.content.presentation.menu_confirm_sound_id)
             self._confirm_menu_choice()
 
     def _resolve_immediate_action(
@@ -357,7 +355,7 @@ class BattleScene:
         self.pending_target_ids = []
         if action_kind == "attack":
             self.event_queue = self.controller.resolve_current_player_action(
-                attack_action(actor_id, target_ids=target_ids)
+                attack_action(actor_id, target_ids=target_ids, move_id=move_id)
             )
         elif action_kind == "skill" and move_id is not None:
             self.event_queue = self.controller.resolve_current_player_action(
@@ -385,7 +383,7 @@ class BattleScene:
         actor_id = self.controller.current_actor_id
         if actor_id is None:
             return
-        move = MOVES[move_id]
+        move = self.content.moves[move_id]
         logger.debug("Player selected move {} with target_mode={}", move_id, move.target_mode)
         groups = get_valid_target_groups(self.controller.state, actor_id, move.target_mode)
         if not groups:
@@ -432,9 +430,11 @@ class BattleScene:
         if menu.title.endswith("Choose Action"):
             logger.debug("Action menu choice {} for actor {}", choice, actor.spec.name)
             if choice == "Attack":
-                self._handle_player_move_selection("strike", "attack")
+                self._handle_player_move_selection(
+                    self.content.presentation.basic_attack_move_id, "attack"
+                )
             elif choice == "Skill":
-                options = [MOVES[move_id].name for move_id in actor.spec.move_ids]
+                options = [self.content.moves[move_id].name for move_id in actor.spec.move_ids]
                 self.menu_stack.append(MenuState(title="Choose Skill", options=options))
             elif choice == "Defend":
                 self._resolve_immediate_action(
@@ -543,9 +543,16 @@ class BattleScene:
             actor_x, actor_y, _ = self._position_for(actor_id)
             target_x, target_y = self._make_effect_target(event)
             self.effects.append(
-                make_effect(event["animation"], (actor_x, actor_y), (target_x, target_y))
+                make_effect(
+                    event["animation"],
+                    (actor_x, actor_y),
+                    (target_x, target_y),
+                    effects=self.content.effects,
+                )
             )
-            self.audio.play_sfx(event.get("sound_id", "attack_basic"))
+            sound_id = event.get("sound_id")
+            if sound_id:
+                self.audio.play_sfx(sound_id)
         elif event_type in {"damage", "status_tick"}:
             target_id = event["target_id"]
             self.sprite_actors[target_id].play_hurt()
@@ -556,16 +563,23 @@ class BattleScene:
             self._set_display_hp_target(
                 target_id, get_combatant(self.controller.state, target_id).current_hp
             )
-            self.audio.play_sfx("damage_tick")
+            self.audio.play_sfx(self.content.presentation.damage_sound_id)
         elif event_type == "heal":
             target_id = event["target_id"]
             x, y, _ = self._position_for(target_id)
-            self.effects.append(make_effect("heal_pulse", (x, y), (x, y)))
+            self.effects.append(
+                make_effect(
+                    self.content.presentation.heal_effect_id,
+                    (x, y),
+                    (x, y),
+                    effects=self.content.effects,
+                )
+            )
             self.floating_texts.append(FloatingText(f"+{event['amount']}", [x, y - 80], HEAL_COLOR))
             self._set_display_hp_target(
                 target_id, get_combatant(self.controller.state, target_id).current_hp
             )
-            self.audio.play_sfx("heal_chime")
+            self.audio.play_sfx(self.content.presentation.heal_sound_id)
         elif event_type == "ko":
             target_id = event["target_id"]
             target = get_combatant(self.controller.state, target_id)
@@ -575,24 +589,28 @@ class BattleScene:
                 self.lingering_faints[target_id] = frozen_slot
             self.sprite_actors[target_id].set_faint(True)
             self._set_display_hp_target(target_id, 0)
-            self.audio.play_sfx("ko")
+            self.audio.play_sfx(self.content.presentation.ko_sound_id)
         elif event_type == "switch":
             incoming_id = event["new_combatant_id"]
             self.lingering_faints.pop(incoming_id, None)
             self.sprite_actors[incoming_id].set_faint(False)
             self._sync_display_to_current(incoming_id)
-            self.audio.play_sfx("switch")
+            self.audio.play_sfx(self.content.presentation.switch_sound_id)
         elif event_type == "replacement_joined":
             combatant_id = event["combatant_id"]
             self.lingering_faints.pop(combatant_id, None)
             self.sprite_actors[combatant_id].set_faint(False)
             self._sync_display_to_current(combatant_id)
-            self.audio.play_sfx("switch")
+            self.audio.play_sfx(self.content.presentation.switch_sound_id)
         elif event_type == "defend":
-            self.audio.play_sfx("defend")
+            self.audio.play_sfx(self.content.presentation.defend_sound_id)
         elif event_type == "battle_end":
             winner = event.get("winner")
-            track_id = DEFAULT_VICTORY_TRACK if winner == 0 else DEFAULT_DEFEAT_TRACK
+            track_id = (
+                self.content.default_victory_track
+                if winner == 0
+                else self.content.default_defeat_track
+            )
             if track_id:
                 self.audio.play_music(track_id, loops=0)
             self.menu_stack = [MenuState(title="Battle Over", options=["Restart", "Quit"])]

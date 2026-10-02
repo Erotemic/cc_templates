@@ -21,13 +21,14 @@ from rpg_battle.audio.library import (
     render_synth_sound,
     write_pcm_to_wav,
 )
-from rpg_battle.content.audio import DEFAULT_BATTLE_TRACK, MUSIC_TRACKS, SOUND_EFFECTS
+from rpg_battle.catalog import GameContent, get_default_content
 
 
 class AudioEngine:
     """Small wrapper around ``pygame.mixer`` used by the classroom project."""
 
-    def __init__(self) -> None:
+    def __init__(self, content: GameContent | None = None) -> None:
+        self.content = content or get_default_content()
         self.available = False
         self.initialized = False
         self._sound_cache: dict[str, pygame.mixer.Sound] = {}
@@ -68,8 +69,8 @@ class AudioEngine:
     def play_default_music(self) -> None:
         """Play the default battle track from the content catalog."""
 
-        logger.debug("Request to play default music track '{}'", DEFAULT_BATTLE_TRACK)
-        self.play_music(DEFAULT_BATTLE_TRACK)
+        logger.debug("Request to play default music track '{}'", self.content.default_battle_track)
+        self.play_music(self.content.default_battle_track)
 
     def play_music(self, track_id: str, loops: int = -1) -> None:
         """Start background music by catalog id."""
@@ -127,7 +128,7 @@ class AudioEngine:
         if track_id in self._music_cache:
             logger.debug("Music cache hit (memory) for '{}'", track_id)
             return self._music_cache[track_id]
-        spec = MUSIC_TRACKS.get(track_id)
+        spec = self.content.music_tracks.get(track_id)
         if spec is None:
             logger.warning("Unknown music track id '{}'", track_id)
             return None
@@ -170,7 +171,7 @@ class AudioEngine:
         if sound_id in self._sound_cache:
             logger.debug("SFX cache hit for '{}'", sound_id)
             return self._sound_cache[sound_id]
-        spec = SOUND_EFFECTS.get(sound_id)
+        spec = self.content.sound_effects.get(sound_id)
         if spec is None:
             logger.warning("Unknown sound effect id '{}'", sound_id)
             return None

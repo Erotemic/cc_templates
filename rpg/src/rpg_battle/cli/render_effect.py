@@ -18,7 +18,9 @@ import pygame
 
 from rpg_battle.cli.common import choose_from_registry, console, default_output_path
 from rpg_battle.cli.render_common import init_surface, save_surface
-from rpg_battle.content.effects import EFFECTS
+from student_game import CONTENT
+
+EFFECTS = CONTENT.effects
 from rpg_battle.debug import configure_logging
 from rpg_battle.render.effect_builder import sample_path_points
 from rpg_battle.render.effect_factory import make_effect
@@ -42,7 +44,7 @@ ACCENT = (120, 195, 255)
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "effect_id", nargs="?", choices=sorted(EFFECTS), help="Effect id from content/effects.py"
+        "effect_id", nargs="?", choices=sorted(EFFECTS), help="Effect id from student_game/effects.py"
     )
     parser.add_argument("--output", help="Output PNG path. Defaults to ./effect_preview.png")
     parser.add_argument(
@@ -116,7 +118,7 @@ def _draw_preview(
     end = (ANIM_RECT.right - 110, ANIM_RECT.centery - 6)
     pygame.draw.circle(surface, (120, 195, 255), start, 24)
     pygame.draw.circle(surface, (255, 145, 145), end, 24)
-    effect = make_effect(effect_id, start, end)
+    effect = make_effect(effect_id, start, end, effects=CONTENT.effects)
     clamped = max(0.0, min(1.0, progress))
     effect.timer = effect.duration * (1.0 - clamped)
     effect.draw(surface)

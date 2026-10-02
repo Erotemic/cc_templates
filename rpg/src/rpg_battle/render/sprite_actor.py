@@ -4,14 +4,24 @@ import math
 
 import pygame
 
-from rpg_battle.content.colors import PALETTES
-from rpg_battle.content.sprites import SPRITES
+from collections.abc import Mapping
+
+from rpg_battle.catalog import Color, PaletteSpec, SpriteRecipe, get_default_content
 from rpg_battle.render.primitives import draw_shape
 from rpg_battle.render.signal_transform import apply_signal_transforms
 
 
 class SpriteActor:
-    def __init__(self, side: str) -> None:
+    def __init__(
+        self,
+        side: str,
+        *,
+        sprites: Mapping[str, SpriteRecipe] | None = None,
+        palettes: Mapping[str, PaletteSpec] | None = None,
+    ) -> None:
+        content = None if sprites is not None and palettes is not None else get_default_content()
+        self.sprites = sprites if sprites is not None else content.sprites
+        self.palettes = palettes if palettes is not None else content.palettes
         self.side = side
         self.offset = [0.0, 0.0]
         self.attack_timer = 0.0
@@ -93,8 +103,8 @@ class SpriteActor:
         scale: float = 1.0,
         render_transforms: dict[str, int] | None = None,
     ) -> None:
-        recipe = SPRITES[sprite_id]
-        palette = PALETTES[recipe["palette"]]
+        recipe = self.sprites[sprite_id]
+        palette = self.palettes[recipe["palette"]]
         center = (pos[0], pos[1])
         facing = 1 if self.side == "left" else -1
         glow = 16 if self.flash_timer > 0 else 0

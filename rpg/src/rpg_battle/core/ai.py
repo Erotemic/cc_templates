@@ -6,7 +6,6 @@ import random
 
 from loguru import logger
 
-from rpg_battle.content.moves import MOVES
 from rpg_battle.core.actions import attack_action, defend_action, skill_action, switch_action
 from rpg_battle.core.battle_state import get_combatant, living_ally_ids, living_enemy_ids
 from rpg_battle.core.models import BattleAction, BattleState
@@ -20,6 +19,8 @@ def choose_ai_action(
     rng: random.Random | None = None,
 ) -> BattleAction:
     rng = rng or random.Random()
+    if state.content is None:
+        raise RuntimeError("BattleState is missing its GameContent bundle")
     actor = get_combatant(state, actor_id)
     logger.debug("AI evaluating turn for {}", actor.spec.name)
     enemies = living_enemy_ids(state, actor_id)
@@ -34,7 +35,7 @@ def choose_ai_action(
 
     if actor.current_hp <= actor.spec.max_hp * 0.35:
         for move_id in actor.spec.move_ids:
-            move = MOVES[move_id]
+            move = state.content.moves[move_id]
             if move.kind == "heal":
                 groups = get_valid_target_groups(state, actor_id, move.target_mode)
                 target_ids = tuple(groups[0]) if groups else (actor_id,)
@@ -52,7 +53,7 @@ def choose_ai_action(
             return switch_action(actor_id, best_switch)
 
     for move_id in actor.spec.move_ids:
-        move = MOVES[move_id]
+        move = state.content.moves[move_id]
         if move.kind in {"physical", "magical"} and move.target_mode == "single_enemy":
             if weakest_enemy.current_hp <= move.power + 6:
                 return skill_action(actor_id, move_id, target_ids=(weakest_enemy.combatant_id,))
@@ -60,11 +61,11 @@ def choose_ai_action(
     utility = [
         move_id
         for move_id in actor.spec.move_ids
-        if MOVES[move_id].kind in {"buff", "debuff", "status"}
+        if state.content.moves[move_id].kind in {"buff", "debuff", "status"}
     ]
     if utility and rng.random() < 0.3:
         move_id = rng.choice(utility)
-        move = MOVES[move_id]
+        move = state.content.moves[move_id]
         groups = get_valid_target_groups(state, actor_id, move.target_mode)
         if move.target_mode == "single_enemy":
             target_ids = (weakest_enemy.combatant_id,)
@@ -75,11 +76,11 @@ def choose_ai_action(
         return skill_action(actor_id, move_id, target_ids=target_ids)
 
     attacks = [
-        move_id for move_id in actor.spec.move_ids if MOVES[move_id].kind in {"physical", "magical"}
+        move_id for move_id in actor.spec.move_ids if state.content.moves[move_id].kind in {"physical", "magical"}
     ]
     if attacks:
         move_id = rng.choice(attacks)
-        move = MOVES[move_id]
+        move = state.content.moves[move_id]
         groups = get_valid_target_groups(state, actor_id, move.target_mode)
         if move.target_mode == "single_enemy":
             target_ids = (weakest_enemy.combatant_id,)

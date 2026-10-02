@@ -5,8 +5,19 @@ from __future__ import annotations
 from rpg_battle.core.models import BattleAction
 
 
-def attack_action(actor_id: str, target_ids: tuple[str, ...] = ()) -> BattleAction:
-    return BattleAction(actor_id=actor_id, kind="attack", move_id="strike", target_ids=target_ids)
+def attack_action(
+    actor_id: str,
+    target_ids: tuple[str, ...] = (),
+    *,
+    move_id: str | None = None,
+) -> BattleAction:
+    """Build a basic attack action.
+
+    When ``move_id`` is omitted, the battle resolves the game-specific basic
+    attack from ``GameContent.presentation``.
+    """
+
+    return BattleAction(actor_id=actor_id, kind="attack", move_id=move_id, target_ids=target_ids)
 
 
 def defend_action(actor_id: str) -> BattleAction:

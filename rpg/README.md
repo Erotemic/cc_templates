@@ -1,123 +1,175 @@
 # RPG Battle Classroom Project
 
-A small but real pygame fantasy battle engine built for students to modify.
+A real pygame fantasy battle game designed to be **changed by students**.
 
-## Features
-- 3v3 party battles
-- Procedural battlers drawn from shapes
-- Skill, defend, and switch actions
-- Floating combat text and simple animations
-- Built-in music and sound effects with easy track swapping
-- Path-based spell effects including sine and square waves
-- Content-first editing workflow in `src/rpg_battle/content/`
+The project deliberately has two layers:
+
+```text
+student_game/                 <- start here: your characters, moves, art, battles, audio
+src/rpg_battle/                <- engine: turn rules, AI, rendering, menus, audio playback
+```
+
+The engine is still normal Python and is meant to be explored later. The important
+change is that students can now build a substantial game without first editing the
+engine's internal registries.
+
+## What the game already supports
+
+- active + reserve party battles, including 1v1, 2v2, and 3v3 setups
+- switching, defending, knockouts, and replacement characters
+- physical, magical, healing, buff, debuff, and status moves
+- temporary stat stages and statuses such as burn, slow, stun, guard, and focus
+- simple AI opponents and boss encounters
+- procedural characters drawn from circles, rectangles, polygons, and lines
+- graph-based spell effects, including sine, square, staircase, and transform effects
+- custom mathematical path functions written in ordinary Python
+- synthesized sound effects and generated music
+- fast character, battle, effect, and audio preview tools
+- custom move functions that use ordinary Python control flow
 
 ## Quick start
 
-From the project root, the simplest launch command is:
+From this folder:
 
 ```bash
+python main.py --check
 python main.py
 ```
 
-If a dependency is missing, the script will tell you which one and how
-to install it.
+`--check` validates the student's game without opening pygame. It catches content
+problems such as a missing move, unknown sprite, impossible battle lineup, or missing
+music track and reports them together.
 
-### Run as an installed project (optional)
+If a Python dependency is missing, `main.py` prints the packages to install.
 
-Once you are comfortable with Python projects, install this one:
+## Where students should start
 
-```bash
-python -m pip install -e .
-python -m rpg_battle
+The top-level `student_game/` directory is the authored game:
+
+```text
+student_game/
+├── art.py          palettes and procedural character drawings
+├── audio.py        songs and synthesized sound effects
+├── effects.py      attack animations and graph-shaped spell paths
+├── moves.py        move definitions and programmable move functions
+├── characters.py   stats + art + moves
+├── battles.py      teams and launchable battles
+└── catalog.py      assembles everything into one Game
 ```
 
-## Best student entry points
-Start in these files:
-- `src/rpg_battle/content/characters.py`
-- `src/rpg_battle/content/moves.py`
-- `src/rpg_battle/content/sprites.py`
-- `src/rpg_battle/content/teams.py`
-- `src/rpg_battle/content/audio.py`
+A character now uses direct Python references:
 
-## Controls
-- Arrow keys: move through menus
-- Enter / Space: confirm
-- Escape / Backspace: cancel
+```python
+knight = Character(
+    "Knight of Dawn",
+    role="defender",
+    hp=58,
+    attack=10,
+    defense=9,
+    magic=4,
+    speed=4,
+    sprite=art.knight_dawn,
+    moves=[moves.shield_bash, moves.stone_ward, moves.strike],
+)
+```
 
-## What students can change quickly
-- colors and shapes
-- character stats and move lists
-- wave spell parameters
-- team lineups
-- battle names and flavor text
+There is no string like `"shield_bash"` that must secretly match a registry elsewhere.
+The variable `moves.shield_bash` refers to the move itself.
+
+## From changing values to programming mechanics
+
+Most moves are intentionally simple data:
+
+```python
+shield_bash = Move(
+    "Shield Bash",
+    kind="physical",
+    power=11,
+    animation=effects.impact,
+    sound=audio.shield_bash,
+    effects=[status("stun", turns=1, chance=0.20)],
+)
+```
+
+Students can then graduate to writing behavior:
+
+```python
+def desperate_strike_logic(ctx):
+    if ctx.user.hp_ratio < 0.5:
+        return damage(18)
+    return damage(8)
 
 
-## Audio customization
-- The default battle song is `soft_dungeon_crawl` in `src/rpg_battle/content/audio.py`.
-- Generated music is now built through reusable `TrackBuilder` subclasses in `src/rpg_battle/audio/tracks.py`.
-- Shared synthesis helpers live in `src/rpg_battle/audio/builder.py`.
-- Add a new track by registering a new `GeneratedTrackSpec` in `content/audio.py` and a matching builder class in `audio/tracks.py`.
-- Edit `SOUND_EFFECTS` to change menu blips and move sounds.
-- Each move in `src/rpg_battle/content/moves.py` can point at a different `sound_id`.
-- The engine caches rendered generated tracks under `~/.cache/rpg_battle/audio/` so later startups can reuse them.
+desperate_strike = Move(
+    "Desperate Strike",
+    kind="physical",
+    animation=effects.impact,
+    sound=audio.attack_basic,
+    action=desperate_strike_logic,
+)
+```
 
-
-
-## Development render tools
-The project now keeps its CLI tools in `src/rpg_battle/cli/`, with friendly top-level wrappers for convenience.
-
-- Render one character quickly: `./render_character.py knight`
-- Render the initial battle layout: `./render_battle_state.py`
-- Render the scene with the first player menu open: `./render_battle_state.py --open-menu`
-- Render a built-in music track or sound effect: `./render_audio.py --kind music soft_dungeon_crawl`
-
-If you run these without the main id argument, a small `rich` prompt lets students browse the registered options and choose what to render.
-
-By default, outputs land in the current working directory:
-- `./knight_preview.png`
-- `./battle_preview.png`
-- `./soft_dungeon_crawl.wav`
-
-These helpers are useful when students are changing `content/sprites.py`, `content/characters.py`, encounter layouts, or audio assets and want fast feedback without playing a whole battle.
-
-## Debugging and formatting
-- Terminal logging now uses `loguru` so students can watch the higher-level architecture: battle setup, round queues, turn starts, menu flow, action resolution, and audio lookup.
-- Set `RPG_BATTLE_LOG_LEVEL=DEBUG` before launch to get more detailed logs without flooding the terminal with per-frame game-loop noise.
-- Run `ruff format .` after edits to keep the code layout consistent.
-
+The function decides *what the move means*. The engine still handles HP mutation,
+combat events, knockouts, animation, and battle flow. This keeps the extension point
+small enough to learn while allowing real programming.
 
 ## Preview tools
 
-The preview tools now **show or play their result by default**. Use `--no-show` when you only want to save the artifact.
-
-Examples:
+Students do not need to play an entire battle after every edit:
 
 ```bash
-./render_character.py knight
-./render_battle_state.py --encounter blues_night
-./render_audio.py bluesy_overhaul --kind music
-
-./render_character.py knight --no-show
-./render_battle_state.py --encounter boss_ai_slop --no-show
-./render_audio.py boss_battle_frenzy --kind music --no-show
+python render_character.py knight
+python render_battle_state.py --encounter boss_ai_slop
+python render_effect.py sine_wave
+python render_audio.py bluesy_overhaul --kind music
 ```
 
-## Game launcher
+Most render tools show/play the result by default and also save the generated artifact.
+Use `--no-show` where supported when only the file is wanted.
 
-The main game is configurable from the command line:
+## Launch different battles
 
 ```bash
+python main.py --encounter training_duel
+python main.py --encounter frontline_brawl
 python main.py --encounter boss_ai_slop
-python main.py --encounter default --music-track bluesy_overhaul
+python main.py --encounter boss_null_hydra
+```
+
+The CLI can also override teams, active limits, and music:
+
+```bash
+python main.py --encounter default --music-track soft_dungeon_crawl
 python main.py --player-team extra --enemy-team duel_enemy --player-limit 2 --enemy-limit 1
 ```
 
+## Installed-project mode
 
-## Effect previews
-
-Preview a registered effect and its underlying graph math with:
+Direct execution is the beginner path. Later, students can learn packaging:
 
 ```bash
-./render_effect.py sine_wave
-./render_effect.py gradient_descent --no-show
+python -m pip install -e .
+rpg-battle --check
+rpg-battle
 ```
+
+The top-level `student_game` package is installed alongside the reusable `rpg_battle` engine,
+so the same authored game is used in both modes.
+
+## Going deeper
+
+The engine consumes one explicit normalized `GameContent` object. Core battle rules,
+AI, audio, rendering, and scene code do not import this particular game's content.
+`student_game/catalog.py` also wires the basic attack, menu/combat sounds, and standard
+heal effect through a `GamePresentation` object, so those choices are not hidden engine
+string conventions either. That separation gives advanced students several natural next
+steps:
+
+1. inspect how their `Character` becomes a `CharacterSpec`;
+2. trace a `Move` through the action/event pipeline;
+3. modify AI or battle rules in `src/rpg_battle/core/`;
+4. add a new authoring primitive to `rpg_battle.api`;
+5. build an entirely different `student_game/` on the same engine.
+
+See `docs/student_guide.md` for a progression of classroom projects and
+`docs/teacher_notes.md` for suggested lesson sequencing.

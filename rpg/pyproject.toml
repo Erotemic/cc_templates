@@ -18,13 +18,16 @@ rpg-battle-render-audio = "rpg_battle.cli.render_audio:main"
 rpg-battle-render-effect = "rpg_battle.cli.render_effect:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "src", "student_game" = "student_game"}
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "."]
+namespaces = false
+include = ["rpg_battle*", "student_game*"]
 
 [tool.setuptools.package-data]
 rpg_battle = ["assets/audio/*"]
+student_game = ["README.md"]
 
 [tool.ruff]
 line-length = 100
@@ -32,3 +35,6 @@ line-length = 100
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]

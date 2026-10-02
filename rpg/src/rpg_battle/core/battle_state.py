@@ -6,8 +6,7 @@ from collections.abc import Iterable
 
 from loguru import logger
 
-from rpg_battle.content.characters import CHARACTERS
-from rpg_battle.content.encounters import DEFAULT_ENCOUNTER
+from rpg_battle.catalog import GameContent, get_default_content
 from rpg_battle.core.models import (
     BattleState,
     CombatantState,
@@ -24,6 +23,7 @@ def _build_team_state(
     team_spec: TeamSpec,
     active_limit: int,
     requested_active: tuple[str, ...] | None,
+    content: GameContent,
 ) -> tuple[TeamBattleState, dict[str, CombatantState]]:
     requested_active = (
         requested_active or team_spec.starting_active or team_spec.members[:active_limit]
@@ -62,7 +62,7 @@ def _build_team_state(
         combatant_id = f"t{team_index}_c{member_index}"
         combatant = CombatantState(
             combatant_id=combatant_id,
-            spec=CHARACTERS[char_id],
+            spec=content.characters[char_id],
             team_index=team_index,
             active=char_id in requested_set and len(team_state.active_ids) < active_limit,
         )
@@ -75,8 +75,14 @@ def _build_team_state(
     return team_state, combatants
 
 
-def new_battle(encounter: EncounterSpec = DEFAULT_ENCOUNTER) -> BattleState:
-    """Build a fresh battle state from a declarative encounter spec."""
+def new_battle(
+    encounter: EncounterSpec | None = None,
+    *,
+    content: GameContent | None = None,
+) -> BattleState:
+    """Build a fresh battle state from an encounter and explicit content bundle."""
+    content = content or get_default_content()
+    encounter = encounter or content.default_encounter
     logger.info("Constructing new battle for encounter {}", encounter.encounter_id)
     teams: list[TeamBattleState] = []
     combatants: dict[str, CombatantState] = {}
@@ -89,10 +95,11 @@ def new_battle(encounter: EncounterSpec = DEFAULT_ENCOUNTER) -> BattleState:
             team_spec=team_spec,
             active_limit=active_limit,
             requested_active=requested_active,
+            content=content,
         )
         teams.append(team_state)
         combatants.update(team_combatants)
-    state = BattleState(teams=teams, combatants=combatants)
+    state = BattleState(teams=teams, combatants=combatants, content=content)
     logger.info(
         "New battle ready: teams={} combatants={}",
         [team.name for team in teams],

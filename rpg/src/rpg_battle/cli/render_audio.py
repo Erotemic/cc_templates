@@ -17,7 +17,10 @@ from rpg_battle.audio.library import (
     write_pcm_to_wav,
 )
 from rpg_battle.cli.common import choose_from_registry, console, default_output_path
-from rpg_battle.content.audio import MUSIC_TRACKS, SOUND_EFFECTS
+from student_game import CONTENT
+
+MUSIC_TRACKS = CONTENT.music_tracks
+SOUND_EFFECTS = CONTENT.sound_effects
 from rpg_battle.debug import configure_logging
 
 

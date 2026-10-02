@@ -10,7 +10,9 @@ import pygame
 
 from rpg_battle.cli.common import choose_from_registry, console, default_output_path
 from rpg_battle.cli.render_common import init_surface, save_surface, show_surface
-from rpg_battle.content.characters import CHARACTERS
+from student_game import CONTENT
+
+CHARACTERS = CONTENT.characters
 from rpg_battle.debug import configure_logging
 from rpg_battle.render.renderer import draw_background
 from rpg_battle.render.sprite_actor import SpriteActor
@@ -22,7 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "character_id",
         nargs="?",
-        help="Character id from content/characters.py. Omit when using --all.",
+        help="Character id from student_game/characters.py. Omit when using --all.",
     )
     parser.add_argument(
         "--all",
@@ -50,7 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
 def _render_character(
     surface: pygame.Surface, character_id: str, center: tuple[int, int], *, side: str, scale: float
 ) -> None:
-    actor = SpriteActor(side)
+    actor = SpriteActor(side, sprites=CONTENT.sprites, palettes=CONTENT.palettes)
     spec = CHARACTERS[character_id]
     actor.draw(surface, spec.sprite_id, center, scale=scale)
 

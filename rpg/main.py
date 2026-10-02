@@ -39,9 +39,13 @@ def _missing_dependency(exc: ModuleNotFoundError) -> None:
 
 
 try:
+    from rpg_battle.catalog import ContentValidationError
     from rpg_battle.__main__ import main
 except ModuleNotFoundError as exc:
     _missing_dependency(exc)
+except ContentValidationError as exc:
+    print(exc, file=sys.stderr)
+    sys.exit(2)
 
 
 if __name__ == "__main__":

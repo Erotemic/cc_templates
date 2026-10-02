@@ -11,7 +11,9 @@ from rpg_battle.audio.engine import AudioEngine
 from rpg_battle.battle.battle_scene import BattleScene
 from rpg_battle.cli.common import choose_from_registry, choose_yes_no, console, default_output_path
 from rpg_battle.cli.render_common import init_surface, save_surface, show_surface
-from rpg_battle.content.encounters import ENCOUNTERS
+from student_game import CONTENT
+
+ENCOUNTERS = CONTENT.encounters
 from rpg_battle.debug import configure_logging
 
 
@@ -20,7 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--encounter",
         choices=sorted(ENCOUNTERS),
-        help="Encounter id from content/encounters.py",
+        help="Encounter id from student_game/battles.py",
     )
     parser.add_argument("--output", help="Output PNG path. Defaults to ./battle_preview.png")
     parser.add_argument(
@@ -66,10 +68,15 @@ def main() -> None:
 
     console.print(f"[bold green]Rendering[/bold green] encounter [magenta]{encounter_id}[/magenta]")
     screen = init_surface(headless=args.no_show)
-    audio = AudioEngine()
+    audio = AudioEngine(CONTENT)
     audio.initialize()
     audio.stop_music()
-    scene = BattleScene(screen.get_rect(), audio=audio, encounter=ENCOUNTERS[encounter_id])
+    scene = BattleScene(
+        screen.get_rect(),
+        audio=audio,
+        encounter=ENCOUNTERS[encounter_id],
+        content=CONTENT,
+    )
     if open_menu:
         _advance_until_menu(scene, args.dt)
     for _ in range(max(0, args.steps)):

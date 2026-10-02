@@ -2,14 +2,18 @@ from __future__ import annotations
 
 """Core battle data models.
 
-The classroom project keeps reusable content definitions separate from runtime
-battle instances. ``CharacterSpec`` and ``MoveSpec`` live in ``content/`` and are
-safe for students to edit, while ``CombatantState`` and ``BattleState`` are the
-runtime objects the engine mutates during battle.
+The engine keeps normalized content specifications separate from runtime battle
+instances. Students normally author friendly ``Character`` and ``Move`` objects in
+``student_game/``; :mod:`rpg_battle.api` compiles them into the specs here.
+``CombatantState`` and ``BattleState`` are the mutable runtime objects.
 """
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Callable, Literal, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rpg_battle.catalog import GameContent
+    from rpg_battle.core.scripting import MoveContext, MoveScriptResult
 
 MoveKind = Literal["physical", "magical", "heal", "buff", "debuff", "status"]
 TargetMode = Literal[
@@ -29,7 +33,7 @@ class MoveEffect:
     """Describe an extra effect attached to a move.
 
     Effects are optional rider mechanics such as status ailments or temporary
-    stat stage changes. Classroom content files usually construct these in a
+    stat stage changes. The student authoring API constructs these in a
     keyword-heavy style so students can read the effect at a glance.
     """
 
@@ -42,7 +46,7 @@ class MoveEffect:
 
 @dataclass(frozen=True)
 class MoveSpec:
-    """Declarative move definition loaded from ``content/moves.py``."""
+    """Normalized declarative move definition consumed by the engine."""
 
     move_id: str
     name: str
@@ -55,6 +59,7 @@ class MoveSpec:
     priority: int = 0
     effects: tuple[MoveEffect, ...] = ()
     flavor: str = ""
+    script: Callable[["MoveContext"], "MoveScriptResult"] | None = None
 
 
 @dataclass(frozen=True)
@@ -80,7 +85,7 @@ class InventoryEntry:
 
     The current classroom project does not expose items in the battle UI yet,
     but the runtime model already knows how to carry team inventory data. A
-    future item system can add item definitions in ``content/`` and thread them
+    future item system can add student-facing item definitions and thread them
     through the same action pipeline used for moves.
     """
 
@@ -189,6 +194,7 @@ class BattleState:
 
     teams: list[TeamBattleState]
     combatants: dict[str, CombatantState]
+    content: "GameContent | None" = None
     round_number: int = 1
     winner: int | None = None
     pending_replacements: list[ReplacementRequest] = field(default_factory=list)

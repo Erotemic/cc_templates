@@ -6,7 +6,6 @@ import random
 
 from loguru import logger
 
-from rpg_battle.content.moves import MOVES
 from rpg_battle.core.battle_state import (
     all_living_active_ids,
     bring_reserve_to_active,
@@ -19,9 +18,17 @@ from rpg_battle.core.battle_state import (
 )
 from rpg_battle.core.effects import effective_stat
 from rpg_battle.core.events import make_event
-from rpg_battle.core.models import BattleAction, BattleState, CombatantState, StatusState
+from rpg_battle.core.models import BattleAction, BattleState, CombatantState, MoveSpec, StatusState
 from rpg_battle.core.transforms import get_transform_spec, is_transform_status, transform_status_names
 from rpg_battle.core.targeting import get_valid_target_groups
+from rpg_battle.core.scripting import (
+    AddStatus,
+    ChangeStat,
+    Damage,
+    Heal,
+    build_move_context,
+    normalize_commands,
+)
 
 ACTION_PRIORITY = {"switch": 2, "defend": 1, "attack": 0, "skill": 0}
 
@@ -110,11 +117,10 @@ def _apply_transform_effect(
 
 def _apply_effects(
     target: CombatantState,
-    move_id: str,
+    move: MoveSpec,
     events: list[dict],
     rng: random.Random,
 ) -> None:
-    move = MOVES[move_id]
     for effect in move.effects:
         if effect.status and rng.random() <= effect.chance:
             transform_spec = get_transform_spec(effect.status)
@@ -215,7 +221,7 @@ def _collect_faints(state: BattleState, events: list[dict]) -> None:
 
 
 def _default_target_ids(state: BattleState, actor_id: str, move_id: str) -> tuple[str, ...]:
-    move = MOVES[move_id]
+    move = state.content.moves[move_id]
     groups = get_valid_target_groups(state, actor_id, move.target_mode)
     return tuple(groups[0]) if groups else ()
 
@@ -306,6 +312,117 @@ def _process_defend(actor: CombatantState, events: list[dict]) -> None:
     )
 
 
+def _command_target_ids(
+    command_target: str,
+    actor_id: str,
+    target_ids: tuple[str, ...],
+) -> tuple[str, ...]:
+    if command_target == "user":
+        return (actor_id,)
+    return target_ids
+
+
+def _process_script_commands(
+    state: BattleState,
+    actor: CombatantState,
+    move: MoveSpec,
+    target_ids: tuple[str, ...],
+    events: list[dict],
+    rng: random.Random,
+) -> None:
+    if move.script is None:
+        return
+    context = build_move_context(state, actor.combatant_id, target_ids)
+    commands = normalize_commands(move.script(context))
+    for command in commands:
+        command_target = getattr(command, "target", "targets")
+        command_targets = _command_target_ids(
+            command_target, actor.combatant_id, target_ids
+        )
+        for target_id in command_targets:
+            target = get_combatant(state, target_id)
+            if not target.alive:
+                continue
+            if isinstance(command, Damage):
+                if not _accuracy_check(rng, move.accuracy):
+                    events.append(
+                        make_event(
+                            "miss",
+                            team=actor.team_index,
+                            actor_id=actor.combatant_id,
+                            target_id=target_id,
+                            text=f"{actor.spec.name}'s move misses {target.spec.name}.",
+                        )
+                    )
+                    continue
+                amount = _damage_amount(
+                    command.power, actor, target, command.magical, rng
+                )
+                _apply_damage(target, amount)
+                events.append(
+                    make_event(
+                        "damage",
+                        team=target.team_index,
+                        actor_id=actor.combatant_id,
+                        target_id=target_id,
+                        target_name=target.spec.name,
+                        amount=amount,
+                        text=f"{target.spec.name} takes {amount} damage.",
+                    )
+                )
+            elif isinstance(command, Heal):
+                amount = _apply_heal(
+                    target, max(1, command.power + effective_stat(actor, "magic"))
+                )
+                events.append(
+                    make_event(
+                        "heal",
+                        team=target.team_index,
+                        actor_id=actor.combatant_id,
+                        target_id=target_id,
+                        target_name=target.spec.name,
+                        amount=amount,
+                        text=f"{target.spec.name} recovers {amount} HP.",
+                    )
+                )
+            elif isinstance(command, AddStatus):
+                if rng.random() <= command.chance:
+                    transform_spec = get_transform_spec(command.name)
+                    if transform_spec is not None:
+                        _apply_transform_effect(target, command.name, events)
+                    else:
+                        target.statuses[command.name] = StatusState(
+                            command.name, command.duration
+                        )
+                        events.append(
+                            make_event(
+                                "status",
+                                team=target.team_index,
+                                target_id=target_id,
+                                target_name=target.spec.name,
+                                status=command.name,
+                                text=f"{target.spec.name} is affected by {command.name.title()}!",
+                            )
+                        )
+            elif isinstance(command, ChangeStat):
+                if rng.random() <= command.chance:
+                    target.temp_bonuses[command.stat] = (
+                        target.temp_bonuses.get(command.stat, 0) + command.stages
+                    )
+                    sign = "+" if command.stages >= 0 else ""
+                    events.append(
+                        make_event(
+                            "stat",
+                            team=target.team_index,
+                            target_id=target_id,
+                            target_name=target.spec.name,
+                            stat=command.stat,
+                            stages=command.stages,
+                            text=f"{target.spec.name}'s {command.stat.title()} {sign}{command.stages}.",
+                        )
+                    )
+
+
 def _process_move(
     state: BattleState,
     action: BattleAction,
@@ -314,8 +431,10 @@ def _process_move(
 ) -> None:
     actor = get_combatant(state, action.actor_id)
     logger.info("Resolving action kind={} actor={}", action.kind, actor.spec.name)
-    move_id = action.move_id or "strike"
-    move = MOVES[move_id]
+    if state.content is None:
+        raise RuntimeError("BattleState is missing its GameContent bundle")
+    move_id = action.move_id or state.content.presentation.basic_attack_move_id
+    move = state.content.moves[move_id]
     target_ids = tuple(action.target_ids) or _default_target_ids(state, actor.combatant_id, move_id)
     logger.info(
         "Processing move: actor={} move={} targets={}",
@@ -332,13 +451,17 @@ def _process_move(
             move_id=move.move_id,
             move_name=move.name,
             animation=move.animation,
-            sound_id=move.sound_id or move.move_id,
+            sound_id=move.sound_id,
             target_ids=list(target_ids),
             text=f"{actor.spec.name} uses {move.name} on {_target_display_name(state, list(target_ids))}!",
         )
     )
 
     if move.target_mode == "none":
+        return
+
+    if move.script is not None:
+        _process_script_commands(state, actor, move, target_ids, events, rng)
         return
 
     for target_id in target_ids:
@@ -370,7 +493,7 @@ def _process_move(
                     text=f"{target.spec.name} recovers {amount} HP.",
                 )
             )
-            _apply_effects(target, move_id, events, rng)
+            _apply_effects(target, move, events, rng)
             continue
         if move.kind in {"physical", "magical"}:
             magical = move.kind == "magical"
@@ -388,9 +511,9 @@ def _process_move(
                     text=f"{target.spec.name} takes {damage} damage.",
                 )
             )
-            _apply_effects(target, move_id, events, rng)
+            _apply_effects(target, move, events, rng)
             continue
-        _apply_effects(target, move_id, events, rng)
+        _apply_effects(target, move, events, rng)
 
 
 def _status_tick(battler: CombatantState, events: list[dict]) -> None:
