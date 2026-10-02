@@ -106,7 +106,10 @@ python simulate.py --scenario balance --runs 50
 ```
 
 The simulator reports wins, rounds, remaining HP, damage, move counts, and
-which scripted command powers actually ran.
+which scripted damage/healing commands were returned, including attacks that
+missed. Direct damage totals count actual HP lost and exclude status ticks.
+Battles reaching the simulation step limit are reported as unfinished; use
+`--max-steps` to change that limit.
 
 ## What custom move fields mean
 

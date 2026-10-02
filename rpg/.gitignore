@@ -23,7 +23,8 @@ dist/
 
 # Local editor / OS files
 .DS_Store
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 .idea/
 
 # Generated screenshots or temporary output

@@ -11,7 +11,9 @@ message points to the problem?
 
 ## Runtime/API error
 
-Temporarily write:
+Add `heal` to the `from rpg_battle.api import (...)` list at the top of
+`workshop.py`. Then temporarily replace a return statement inside your move
+function with:
 
 ```python
 return heal(10, target="usr")

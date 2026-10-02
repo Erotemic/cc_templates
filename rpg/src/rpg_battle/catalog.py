@@ -7,7 +7,7 @@ importing a particular classroom game's modules. This keeps engine mechanics
 reusable and lets a student-authored game compile into the same runtime model.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Mapping
 
 from rpg_battle.audio.library import FileTrackSpec, GeneratedTrackSpec, SynthSoundSpec
@@ -310,6 +310,39 @@ class GameContent:
     def validate_behaviors(self) -> list[ContentIssue]:
         """Execute student behavior functions in deterministic teaching contexts."""
 
+        from rpg_battle.core.battle_state import new_battle
+        from rpg_battle.core.models import StatusState
+        from rpg_battle.core.scripting import build_move_context, build_turn_context
+        from rpg_battle.core.targeting import get_valid_target_groups
+
+        def states_for_actor(encounter, team_index, char_id):
+            # A reserve character can also take a turn after switching in. Put
+            # that character in the frontline without inventing unrelated teams.
+            team = (encounter.player_team, encounter.enemy_team)[team_index]
+            active = team.starting_active or team.members
+            team = replace(team, starting_active=(char_id, *(cid for cid in active if cid != char_id)))
+            encounter = replace(
+                encounter,
+                **{"player_team" if team_index == 0 else "enemy_team": team},
+            )
+            for low_health in (False, True):
+                try:
+                    state = new_battle(encounter, content=self)
+                except (KeyError, ValueError, IndexError):
+                    # Structural validation reports broken references separately.
+                    return
+                actor_id = state.teams[team_index].active_ids[0]
+                if low_health:
+                    state.round_number = 4
+                    for index, combatant in enumerate(state.combatants.values()):
+                        combatant.current_hp = max(1, combatant.spec.max_hp // (2 + index))
+                        if index % 2 or combatant.combatant_id == actor_id:
+                            combatant.statuses["burn"] = StatusState("burn", 3)
+                    state.combatants[actor_id].current_hp = max(
+                        1, state.combatants[actor_id].spec.max_hp // 4
+                    )
+                yield state, actor_id
+
         issues: list[ContentIssue] = []
         fallback_character = next(iter(self.characters.values()), None)
 
@@ -325,6 +358,14 @@ class GameContent:
                 users = [fallback_character]
             location = script_source_label(move.script)
             for character in users:
+                contexts = []
+                for encounter in self.encounters.values():
+                    for team_index, team in enumerate((encounter.player_team, encounter.enemy_team)):
+                        if character.char_id not in team.members:
+                            continue
+                        for state, actor_id in states_for_actor(encounter, team_index, character.char_id):
+                            for group in get_valid_target_groups(state, actor_id, move.target_mode):
+                                contexts.append(build_move_context(state, actor_id, tuple(group)))
                 user_view = self._validation_view(character, "move_user")
                 other_characters = [
                     other
@@ -340,6 +381,7 @@ class GameContent:
                     target_mode=move.target_mode,
                     user=user_view,
                     targets=target_views,
+                    contexts=tuple(contexts) if contexts else None,
                 ):
                     issues.append(
                         ContentIssue(
@@ -360,6 +402,13 @@ class GameContent:
                 if character is None:
                     continue
                 user_view = self._validation_view(character, "strategy_user")
+                contexts = []
+                for encounter in self.encounters.values():
+                    for team_index, encounter_team in enumerate((encounter.player_team, encounter.enemy_team)):
+                        if encounter_team != team:
+                            continue
+                        for state, actor_id in states_for_actor(encounter, team_index, char_id):
+                            contexts.append(build_turn_context(state, actor_id))
                 ally_views = tuple(
                     self._validation_view(self.characters[ally_id], f"strategy_ally_{index}")
                     for index, ally_id in enumerate(team.members, start=1)
@@ -382,6 +431,7 @@ class GameContent:
                     user=user_view,
                     allies=ally_views,
                     enemies=enemy_views,
+                    contexts=tuple(contexts) if contexts else None,
                 ):
                     issues.append(
                         ContentIssue(

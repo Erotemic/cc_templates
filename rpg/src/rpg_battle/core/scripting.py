@@ -8,11 +8,13 @@ keeps ordinary Python control flow front-and-center while the engine remains
 responsible for state changes, event generation, knockouts, and presentation.
 """
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
+import math
+from numbers import Real
 from typing import Callable, Literal, Protocol, TypeAlias
 
 from rpg_battle.core.effects import effective_stat
-from rpg_battle.core.models import BattleState, CombatantState, TargetMode
+from rpg_battle.core.models import BattleState, CharacterSpec, CombatantState, StatusState, TargetMode
 
 
 class StudentCodeError(RuntimeError):
@@ -318,19 +320,45 @@ def validate_script_commands(
     }
     for index, command in enumerate(commands, start=1):
         prefix = f"command {index}"
-        if isinstance(command, (Damage, Heal)) and command.power < 0:
-            problems.append(f"{prefix}: power cannot be negative")
+        if isinstance(command, (Damage, Heal)):
+            if not isinstance(command.power, Real) or isinstance(command.power, bool):
+                problems.append(f"{prefix}: power must be a finite number")
+            elif not isinstance(command.power, int) and not math.isfinite(command.power):
+                problems.append(f"{prefix}: power must be a finite number")
+            elif command.power < 0:
+                problems.append(f"{prefix}: power cannot be negative")
+        if isinstance(command, Damage) and not isinstance(command.magical, bool):
+            problems.append(f"{prefix}: magical must be True or False")
         if isinstance(command, AddStatus):
-            if command.duration <= 0:
-                problems.append(f"{prefix}: status duration must be positive")
-            if not 0.0 <= command.chance <= 1.0:
-                problems.append(f"{prefix}: chance must be between 0.0 and 1.0")
+            if not isinstance(command.name, str) or not command.name.strip():
+                problems.append(f"{prefix}: status name must be a nonempty string")
+            if (
+                not isinstance(command.duration, int)
+                or isinstance(command.duration, bool)
+                or command.duration <= 0
+            ):
+                problems.append(f"{prefix}: status duration must be a positive integer")
         if isinstance(command, ChangeStat):
-            if command.stat not in {"attack", "defense", "magic", "speed"}:
+            if not isinstance(command.stat, str) or command.stat not in {
+                "attack", "defense", "magic", "speed"
+            }:
                 problems.append(f"{prefix}: unknown stat {command.stat!r}")
-            if not 0.0 <= command.chance <= 1.0:
+            if not isinstance(command.stages, int) or isinstance(command.stages, bool):
+                problems.append(f"{prefix}: stat stages must be an integer")
+        if isinstance(command, (AddStatus, ChangeStat)):
+            if (
+                not isinstance(command.chance, Real)
+                or isinstance(command.chance, bool)
+                or not 0.0 <= command.chance <= 1.0
+            ):
                 problems.append(f"{prefix}: chance must be between 0.0 and 1.0")
         target = command.target
+        if not isinstance(target, (str, BattlerView)):
+            problems.append(
+                f"{prefix}: target must be 'user', 'targets', or a BattlerView; "
+                f"received {type(target).__name__}"
+            )
+            continue
         if isinstance(target, str) and target not in VALID_COMMAND_TARGET_NAMES:
             problems.append(
                 f"{prefix}: unknown target {target!r}; use 'user', 'targets', "
@@ -375,6 +403,23 @@ def _legal_synthetic_ai_targets(
     return set()
 
 
+def _smoke_view(view: BattlerView, *, hp: int, statuses: frozenset[str]) -> BattlerView:
+    """Use the engine's stat rules when changing synthetic smoke-test facts."""
+
+    combatant = CombatantState(
+        combatant_id=view._combatant_id,
+        team_index=0,
+        spec=CharacterSpec(
+            char_id=view._combatant_id, name=view.name, role="smoke test",
+            max_hp=view.max_hp, attack=view.base_attack, defense=view.base_defense,
+            magic=view.base_magic, speed=view.base_speed, sprite_id="", move_ids=(),
+        ),
+        current_hp=hp,
+        statuses={name: StatusState(name, 3) for name in statuses},
+    )
+    return _view(combatant)
+
+
 def smoke_test_ai_strategy(
     strategy: AIStrategy,
     *,
@@ -384,6 +429,7 @@ def smoke_test_ai_strategy(
     user: BattlerView | None = None,
     allies: tuple[BattlerView, ...] | None = None,
     enemies: tuple[BattlerView, ...] | None = None,
+    contexts: tuple[TurnContext, ...] | None = None,
 ) -> list[str]:
     """Exercise a student AI strategy in high- and low-health scenarios.
 
@@ -395,8 +441,8 @@ def smoke_test_ai_strategy(
     healthy_user = user or BattlerView(
         user_name, 50, 50, 9, 7, 8, 6, frozenset(), "strategy_user"
     )
-    healthy_user = replace(healthy_user, hp=healthy_user.max_hp, statuses=frozenset())
-    low_user = replace(
+    healthy_user = _smoke_view(healthy_user, hp=healthy_user.max_hp, statuses=frozenset())
+    low_user = _smoke_view(
         healthy_user,
         hp=max(1, healthy_user.max_hp // 4),
         statuses=frozenset({"burn"}),
@@ -427,17 +473,17 @@ def smoke_test_ai_strategy(
         )
 
     high_enemies = tuple(
-        replace(enemy, hp=enemy.max_hp, statuses=frozenset()) for enemy in enemies
+        _smoke_view(enemy, hp=enemy.max_hp, statuses=frozenset()) for enemy in enemies
     )
     low_enemies = tuple(
-        replace(
+        _smoke_view(
             enemy,
             hp=max(1, enemy.max_hp // (2 + index)),
             statuses=frozenset({"burn"}) if index == 1 else frozenset(),
         )
         for index, enemy in enumerate(enemies)
     )
-    contexts = [
+    contexts = contexts if contexts is not None else (
         TurnContext(
             user=healthy_user,
             allies=allies,
@@ -452,7 +498,7 @@ def smoke_test_ai_strategy(
             available_move_ids=available_move_ids,
             round_number=4,
         ),
-    ]
+    )
     problems: list[str] = []
     for scenario_index, context in enumerate(contexts, start=1):
         try:
@@ -475,7 +521,10 @@ def smoke_test_ai_strategy(
                         legal = _legal_synthetic_ai_targets(
                             context, move_target_modes[decision.move_id]
                         )
-                        if target_ids not in legal:
+                        if not any(
+                            len(group) == len(target_ids) and set(group) == set(target_ids)
+                            for group in legal
+                        ):
                             problems.append(
                                 f"scenario {scenario_index}: chose an invalid target for "
                                 f"move {decision.move_id!r}"
@@ -531,6 +580,7 @@ def smoke_test_move_script(
     target_mode: TargetMode = "single_enemy",
     user: BattlerView | None = None,
     targets: tuple[BattlerView, ...] | None = None,
+    contexts: tuple[MoveContext, ...] | None = None,
 ) -> list[str]:
     """Exercise a move function with contexts matching its targeting rule.
 
@@ -542,8 +592,8 @@ def smoke_test_move_script(
     healthy_user = user or BattlerView(
         "Practice Hero", 50, 50, 10, 8, 7, 6, frozenset(), "practice_user"
     )
-    healthy_user = replace(healthy_user, hp=healthy_user.max_hp, statuses=frozenset())
-    low_user = replace(
+    healthy_user = _smoke_view(healthy_user, hp=healthy_user.max_hp, statuses=frozenset())
+    low_user = _smoke_view(
         healthy_user,
         hp=max(1, healthy_user.max_hp // 4),
         statuses=frozenset({"burn"}),
@@ -554,12 +604,8 @@ def smoke_test_move_script(
             return (user_view,)
         if target_mode == "none":
             return ()
-        pool = targets or _synthetic_targets_for_mode(target_mode)
-        needed = 1 if target_mode in {"single_enemy", "single_ally"} else 2
-        selected = pool[:needed]
-        if len(selected) < needed:
-            fallback = _synthetic_targets_for_mode(target_mode)
-            selected = (*selected, *fallback[len(selected):needed])
+        pool = targets if targets is not None else _synthetic_targets_for_mode(target_mode)
+        selected = pool[:1] if target_mode in {"single_enemy", "single_ally"} else pool
         adjusted = []
         for index, target in enumerate(selected):
             if low:
@@ -568,10 +614,13 @@ def smoke_test_move_script(
             else:
                 hp = target.max_hp
                 statuses = frozenset()
-            adjusted.append(replace(target, hp=hp, statuses=statuses))
+            adjusted.append(_smoke_view(target, hp=hp, statuses=statuses))
+        if target_mode == "all_allies":
+            return (user_view, *(target for target in adjusted
+                                 if target._combatant_id != user_view._combatant_id))
         return tuple(adjusted)
 
-    contexts = [
+    contexts = contexts if contexts is not None else (
         MoveContext(
             user=healthy_user,
             targets=targets_for(healthy_user, low=False),
@@ -582,7 +631,7 @@ def smoke_test_move_script(
             targets=targets_for(low_user, low=True),
             round_number=4,
         ),
-    ]
+    )
     problems: list[str] = []
     for scenario_index, context in enumerate(contexts, start=1):
         try:
@@ -639,6 +688,8 @@ def describe_script_result(result: MoveScriptResult) -> str:
             else repr(item)
             for item in result
         )
+        if isinstance(result, tuple) and len(result) == 1:
+            inner += ","
         opening, closing = ("[", "]") if isinstance(result, list) else ("(", ")")
         return f"{opening}{inner}{closing}"
     return repr(result)

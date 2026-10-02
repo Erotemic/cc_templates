@@ -23,11 +23,13 @@ python main.py --check
 ```
 
 also runs custom move and AI functions in deterministic contexts that match the
-move's targeting rules. Single-target moves receive one target; multi-target
-moves receive multiple targets; AI choices are checked against actual target
-modes.
+move's targeting rules and encounter rosters. A multi-target move can receive
+one target when only one is active; all-allies moves include the user. The
+checker also validates named scenario setup without executing its behavior.
 
 This distinction makes it easier to explain *when* student code runs.
+Smoke checks sample a few situations; they do not prove that every branch is
+correct. Use deliberate scenarios to investigate specific cases.
 
 ## Trustworthy scripting contracts
 

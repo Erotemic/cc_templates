@@ -6,14 +6,14 @@ import sys
 from loguru import logger
 
 
-def configure_logging() -> None:
+def configure_logging(*, default_level: str = "INFO") -> None:
     """Configure a friendly terminal logger for classroom debugging.
 
     The format is intentionally short enough for students to scan while they are
     stepping through the battle loop in a terminal.
     """
     logger.remove()
-    level = os.environ.get("RPG_BATTLE_LOG_LEVEL", "INFO").upper()
+    level = os.environ.get("RPG_BATTLE_LOG_LEVEL", default_level).upper()
     logger.add(
         sys.stderr,
         level=level,

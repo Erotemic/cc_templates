@@ -17,6 +17,10 @@ reading the comparison operator.
 Look for logically complete, non-overlapping regions. Students often create a
 gap or write the broadest condition first, making later branches unreachable.
 Ask them to test each boundary from both sides.
+The lesson temporarily uses a 100-HP hero because 30% and 70% of 52 are not
+integer HP values. Expected powers for 29/30/31/69/70/71 HP are
+17/11/11/11/11/7. The text label in `ctx.observe` must describe the updated
+expression; editing only the label does not change the branch.
 
 ## Lesson 3
 

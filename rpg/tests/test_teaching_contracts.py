@@ -19,7 +19,7 @@ from rpg_battle.core.scripting import (
     smoke_test_move_script,
 )
 from rpg_battle.render.effect_builder import PathProfile, evaluate_path_y
-from rpg_battle.teaching.lab import run_move_lab
+from rpg_battle.teaching.lab import run_move_scenario
 from rpg_battle.teaching.simulate import simulate_many
 from student_game import CONTENT, SCENARIOS
 from student_game import workshop
@@ -84,7 +84,8 @@ def test_behavior_smoke_test_uses_authored_view_ranges() -> None:
         targets=(target,),
     ) == []
     assert seen
-    assert all(max_hp == 73 and attack == 17 for max_hp, attack, _ in seen)
+    assert all(max_hp == 73 for max_hp, _, _ in seen)
+    assert {attack for _, attack, _ in seen} == {17, 13}  # burn reduces effective attack
     assert all(target_max_hp == 91 for _, _, target_max_hp in seen)
 
 
@@ -150,22 +151,8 @@ def test_cycles_one_means_one_full_sine_period() -> None:
 def test_named_threshold_scenarios_hit_both_branches() -> None:
     low = SCENARIOS["threshold_25"]
     exact = SCENARIOS["threshold_26"]
-    low_result = run_move_lab(
-        CONTENT,
-        low.move_id,
-        user_char_id=low.user_char_id,
-        target_char_ids=list(low.target_char_ids),
-        user_hp=low.user_hp,
-        seed=low.seed,
-    )
-    exact_result = run_move_lab(
-        CONTENT,
-        exact.move_id,
-        user_char_id=exact.user_char_id,
-        target_char_ids=list(exact.target_char_ids),
-        user_hp=exact.user_hp,
-        seed=exact.seed,
-    )
+    low_result = run_move_scenario(CONTENT, low)
+    exact_result = run_move_scenario(CONTENT, exact)
     low_power = [
         event["command_power"]
         for event in low_result.events
@@ -182,14 +169,7 @@ def test_named_threshold_scenarios_hit_both_branches() -> None:
 
 def test_chain_scenario_exercises_both_loop_decisions() -> None:
     scenario = SCENARIOS["chain_lightning"]
-    result = run_move_lab(
-        CONTENT,
-        scenario.move_id,
-        user_char_id=scenario.user_char_id,
-        target_char_ids=list(scenario.target_char_ids),
-        target_statuses=list(scenario.target_statuses),
-        seed=scenario.seed,
-    )
+    result = run_move_scenario(CONTENT, scenario)
     powers = [
         event["command_power"]
         for event in result.events
@@ -200,15 +180,7 @@ def test_chain_scenario_exercises_both_loop_decisions() -> None:
 
 def test_healing_lab_uses_an_actual_ally_target() -> None:
     scenario = SCENARIOS["healing"]
-    result = run_move_lab(
-        CONTENT,
-        scenario.move_id,
-        user_char_id=scenario.user_char_id,
-        target_char_ids=list(scenario.target_char_ids),
-        user_hp=scenario.user_hp,
-        target_hp=scenario.target_hp,
-        seed=scenario.seed,
-    )
+    result = run_move_scenario(CONTENT, scenario)
     assert next(iter(result.targets_after.values())) > next(iter(result.targets_before.values()))
     assert result.actor_after == result.actor_before
 

@@ -14,8 +14,10 @@ from rpg_battle.catalog import ContentValidationError, GameContent
 from rpg_battle.core.actions import skill_action
 from rpg_battle.core.ai import choose_ai_action
 from rpg_battle.core.battle_state import new_battle
-from rpg_battle.core.models import EncounterSpec, StatusState, TeamSpec
+from rpg_battle.core.models import BattleState, EncounterSpec, StatusState, TeamSpec
+from rpg_battle.core.scripting import StudentCodeError
 from rpg_battle.core.rules import resolve_action
+from rpg_battle.core.targeting import get_valid_target_groups
 from rpg_battle.teaching.scenarios import TeachingScenario
 from rpg_battle.teaching.trace import TeachingTrace, TraceRecord
 
@@ -51,7 +53,9 @@ def _default_targets(content: GameContent, move_id: str, user_char_id: str) -> l
     ]
     if not preferred:
         preferred = [char_id for char_id in content.characters if char_id != user_char_id]
-    count = 2 if move.target_mode in {"all_enemies", "all_allies"} else 1
+    if move.target_mode in {"self", "none"}:
+        return []
+    count = 2 if move.target_mode == "all_enemies" else 1
     return preferred[:count]
 
 
@@ -97,7 +101,7 @@ def _build_move_lab_state(
     move = content.moves[move_id]
     if len(set(target_char_ids)) != len(target_char_ids):
         raise ValueError("repeat targets are not supported in the move lab")
-    if user_char_id in target_char_ids and move.target_mode != "self":
+    if user_char_id in target_char_ids and move.target_mode not in {"self", "single_ally", "all_allies"}:
         raise ValueError("choose a different target character from the move user")
 
     dummy_id = next(
@@ -106,7 +110,7 @@ def _build_move_lab_state(
     )
 
     if move.target_mode in {"single_ally", "all_allies"}:
-        player_members = (user_char_id, *target_char_ids)
+        player_members = (user_char_id, *(cid for cid in target_char_ids if cid != user_char_id))
         player = TeamSpec(
             name="Move Lab Allies",
             members=player_members,
@@ -160,10 +164,13 @@ def _build_move_lab_state(
 
     if move.target_mode == "self":
         selected_targets = (actor_id,)
+        requested_target_ids = [actor_id]
     elif move.target_mode == "none":
         selected_targets = ()
+        requested_target_ids = []
     elif move.target_mode == "all_allies":
         selected_targets = tuple(state.teams[0].active_ids)
+        requested_target_ids = list(selected_targets)
     elif move.target_mode == "all_enemies":
         selected_targets = tuple(requested_target_ids)
     elif move.target_mode in {"single_ally", "single_enemy"}:
@@ -218,6 +225,50 @@ def run_move_lab(
             target.current_hp = max(1, min(target_hp, target.spec.max_hp))
     _apply_status_specs(state, requested_target_ids, target_statuses or [])
 
+    return _resolve_move_lab(state, move_id, actor_id, requested_target_ids, selected_targets, seed)
+
+
+def run_move_scenario(content: GameContent, scenario: TeachingScenario) -> MoveLabResult:
+    """Inspect a move using exactly the same encounter/setup used for play."""
+
+    problems = scenario.validate(content)
+    if problems:
+        raise ValueError(f"scenario {scenario.scenario_id!r}: " + "; ".join(problems))
+    if scenario.move_id is None or scenario.user_char_id is None:
+        raise ValueError(f"scenario {scenario.scenario_id!r} has no move experiment")
+    trace = TeachingTrace(echo=False)
+    state = new_battle(
+        content.encounters[scenario.encounter_id], content=content, teaching_trace=trace
+    )
+    scenario.apply_to_state(state)
+    actor_id = _combatant_id_for_char(state, 0, scenario.user_char_id)
+    move = content.moves[scenario.move_id]
+    groups = get_valid_target_groups(state, actor_id, move.target_mode)
+    selected_targets = next(
+        (tuple(group) for group in groups
+         if tuple(state.combatants[cid].spec.char_id for cid in group) == scenario.target_char_ids),
+        None,
+    )
+    if not scenario.target_char_ids and len(groups) == 1:
+        selected_targets = tuple(groups[0])
+    if selected_targets is None:
+        raise ValueError(f"scenario {scenario.scenario_id!r} selects illegal targets for {move.name}")
+    return _resolve_move_lab(
+        state, scenario.move_id, actor_id, list(selected_targets), selected_targets, scenario.seed
+    )
+
+
+def _resolve_move_lab(
+    state: BattleState,
+    move_id: str,
+    actor_id: str,
+    requested_target_ids: list[str],
+    selected_targets: tuple[str, ...],
+    seed: int,
+) -> MoveLabResult:
+    actor = state.combatants[actor_id]
+    trace = state.teaching_trace
+
     from rpg_battle.core.effects import effective_stat
 
     actor_before = actor.current_hp
@@ -256,8 +307,8 @@ def run_move_lab(
             target_id: state.combatants[target_id].current_hp for target_id in requested_target_ids
         },
         events=events,
-        trace_lines=list(trace.lines),
-        trace_records=list(trace.records),
+        trace_lines=list(trace.lines) if trace else [],
+        trace_records=list(trace.records) if trace else [],
     )
 
 
@@ -468,6 +519,7 @@ def build_parser(
     )
     move_parser.add_argument("--round", type=int, default=1, dest="round_number")
     move_parser.add_argument("--seed", type=int, default=0)
+    move_parser.add_argument("--debug-traceback", action="store_true")
 
     if scenarios:
         scenario_parser = subparsers.add_parser(
@@ -475,6 +527,7 @@ def build_parser(
         )
         scenario_parser.add_argument("scenario_id", choices=sorted(scenarios))
         scenario_parser.add_argument("--seed", type=int)
+        scenario_parser.add_argument("--debug-traceback", action="store_true")
     return parser
 
 
@@ -494,6 +547,18 @@ def main(
     scenarios = scenarios or {}
     parser = build_parser(content, scenarios)
     args = parser.parse_args()
+    try:
+        _run_command(content, scenarios, parser, args)
+    except StudentCodeError as exc:
+        if getattr(args, "debug_traceback", False):
+            raise
+        parser.exit(3, f"\nYour student-authored code stopped the experiment:\n  {exc}\n"
+                      "Run again with --debug-traceback to see the full Python traceback.\n")
+    except (KeyError, ValueError) as exc:
+        parser.error(str(exc))
+
+
+def _run_command(content, scenarios, parser, args) -> None:
     if args.command == "list":
         for move_id, move in content.moves.items():
             if args.scripted and move.script is None:
@@ -504,13 +569,17 @@ def main(
 
     if args.command == "scenario":
         scenario = scenarios[args.scenario_id]
+        problems = scenario.validate(content)
+        if problems:
+            parser.error(f"scenario {scenario.scenario_id!r}: " + "; ".join(problems))
         if args.seed is not None:
             from dataclasses import replace
 
             scenario = replace(scenario, seed=args.seed)
         print(f"\nScenario: {scenario.title}\n{scenario.description}")
         print(
-            f"Play the same setup with:\n  python main.py --scenario {scenario.scenario_id}"
+            f"Play the same setup with:\n  python main.py --scenario {scenario.scenario_id} "
+            f"--seed {scenario.seed}"
         )
         if scenario.inspect_mode == "strategy":
             run_strategy_scenario(content, scenario)
@@ -533,16 +602,7 @@ def main(
             parser.error(f"scenario {scenario.scenario_id!r} has no move experiment")
         move = content.moves[scenario.move_id]
         _print_script(move)
-        result = run_move_lab(
-            content,
-            scenario.move_id,
-            user_char_id=scenario.user_char_id,
-            target_char_ids=list(scenario.target_char_ids),
-            user_hp=scenario.user_hp,
-            target_hp=scenario.target_hp,
-            target_statuses=list(scenario.target_statuses),
-            seed=scenario.seed,
-        )
+        result = run_move_scenario(content, scenario)
         _print_result(content, scenario.move_id, result)
         return
 

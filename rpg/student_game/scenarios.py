@@ -12,7 +12,6 @@ threshold_25 = TeachingScenario(
     move_id="workshop_power_strike",
     user_char_id="workshop_hero",
     target_char_ids=("spirit",),
-    user_hp=25,
     hp_by_character=(("workshop_hero", 25),),
 )
 
@@ -24,7 +23,6 @@ threshold_26 = TeachingScenario(
     move_id="workshop_power_strike",
     user_char_id="workshop_hero",
     target_char_ids=("spirit",),
-    user_hp=26,
     hp_by_character=(("workshop_hero", 26),),
 )
 
@@ -36,7 +34,6 @@ threshold_27 = TeachingScenario(
     move_id="workshop_power_strike",
     user_char_id="workshop_hero",
     target_char_ids=("spirit",),
-    user_hp=27,
     hp_by_character=(("workshop_hero", 27),),
 )
 
@@ -48,7 +45,6 @@ chain_lightning = TeachingScenario(
     move_id="workshop_chain_lightning",
     user_char_id="workshop_hero",
     target_char_ids=("spirit", "guardian"),
-    target_statuses=("2:burn",),
     statuses_by_character=(("guardian", ("burn",)),),
 )
 
@@ -72,8 +68,6 @@ healing = TeachingScenario(
     move_id="healing_light",
     user_char_id="druid",
     target_char_ids=("workshop_hero",),
-    user_hp=20,
-    target_hp=30,
     hp_by_character=(("druid", 20), ("workshop_hero", 30)),
 )
 

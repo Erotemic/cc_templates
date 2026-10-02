@@ -31,7 +31,8 @@ function-based system.
 
 Use `python simulate.py --scenario balance --runs 50`. Make one change, predict
 its effect, reuse the seed range, and compare wins, rounds, remaining HP, damage,
-and scripted branch counts.
+and scripted damage/healing command counts. These counts include commands
+whose attacks miss; they describe commands returned, not automatic code coverage.
 
 ## Software engineering / engine exploration
 

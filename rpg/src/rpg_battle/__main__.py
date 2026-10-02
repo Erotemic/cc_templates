@@ -9,6 +9,7 @@ from loguru import logger
 
 from rpg_battle.catalog import (
     ContentValidationError,
+    ContentIssue,
     format_advisory_report,
     format_validation_report,
 )
@@ -120,16 +121,23 @@ def build_encounter_from_args(args: argparse.Namespace) -> EncounterSpec:
 
 
 def main() -> None:
-    configure_logging()
+    args = build_parser().parse_args()
+    configure_logging(default_level="WARNING" if args.teach or args.check else "INFO")
     if _CONTENT_ERROR is not None:
         print(_CONTENT_ERROR, file=sys.stderr)
         raise SystemExit(2)
     assert CONTENT is not None
-    args = build_parser().parse_args()
 
     # Explicit checking is where student functions execute. Importing
     # ``student_game`` above only performed structural validation.
-    issues = CONTENT.validate(include_behaviors=True)
+    issues = CONTENT.validate(include_behaviors=args.check)
+    checked_scenarios = SCENARIOS.values() if args.check else (
+        [SCENARIOS[args.scenario]] if args.scenario else []
+    )
+    if not issues:
+        for scenario in checked_scenarios:
+            issues.extend(ContentIssue(f'scenario "{scenario.scenario_id}"', problem)
+                          for problem in scenario.validate(CONTENT))
     if issues:
         print(format_validation_report(issues), file=sys.stderr)
         raise SystemExit(2)

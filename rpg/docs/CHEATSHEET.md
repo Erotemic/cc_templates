@@ -83,3 +83,9 @@ python simulate.py --scenario balance --runs 50
 
 Add `--debug-traceback` when you intentionally want the full Python traceback
 from a student-authored runtime function.
+
+For the lab, put it after `move` or `scenario`, for example:
+
+```bash
+python lab.py scenario threshold_25 --debug-traceback
+```

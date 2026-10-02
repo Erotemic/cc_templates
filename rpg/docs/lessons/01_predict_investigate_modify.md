@@ -29,8 +29,10 @@ For each run, identify:
 
 ## Modify
 
-Change `< 0.50` to `<= 0.50`. Predict which one of the three cases changes,
-then rerun them.
+Change the comparison expression from `< 0.50` to `<= 0.50`. Update the text
+label passed to `ctx.observe` as well; that label describes the condition but
+does not execute it. Predict which one of the three cases changes, then rerun
+them.
 
 ## Independent task
 

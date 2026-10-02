@@ -4,7 +4,7 @@
 
 ## Specification
 
-Create a move with this behavior:
+Implement this behavior in `power_strike_logic`:
 
 - above 70% HP: power 7;
 - from 30% through 70% HP: power 11;
@@ -17,8 +17,17 @@ Write the cases in an order that makes them easy to reason about.
 
 ## Test boundaries
 
-Choose values just below, exactly on, and just above each boundary. Use the move
-lab to check them with a fixed seed.
+For this experiment, set `workshop_hero`'s `hp=100` so the 30% and 70% boundaries
+can be represented exactly with integer HP. Test 29, 30, 31, 69, 70, and 71 HP
+using the move lab with a fixed seed, for example:
+
+```bash
+python lab.py move workshop_power_strike --user-hp 30 --seed 5
+```
+
+The named `threshold_25/26/27` scenarios were designed for a 52-HP hero; use the
+explicit move command for this experiment. With maximum HP 52, neither 30% nor
+70% falls on an integer HP value.
 
 ## Independent task
 

@@ -1,0 +1,62 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "RPG: Check",
+            "type": "process",
+            "command": "${command:python.interpreterPath}",
+            "args": ["main.py", "--check"],
+            "options": {"cwd": "${workspaceFolder}"},
+            "problemMatcher": []
+        },
+        {
+            "label": "RPG: Lab",
+            "type": "process",
+            "command": "${command:python.interpreterPath}",
+            "args": ["lab.py", "scenario", "${input:scenario}"],
+            "options": {"cwd": "${workspaceFolder}"},
+            "problemMatcher": []
+        },
+        {
+            "label": "RPG: Play",
+            "type": "process",
+            "command": "${command:python.interpreterPath}",
+            "args": ["main.py", "--scenario", "${input:scenario}", "--teach"],
+            "options": {"cwd": "${workspaceFolder}"},
+            "problemMatcher": []
+        },
+        {
+            "label": "RPG: Preview Character",
+            "type": "process",
+            "command": "${command:python.interpreterPath}",
+            "args": ["render_character.py", "workshop_hero"],
+            "options": {"cwd": "${workspaceFolder}"},
+            "problemMatcher": []
+        },
+        {
+            "label": "RPG: Preview Effect",
+            "type": "process",
+            "command": "${command:python.interpreterPath}",
+            "args": ["render_effect.py", "classroom_wave"],
+            "options": {"cwd": "${workspaceFolder}"},
+            "problemMatcher": []
+        },
+        {
+            "label": "RPG: Simulate",
+            "type": "process",
+            "command": "${command:python.interpreterPath}",
+            "args": ["simulate.py", "--scenario", "balance", "--runs", "50"],
+            "options": {"cwd": "${workspaceFolder}"},
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "scenario",
+            "type": "pickString",
+            "description": "Choose a lesson scenario",
+            "options": ["threshold_25", "threshold_26", "threshold_27", "chain_lightning", "target_selection", "healing", "balance"],
+            "default": "threshold_25"
+        }
+    ]
+}

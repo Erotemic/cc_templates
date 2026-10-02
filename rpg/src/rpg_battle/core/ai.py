@@ -58,7 +58,12 @@ def _action_from_strategy(
         target_ids = groups[0] if groups else ()
     else:
         target_ids = _view_target_ids(decision.target)
-        if target_ids not in groups:
+        matched = next(
+            (group for group in groups
+             if len(group) == len(target_ids) and set(group) == set(target_ids)),
+            None,
+        )
+        if matched is None:
             readable = [
                 [get_combatant(state, target_id).spec.name for target_id in group]
                 for group in groups
@@ -67,6 +72,7 @@ def _action_from_strategy(
                 f"{actor.spec.name}'s strategy chose an invalid target for {move.name}; "
                 f"legal targets are {readable}"
             )
+        target_ids = matched
     return skill_action(actor_id, decision.move_id, target_ids=target_ids)
 
 

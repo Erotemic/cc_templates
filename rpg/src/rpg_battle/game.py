@@ -37,27 +37,27 @@ def run_game(
     logger.info("Starting {}", title)
     pygame.init()
     audio = AudioEngine(content)
-    audio.initialize()
-    pygame.display.set_caption(title)
-    screen = pygame.display.set_mode(DEFAULT_WINDOW_SIZE)
-    clock = pygame.time.Clock()
-    teaching_trace = None
-    if teach:
-        from rpg_battle.teaching.trace import TeachingTrace
-
-        teaching_trace = TeachingTrace(echo=True)
-    scene = BattleScene(
-        screen.get_rect(),
-        audio=audio,
-        encounter=encounter,
-        content=content,
-        teaching_trace=teaching_trace,
-        seed=seed,
-        state_setup=state_setup,
-    )
-
-    running = True
     try:
+        audio.initialize()
+        pygame.display.set_caption(title)
+        screen = pygame.display.set_mode(DEFAULT_WINDOW_SIZE)
+        clock = pygame.time.Clock()
+        teaching_trace = None
+        if teach:
+            from rpg_battle.teaching.trace import TeachingTrace
+
+            teaching_trace = TeachingTrace(echo=True)
+        scene = BattleScene(
+            screen.get_rect(),
+            audio=audio,
+            encounter=encounter,
+            content=content,
+            teaching_trace=teaching_trace,
+            seed=seed,
+            state_setup=state_setup,
+        )
+
+        running = True
         while running:
             dt = clock.tick(FPS) / 1000.0
             for event in pygame.event.get():
