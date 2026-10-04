@@ -3,14 +3,15 @@
 This folder is for character art authored as SVG vector graphics instead of
 Python shape calls.
 
-`space_pirate.svg` is the first example. The game loads it directly with
-pygame, so there is no generated PNG to keep in sync.
+`space_pirate.svg` is the first example. The game loads it directly through
+pygame / SDL_image, so there is no generated PNG to keep in sync and no extra
+Cairo dependency to install on school machines.
 
 A good editing loop is:
 
 1. Open `space_pirate.svg` in a text editor, browser, or vector editor such as
    Inkscape.
-2. Change one shape, color, or group.
+2. Change one path, color, or group.
 3. Save the SVG.
 4. From the `rpg` directory run:
 
@@ -20,14 +21,19 @@ A good editing loop is:
 
 The SVG uses a `1024 x 1024` `viewBox` and named groups such as `head`,
 `helmet`, `torso`, `jetpack`, `plasma-cutlass`, and `pistol-arm`. Keeping those
-groups intact is not required by the engine, but it makes the file easier to
-understand and edit.
+names is not required by the engine, but it makes the file easier to teach.
 
-## Useful SVG ideas to experiment with
+## Path-first SVG workflow
 
-- `<polygon>` and `<polyline>` for silhouettes and armor
-- `<circle>` / `<ellipse>` for faces, eyes, lights, and emblems
-- `<rect rx="...">` for rounded equipment panels
+If `path` is the main SVG concept you want to teach, that is enough.
+Students can draw almost everything with paths, and vector editors can convert
+most other shapes into paths.
+
+Useful ideas to experiment with:
+
+- `<path>` for silhouettes, hair, coats, weapons, and expressive outlines
+- `M`, `L`, `C`, `Q`, and `Z` commands inside `d="..."`
+- relative commands such as `m`, `l`, and `c`
 - `fill` and `stroke` for color and outlines
 - `stroke-width`, `stroke-linecap`, and `stroke-linejoin`
 - `<g id="...">` for organizing related pieces

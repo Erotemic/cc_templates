@@ -21,7 +21,10 @@ runs through the complete RPG engine.
 For students who are more interested in visual design, `assets/sprites/` also
 contains SVG character art. `space_pirate.svg` is loaded directly by pygame, so
 students can modify it in Inkscape or as readable XML and immediately preview
-the result with `python render_character.py space_pirate`.
+the result with `python render_character.py space_pirate`. The intended
+classroom workflow is path-first SVG editing: students can mostly work with
+`<path>` elements without needing an extra Cairo-based dependency on school
+machines.
 
 Useful commands from the `rpg` directory:
 

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <g id="badge" transform="translate(0 2)">
+    <path d="M80 10 L99 59 L150 59 L109 90 L124 143 L80 111 L36 143 L51 90 L10 59 L61 59 Z"
+          fill="#f5d879" stroke="#26213b" stroke-width="6" stroke-linejoin="round" />
+    <path d="m 42 108 c 14 -18, 62 -18, 76 0"
+          fill="none" stroke="#73d3ff" stroke-width="7" stroke-linecap="round" />
+    <path d="M58 56 Q80 36 102 56" fill="none" stroke="#8e79d6" stroke-width="8" stroke-linecap="round" />
+  </g>
+</svg>

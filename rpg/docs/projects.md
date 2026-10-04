@@ -20,8 +20,9 @@ drawing ideas into functions only after the repetition is visible.
 **SVG vector art:** edit `student_game/assets/sprites/space_pirate.svg` directly
 in a text editor or vector editor. This path introduces vector geometry,
 layering, fill/stroke styling, groups, and transforms without requiring students
-to express every visual change as Python. Preview it with
-`python render_character.py space_pirate`.
+to express every visual change as Python. The primary classroom editing model is
+path-based SVG, so students can mostly learn `path d="..."` data, groups, and
+basic styling. Preview it with `python render_character.py space_pirate`.
 
 ## Effects and mathematics
 

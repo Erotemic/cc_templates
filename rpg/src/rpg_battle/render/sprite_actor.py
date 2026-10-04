@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 from importlib import resources
 import math
 from pathlib import PurePosixPath
@@ -12,6 +11,7 @@ from collections.abc import Mapping
 from rpg_battle.catalog import Color, PaletteSpec, SpriteRecipe, get_default_content
 from rpg_battle.render.primitives import draw_shape
 from rpg_battle.render.signal_transform import apply_signal_transforms
+from rpg_battle.render.svg_support import load_svg_surface
 
 
 class SpriteActor:
@@ -85,13 +85,7 @@ class SpriteActor:
             return cached
 
         svg_bytes = resources.files(package).joinpath(*PurePosixPath(svg_path).parts).read_bytes()
-        try:
-            surface = pygame.image.load(io.BytesIO(svg_bytes), svg_path)
-        except pygame.error as ex:
-            raise RuntimeError(
-                f'Could not load SVG sprite "{sprite_id}" from {svg_path!r}. '
-                "This game needs a pygame/SDL_image build with SVG support."
-            ) from ex
+        surface = load_svg_surface(svg_bytes, svg_path)
         self._svg_surfaces[cache_key] = surface
         return surface
 
