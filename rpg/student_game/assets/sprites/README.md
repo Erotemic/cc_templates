@@ -7,6 +7,10 @@ Python shape calls.
 loads them directly through pygame / SDL_image, so there is no generated PNG to
 keep in sync and no extra Cairo dependency to install on school machines.
 
+`moon_mage.svg` is a direct vector port of the earlier `moon_mage_pil.py`
+design rather than a new character design. Its groups follow the same visible
+parts: staff, cape, legs and boots, face, hair, hood, front cloak, and spell.
+
 A good editing loop is:
 
 1. Open `space_pirate.svg` or `moon_mage.svg` in a text editor, browser, or

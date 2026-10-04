@@ -61,39 +61,6 @@ moon = Palette(
     },
 )
 
-# Moon Mage uses a dedicated character palette so her skin, hair, leather,
-# silver trim, and lunar glow remain visually distinct from the cloak.
-moon_mage_palette = Palette(
-    'Moon Mage',
-    body=(53, 45, 96),
-    accent=(72, 60, 126),
-    eye=(83, 201, 242),
-    detail=(24, 21, 42),
-    id='moon_mage_palette',
-    extra={
-        'deep': (34, 30, 66),
-        'trim': (160, 152, 210),
-        'silver': (225, 228, 242),
-        'moon': (245, 241, 210),
-        'skin': (185, 123, 92),
-        'skin_hi': (218, 159, 124),
-        'hair': (205, 210, 232),
-        'hair_shadow': (142, 148, 178),
-        'lip': (102, 52, 71),
-        'leather': (69, 48, 58),
-        'staff': (92, 73, 112),
-        'staff_hi': (143, 122, 173),
-        'eye_white': (247, 243, 236),
-        'pupil': (16, 19, 31),
-        'brow': (61, 49, 65),
-        'nose': (128, 78, 67),
-        'lip_shadow': (75, 38, 51),
-        'leg': (57, 51, 81),
-        'spell': (180, 232, 255),
-        'spell_core': (135, 220, 255),
-    },
-)
-
 crystal = Palette(
     'Crystal',
     body=(115, 190, 205),
@@ -284,7 +251,6 @@ PALETTES = [
     verdant,
     storm,
     moon,
-    moon_mage_palette,
     crystal,
     mist,
     mist_spirit_palette,
@@ -455,17 +421,16 @@ def _draw_moon_mage_face(sprite: Sprite) -> None:
 
 # Ported from the successful PIL concept: a grounded human battlemage with a
 # readable face, hair, hands, legs, boots, hood, split cloak, and moon staff.
+# Moon Mage is the SVG port of the original classroom PIL design.
+# Keeping the art in one vector file makes it approachable for students who
+# want to work visually rather than edit Python drawing coordinates.
 moon_mage = SvgSprite(
     'Moon Mage',
     'assets/sprites/moon_mage.svg',
     id='moon_mage',
-    scale=0.14,
+    scale=0.16,
     flash_color=(180, 232, 255),
 )
-
-# Moon Mage now uses an SVG so students can edit the art directly in a vector
-# file.  The authored scale is intentionally a bit smaller than before so she
-# fits the existing battle layout more comfortably.
 
 crystal_guardian = Sprite('Crystal Guardian', crystal, id='crystal_guardian')
 crystal_guardian.polygon([(-40, 10), (-14, -44), (14, -44), (40, 10), (20, 52), (-20, 52)], fill='body', outline='detail', width=2)
