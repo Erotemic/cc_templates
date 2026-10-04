@@ -32,7 +32,7 @@ include = ["rpg_battle*", "student_game*"]
 
 [tool.setuptools.package-data]
 rpg_battle = ["assets/audio/*"]
-student_game = ["README.md"]
+student_game = ["README.md", "assets/sprites/*.svg", "assets/sprites/README.md"]
 
 [tool.ruff]
 line-length = 100

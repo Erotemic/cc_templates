@@ -8,6 +8,9 @@ reusable and lets a student-authored game compile into the same runtime model.
 """
 
 from dataclasses import dataclass, replace
+from importlib import resources
+from pathlib import PurePosixPath
+import xml.etree.ElementTree as ET
 from typing import Mapping
 
 from rpg_battle.audio.library import FileTrackSpec, GeneratedTrackSpec, SynthSoundSpec
@@ -261,17 +264,53 @@ class GameContent:
             )
 
         for sprite_id, recipe in self.sprites.items():
+            where = f'sprite "{sprite_id}"'
+            sprite_kind = recipe.get("kind", "procedural")
+            scale = recipe.get("scale", 1.0)
+            if not isinstance(scale, (int, float)) or scale <= 0:
+                issues.append(ContentIssue(where, "scale must be a positive number"))
+
+            if sprite_kind == "svg":
+                package = recipe.get("package")
+                svg_path = recipe.get("path")
+                if not isinstance(package, str) or not package:
+                    issues.append(ContentIssue(where, "SVG sprite needs a package name"))
+                    continue
+                if not isinstance(svg_path, str) or not svg_path.lower().endswith(".svg"):
+                    issues.append(ContentIssue(where, "SVG sprite path must end in .svg"))
+                    continue
+                try:
+                    asset = resources.files(package).joinpath(*PurePosixPath(svg_path).parts)
+                    svg_bytes = asset.read_bytes()
+                except (ModuleNotFoundError, FileNotFoundError, OSError, TypeError) as ex:
+                    issues.append(
+                        ContentIssue(where, f'cannot read SVG resource "{svg_path}": {ex}')
+                    )
+                    continue
+                try:
+                    root = ET.fromstring(svg_bytes)
+                except ET.ParseError as ex:
+                    issues.append(ContentIssue(where, f'has invalid SVG/XML: {ex}'))
+                    continue
+                if root.tag.rsplit("}", 1)[-1] != "svg":
+                    issues.append(ContentIssue(where, "resource root element is not <svg>"))
+                continue
+
+            if sprite_kind != "procedural":
+                issues.append(ContentIssue(where, f'uses unknown sprite kind "{sprite_kind}"'))
+                continue
+
             palette_id = recipe.get("palette")
             if palette_id not in self.palettes:
                 issues.append(
                     ContentIssue(
-                        f'sprite "{sprite_id}"',
+                        where,
                         f'uses unknown palette "{palette_id}"',
                     )
                 )
             shapes = recipe.get("shapes")
             if not isinstance(shapes, list) or not shapes:
-                issues.append(ContentIssue(f'sprite "{sprite_id}"', "add at least one shape"))
+                issues.append(ContentIssue(where, "add at least one shape"))
 
         if self.default_encounter_id not in self.encounters:
             issues.append(

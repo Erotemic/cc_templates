@@ -18,6 +18,11 @@ When you want to see more of the same game:
 `catalog.py` registers all of those pieces together, so the small workshop still
 runs through the complete RPG engine.
 
+For students who are more interested in visual design, `assets/sprites/` also
+contains SVG character art. `space_pirate.svg` is loaded directly by pygame, so
+students can modify it in Inkscape or as readable XML and immediately preview
+the result with `python render_character.py space_pirate`.
+
 Useful commands from the `rpg` directory:
 
 ```bash

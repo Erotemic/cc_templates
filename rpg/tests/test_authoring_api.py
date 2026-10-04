@@ -8,7 +8,7 @@ import pytest
 from student_game import CONTENT
 from student_game import characters, moves
 from student_game.catalog import GAME
-from rpg_battle.api import Battle, Move, Palette, Sprite, Team
+from rpg_battle.api import Battle, Move, Palette, Sprite, SvgSprite, Team
 from rpg_battle.catalog import ContentValidationError, format_validation_report
 from rpg_battle.core.actions import attack_action, skill_action
 from rpg_battle.core.battle_state import new_battle
@@ -89,6 +89,28 @@ def test_sprite_authored_scale_compiles_for_layout_fitting() -> None:
     compiled = sprite.compile()
     assert compiled["scale"] == 0.5
     assert compiled["shapes"][0]["radius"] == 20
+
+
+def test_svg_sprite_compiles_as_packaged_vector_art() -> None:
+    sprite = SvgSprite(
+        "Vector Hero",
+        "assets/sprites/space_pirate.svg",
+        scale=0.16,
+        flash_color=(1, 2, 3),
+    )
+    compiled = sprite.compile()
+    assert compiled["kind"] == "svg"
+    assert compiled["package"] == "student_game"
+    assert compiled["path"] == "assets/sprites/space_pirate.svg"
+    assert compiled["scale"] == 0.16
+    assert compiled["flash_color"] == (1, 2, 3)
+
+
+def test_space_pirate_uses_svg_art_resource() -> None:
+    recipe = CONTENT.sprites["space_pirate"]
+    assert recipe["kind"] == "svg"
+    assert recipe["path"] == "assets/sprites/space_pirate.svg"
+    assert not [issue for issue in CONTENT.validate_structure() if 'space_pirate' in issue.where]
 
 
 def test_validation_report_is_short_and_actionable() -> None:

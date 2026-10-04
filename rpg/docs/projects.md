@@ -9,11 +9,19 @@ Build conditional attacks, support moves, statuses, target-selection rules, or
 a multi-phase boss. Use named scenarios and fixed seeds to demonstrate each
 phase deliberately.
 
-## Procedural art
+## Character art
 
-Use repeated shapes, symmetry, coordinates, helper functions, and loops to
-create a coherent character family. Refactor repeated drawing ideas into
-functions only after the repetition is visible.
+There are two intentionally different art paths.
+
+**Python procedural art:** use repeated shapes, symmetry, coordinates, helper
+functions, and loops to create a coherent character family. Refactor repeated
+drawing ideas into functions only after the repetition is visible.
+
+**SVG vector art:** edit `student_game/assets/sprites/space_pirate.svg` directly
+in a text editor or vector editor. This path introduces vector geometry,
+layering, fill/stroke styling, groups, and transforms without requiring students
+to express every visual change as Python. Preview it with
+`python render_character.py space_pirate`.
 
 ## Effects and mathematics
 

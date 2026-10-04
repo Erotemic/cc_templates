@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Characters are drawn from simple shapes. Change these and preview immediately."""
 
-from rpg_battle.api import Palette, Sprite
+from rpg_battle.api import Palette, Sprite, SvgSprite
 
 dawn = Palette(
     'Dawn',
@@ -44,11 +44,54 @@ storm = Palette(
 
 moon = Palette(
     'Moon',
-    body=(133, 110, 197),
-    accent=(225, 215, 255),
-    eye=(255, 248, 255),
-    detail=(74, 52, 126),
+    body=(56, 61, 116),
+    accent=(201, 211, 239),
+    eye=(244, 250, 255),
+    detail=(25, 27, 60),
     id='moon',
+    extra={
+        'void': (14, 16, 39),
+        'robe_shadow': (37, 39, 82),
+        'robe_light': (90, 92, 157),
+        'moon_blue': (126, 170, 220),
+        'moon_light': (235, 241, 255),
+        'star': (174, 211, 246),
+        'ember': (236, 132, 66),
+        'ember_light': (255, 220, 148),
+    },
+)
+
+# Moon Mage uses a dedicated character palette so her skin, hair, leather,
+# silver trim, and lunar glow remain visually distinct from the cloak.
+moon_mage_palette = Palette(
+    'Moon Mage',
+    body=(53, 45, 96),
+    accent=(72, 60, 126),
+    eye=(83, 201, 242),
+    detail=(24, 21, 42),
+    id='moon_mage_palette',
+    extra={
+        'deep': (34, 30, 66),
+        'trim': (160, 152, 210),
+        'silver': (225, 228, 242),
+        'moon': (245, 241, 210),
+        'skin': (185, 123, 92),
+        'skin_hi': (218, 159, 124),
+        'hair': (205, 210, 232),
+        'hair_shadow': (142, 148, 178),
+        'lip': (102, 52, 71),
+        'leather': (69, 48, 58),
+        'staff': (92, 73, 112),
+        'staff_hi': (143, 122, 173),
+        'eye_white': (247, 243, 236),
+        'pupil': (16, 19, 31),
+        'brow': (61, 49, 65),
+        'nose': (128, 78, 67),
+        'lip_shadow': (75, 38, 51),
+        'leg': (57, 51, 81),
+        'spell': (180, 232, 255),
+        'spell_core': (135, 220, 255),
+    },
 )
 
 crystal = Palette(
@@ -161,11 +204,22 @@ corsair = Palette(
 
 velvet = Palette(
     'Velvet',
-    body=(98, 66, 112),
-    accent=(205, 179, 232),
-    eye=(252, 245, 255),
-    detail=(55, 32, 68),
+    body=(66, 34, 76),
+    accent=(181, 70, 132),
+    eye=(252, 228, 245),
+    detail=(30, 17, 38),
     id='velvet',
+    extra={
+        'velvet_dark': (41, 22, 52),
+        'velvet_light': (115, 58, 126),
+        'lining': (213, 105, 163),
+        'mask': (229, 204, 219),
+        'thorn': (92, 126, 83),
+        'thorn_light': (159, 184, 116),
+        'hex': (239, 132, 187),
+        'moon': (208, 190, 232),
+        'void': (17, 12, 26),
+    },
 )
 
 siren = Palette(
@@ -188,20 +242,41 @@ raider = Palette(
 
 menace = Palette(
     'Menace',
-    body=(123, 111, 79),
-    accent=(241, 202, 98),
-    eye=(250, 243, 220),
-    detail=(69, 58, 33),
+    body=(125, 96, 58),
+    accent=(213, 166, 71),
+    eye=(255, 233, 165),
+    detail=(48, 37, 28),
     id='menace',
+    extra={
+        'stone_dark': (78, 63, 47),
+        'stone_mid': (145, 118, 76),
+        'stone_light': (184, 153, 96),
+        'patina': (64, 153, 145),
+        'patina_light': (112, 208, 185),
+        'glyph': (246, 201, 98),
+        'void': (27, 24, 22),
+        'ember': (211, 77, 48),
+    },
 )
 
 cryptid = Palette(
     'Cryptid',
-    body=(115, 154, 137),
-    accent=(203, 234, 216),
-    eye=(246, 255, 248),
-    detail=(54, 84, 70),
+    body=(49, 85, 78),
+    accent=(107, 154, 119),
+    eye=(255, 232, 164),
+    detail=(23, 43, 42),
     id='cryptid',
+    extra={
+        'night': (17, 31, 34),
+        'fur_shadow': (34, 63, 60),
+        'fur_light': (80, 116, 104),
+        'moss': (115, 150, 83),
+        'branch': (87, 64, 49),
+        'lantern': (241, 185, 99),
+        'lantern_light': (255, 237, 178),
+        'mist': (151, 186, 178),
+        'mist_light': (198, 216, 205),
+    },
 )
 
 PALETTES = [
@@ -209,6 +284,7 @@ PALETTES = [
     verdant,
     storm,
     moon,
+    moon_mage_palette,
     crystal,
     mist,
     mist_spirit_palette,
@@ -347,17 +423,155 @@ storm_ranger.line([(-12, -14), (-12, -12)], color='detail', width=2)
 storm_ranger.line([(12, -14), (12, -12)], color='detail', width=2)
 storm_ranger.polyline([(-12, 2), (0, 8), (12, 2)], color='detail', width=2)
 
-moon_mage = Sprite('Moon Mage', moon, id='moon_mage')
-moon_mage.ellipse((0, 12), (74, 92), fill='body', outline='detail', width=2)
-moon_mage.circle((0, -46), 20, fill='accent', outline='detail', width=2)
-moon_mage.polyline([(-20, -28), (0, -42), (20, -28)], color='detail', width=3)
-moon_mage.circle((28, -32), 8, fill='accent', outline='detail', width=2)
-moon_mage.circle((-30, 32), 10, fill='accent', outline='detail', width=2)
-moon_mage.circle((-12, -8), 6, fill='eye', outline='detail', width=1)
-moon_mage.circle((12, -8), 6, fill='eye', outline='detail', width=1)
-moon_mage.line([(-12, -8), (-12, -6)], color='detail', width=2)
-moon_mage.line([(12, -8), (12, -6)], color='detail', width=2)
-moon_mage.polyline([(-12, 8), (0, 14), (12, 8)], color='detail', width=2)
+# The face is intentionally a separate component.  Keeping the face geometry
+# together makes it easy to preserve two eyes, nose, mouth, ears, and skin tone
+# even as the hood, hair, or cloak are redesigned around it.
+def _draw_moon_mage_face(sprite: Sprite) -> None:
+    sprite.polygon(
+        [(-32, -193), (-12, -205), (14, -203), (33, -187), (35, -146),
+         (24, -114), (0, -96), (-22, -110), (-36, -143)],
+        fill='skin', outline='detail', width=3,
+    )
+    sprite.ellipse((-35, -155), (11, 28), fill='skin', outline='detail', width=2)
+    sprite.ellipse((37, -155), (11, 28), fill='skin', outline='detail', width=2)
+
+    # Brows and two fully separate eyes.
+    sprite.line([(-25, -170), (-11, -174)], color='brow', width=3)
+    sprite.line([(13, -174), (27, -170)], color='brow', width=3)
+    sprite.ellipse((-18, -162), (18, 12), fill='eye_white', outline='detail', width=2)
+    sprite.ellipse((20, -162), (18, 12), fill='eye_white', outline='detail', width=2)
+    sprite.ellipse((-17, -162), (8, 9), fill='eye', outline='detail', width=1)
+    sprite.ellipse((21, -162), (8, 9), fill='eye', outline='detail', width=1)
+    sprite.ellipse((-16, -162), (3, 4), fill='pupil', outline='pupil', width=1)
+    sprite.ellipse((22, -162), (3, 4), fill='pupil', outline='pupil', width=1)
+
+    # Nose, mouth, and cheek highlights.
+    sprite.line([(1, -162), (-2, -143), (4, -141)], color='nose', width=2)
+    sprite.polyline([(-10, -128), (-1, -125), (9, -129)], color='lip', width=2)
+    sprite.polyline([(-7, -123), (1, -121), (7, -124)], color='lip_shadow', width=1)
+    sprite.line([(-26, -147), (-23, -140)], color='skin_hi', width=2)
+    sprite.line([(24, -148), (22, -141)], color='skin_hi', width=2)
+
+
+# Ported from the successful PIL concept: a grounded human battlemage with a
+# readable face, hair, hands, legs, boots, hood, split cloak, and moon staff.
+moon_mage = Sprite('Moon Mage', moon_mage_palette, id='moon_mage', scale=0.32)
+
+# Moon staff, behind the body.
+moon_mage.line([(133, -192), (110, 271)], color='detail', width=15)
+moon_mage.line([(133, -192), (110, 271)], color='staff', width=10)
+moon_mage.line([(130, -180), (114, 256)], color='staff_hi', width=3)
+# Filled crescent approximation and orb.
+moon_mage.ellipse((127, -243), (95, 98), fill='moon', outline='detail', width=4)
+moon_mage.ellipse((138, -245), (74, 70), fill='deep', outline='detail', width=2)
+moon_mage.circle((129, -248), 17, fill='spell', outline='spell', width=1)
+moon_mage.circle((129, -248), 11, fill='spell_core', outline='detail', width=3)
+
+# Ground shadow keeps the boots visually planted in the battle scene.
+moon_mage.ellipse((5, 335), (237, 38), fill='deep', outline='deep', width=1)
+
+# Cape silhouette and fold lines.
+moon_mage.polygon(
+    [(-72, -84), (-106, -2), (-129, 121), (-140, 271), (-76, 300),
+     (-11, 265), (50, 297), (98, 260), (81, 120), (64, 6), (40, -75)],
+    fill='body', outline='detail', width=4,
+)
+moon_mage.line([(-90, -2), (-111, 116), (-118, 242)], color='accent', width=7)
+moon_mage.line([(51, 6), (65, 119), (73, 239)], color='accent', width=7)
+
+# Legs and boots are drawn before the torso/cloak panels so the open front reads
+# as a real figure standing on the ground rather than a floating robe.
+moon_mage.polygon([(-42, 144), (-13, 144), (-18, 277), (-47, 277)], fill='leg', outline='detail', width=3)
+moon_mage.polygon([(10, 144), (38, 144), (53, 273), (24, 277)], fill='leg', outline='detail', width=3)
+moon_mage.polygon([(-51, 258), (-16, 258), (-15, 311), (-60, 311), (-63, 298)], fill='leather', outline='detail', width=3)
+moon_mage.polygon([(23, 258), (55, 258), (66, 307), (23, 307), (17, 296)], fill='leather', outline='detail', width=3)
+moon_mage.line([(-48, 276), (-18, 276)], color='trim', width=3)
+moon_mage.line([(26, 276), (57, 274)], color='trim', width=3)
+
+# Torso and belt.
+moon_mage.polygon([(-48, -66), (26, -66), (50, 136), (-66, 136)], fill='deep', outline='detail', width=4)
+moon_mage.rect((-9, 93), (118, 28), fill='leather', outline='detail', width=3, border_radius=8)
+moon_mage.ellipse((-9, 93), (23, 23), fill='moon', outline='detail', width=2)
+
+# Arms and cuffs.
+moon_mage.polygon([(-61, -49), (-90, -19), (-126, 32), (-106, 53), (-57, 13)], fill='accent', outline='detail', width=4)
+moon_mage.polygon([(26, -47), (62, -20), (95, 42), (72, 61), (28, 18)], fill='accent', outline='detail', width=4)
+moon_mage.polygon([(-124, 26), (-101, 43), (-111, 63), (-134, 46)], fill='trim', outline='detail', width=2)
+moon_mage.polygon([(85, 27), (104, 42), (92, 63), (72, 50)], fill='trim', outline='detail', width=2)
+
+# Hands and staff grip.
+moon_mage.ellipse((-128, 51), (33, 34), fill='skin', outline='detail', width=3)
+moon_mage.ellipse((98, 56), (32, 32), fill='skin', outline='detail', width=3)
+moon_mage.line([(-138, 49), (-118, 55)], color='skin_hi', width=2)
+moon_mage.line([(89, 54), (106, 58)], color='skin_hi', width=2)
+moon_mage.line([(99, 43), (94, 88)], color='detail', width=10)
+moon_mage.line([(99, 43), (94, 88)], color='staff', width=6)
+
+# Neck, hood shell, and hood interior.
+moon_mage.rect((-10, -78), (38, 51), fill='skin', outline='detail', width=3, border_radius=12)
+moon_mage.polygon(
+    [(-71, -174), (-58, -218), (-28, -245), (14, -244), (49, -221),
+     (66, -172), (53, -98), (26, -69), (-45, -71), (-69, -102)],
+    fill='deep', outline='detail', width=5,
+)
+moon_mage.polygon(
+    [(-45, -179), (-35, -206), (-13, -220), (11, -218), (35, -201),
+     (44, -175), (37, -110), (18, -86), (-30, -87), (-49, -114)],
+    fill='detail', outline='detail', width=3,
+)
+
+# Hair behind the face.
+moon_mage.polygon([(-40, -183), (-53, -139), (-47, -70), (-24, -63), (-17, -145)], fill='hair_shadow', outline='detail', width=3)
+moon_mage.polygon([(30, -181), (47, -138), (39, -66), (16, -63), (11, -145)], fill='hair_shadow', outline='detail', width=3)
+
+# Human face component.
+_draw_moon_mage_face(moon_mage)
+
+# Bangs over the forehead.
+moon_mage.polygon(
+    [(-32, -187), (-24, -206), (1, -213), (25, -200), (33, -183),
+     (19, -190), (11, -177), (-4, -194), (-16, -177)],
+    fill='hair', outline='detail', width=2,
+)
+
+# Hood brow and silver trim layered in front of hair/face.
+moon_mage.polygon(
+    [(-66, -177), (-54, -215), (-28, -242), (14, -242), (46, -216),
+     (63, -173), (43, -182), (30, -208), (8, -225), (-18, -226),
+     (-39, -211), (-48, -180)],
+    fill='body', outline='detail', width=4,
+)
+moon_mage.line([(-54, -181), (-42, -213), (-17, -231), (11, -230), (36, -212), (50, -180)], color='trim', width=4)
+
+# Front cloak panels and open center.
+moon_mage.polygon([(-65, -52), (-32, -72), (-11, -46), (-21, 190), (-72, 258), (-99, 236), (-80, 64)], fill='accent', outline='detail', width=4)
+moon_mage.polygon([(-10, -46), (16, -72), (46, -51), (66, 64), (90, 236), (61, 261), (5, 190)], fill='accent', outline='detail', width=4)
+moon_mage.polygon([(-21, -29), (3, -29), (11, 188), (-9, 233), (-28, 188)], fill='deep', outline='detail', width=3)
+moon_mage.line([(-70, -41), (-90, 61), (-97, 219), (-73, 240)], color='trim', width=4)
+moon_mage.line([(46, -43), (60, 62), (82, 218), (61, 244)], color='trim', width=4)
+moon_mage.line([(-30, -46), (-18, 178)], color='trim', width=3)
+moon_mage.line([(15, -47), (2, 178)], color='trim', width=3)
+
+# Crescent clasp at the chest.
+moon_mage.circle((-3, -51), 14, fill='moon', outline='detail', width=3)
+moon_mage.circle((5, -52), 10, fill='deep', outline='deep', width=1)
+
+# Moon sigils near the hem.
+for x, y in [(-66, 182), (45, 183)]:
+    moon_mage.circle((x, y), 10, fill='moon', outline='detail', width=2)
+    moon_mage.line([(x, y - 15), (x, y - 5)], color='silver', width=2)
+    moon_mage.line([(x - 5, y - 10), (x + 5, y - 10)], color='silver', width=2)
+
+# Left-hand moon spell and particles.
+moon_mage.circle((-156, 20), 28, fill='spell', outline='spell', width=1)
+moon_mage.circle((-156, 20), 22, fill='moon', outline='detail', width=2)
+moon_mage.circle((-149, 20), 17, fill='deep', outline='deep', width=1)
+for x, y, r in [(-184, -21, 4), (-136, -24, 3), (-197, 39, 3), (-129, 64, 4), (-168, 71, 2)]:
+    moon_mage.circle((x, y), r, fill='spell', outline='spell', width=1)
+
+# Staff ferrule.
+moon_mage.rect((111, 273), (19, 30), fill='silver', outline='detail', width=2, border_radius=5)
+
 
 crystal_guardian = Sprite('Crystal Guardian', crystal, id='crystal_guardian')
 crystal_guardian.polygon([(-40, 10), (-14, -44), (14, -44), (40, 10), (20, 52), (-20, 52)], fill='body', outline='detail', width=2)
@@ -791,18 +1005,60 @@ star_corsair.line([(-12, -14), (-12, -12)], color='detail', width=2)
 star_corsair.line([(12, -14), (12, -12)], color='detail', width=2)
 star_corsair.polyline([(-12, 2), (0, 8), (12, 2)], color='detail', width=2)
 
-velvet_hexer = Sprite('Velvet Hexer', velvet, id='velvet_hexer')
-velvet_hexer.ellipse((0, 12), (70, 96), fill='body', outline='detail', width=2)
-velvet_hexer.polyline([(-24, -50), (0, -68), (24, -50)], color='accent', width=4)
-velvet_hexer.polyline([(-40, -6), (-22, 46), (0, 28), (22, 50), (40, -6)], color='accent', width=3)
-velvet_hexer.circle((-36, -18), 6, fill='accent', outline='detail', width=2)
-velvet_hexer.circle((36, -4), 6, fill='accent', outline='detail', width=2)
-velvet_hexer.polyline([(-20, 24), (-4, 8), (12, 24), (28, 8)], color='detail', width=3)
-velvet_hexer.circle((-12, -16), 6, fill='eye', outline='detail', width=1)
-velvet_hexer.circle((12, -16), 6, fill='eye', outline='detail', width=1)
-velvet_hexer.line([(-12, -16), (-12, -14)], color='detail', width=2)
-velvet_hexer.line([(12, -16), (12, -14)], color='detail', width=2)
-velvet_hexer.polyline([(-12, 0), (0, 6), (12, 0)], color='detail', width=2)
+# Velvet Hexer is a courtly silhouette: high collar, fitted bodice, layered
+# velvet skirts, and moth-ritual ornaments instead of a faceless cape mass.
+velvet_hexer = Sprite('Velvet Hexer', velvet, id='velvet_hexer', scale=0.48)
+
+# Back train and outer skirts.
+velvet_hexer.polygon([(-19, -8), (-56, 12), (-76, 52), (-64, 93), (-20, 108), (-9, 70)], fill='velvet_dark', outline='detail', width=3)
+velvet_hexer.polygon([(19, -8), (55, 12), (77, 51), (64, 95), (19, 108), (8, 70)], fill='velvet_dark', outline='detail', width=3)
+velvet_hexer.polygon([(-16, 4), (-43, 21), (-54, 51), (-47, 82), (-18, 91), (-8, 63)], fill='lining', outline='detail', width=2)
+velvet_hexer.polygon([(16, 4), (44, 21), (55, 51), (48, 83), (18, 92), (8, 63)], fill='accent', outline='detail', width=2)
+
+# Dress, waist, and bodice.
+velvet_hexer.polygon([(-15, -27), (-29, -8), (-35, 42), (-28, 93), (-6, 114), (13, 114), (33, 94), (36, 44), (29, -8), (15, -27)], fill='body', outline='detail', width=4)
+velvet_hexer.polygon([(-9, -17), (-14, 26), (-11, 87), (0, 107), (10, 88), (13, 24), (9, -17)], fill='velvet_light', outline='detail', width=2)
+velvet_hexer.polygon([(-20, -5), (-5, 6), (7, 6), (20, -5), (12, -20), (-11, -20)], fill='lining', outline='detail', width=2)
+velvet_hexer.line([(-4, 6), (6, 16), (-4, 27), (6, 38), (-4, 49)], color='hex', width=2)
+
+# Sleeves and gloved hands.
+velvet_hexer.polygon([(-22, -16), (-47, -1), (-42, 25), (-14, 11)], fill='velvet_light', outline='detail', width=2)
+velvet_hexer.polygon([(22, -16), (47, -1), (43, 25), (14, 11)], fill='lining', outline='detail', width=2)
+velvet_hexer.line([(-41, 18), (-56, 39)], color='thorn', width=4)
+velvet_hexer.circle((-59, 43), 5, fill='mask', outline='detail', width=1)
+velvet_hexer.line([(42, 18), (58, 39)], color='thorn', width=4)
+velvet_hexer.circle((61, 43), 5, fill='mask', outline='detail', width=1)
+
+# Face, hair, and collar.
+velvet_hexer.polygon([(-34, -35), (-22, -62), (0, -74), (23, -63), (35, -34), (24, -12), (0, -6), (-22, -12)], fill='void', outline='detail', width=3)
+velvet_hexer.ellipse((0, -40), (18, 22), fill='mask', outline='detail', width=2)
+velvet_hexer.polygon([(-24, -45), (-17, -65), (-4, -77), (9, -75), (18, -66), (24, -47), (18, -24), (3, -18), (-13, -22)], fill='velvet_dark', outline='detail', width=2)
+velvet_hexer.line([(-6, -42), (-1, -44)], color='detail', width=2)
+velvet_hexer.line([(4, -44), (10, -42)], color='detail', width=2)
+velvet_hexer.polyline([(-4, -28), (0, -25), (5, -28)], color='hex', width=2)
+velvet_hexer.polygon([(-29, -53), (-48, -43), (-37, -22), (-19, -27)], fill='body', outline='detail', width=2)
+velvet_hexer.polygon([(28, -53), (49, -43), (38, -21), (18, -26)], fill='body', outline='detail', width=2)
+
+# Thorn circlet.
+velvet_hexer.polyline([(-13, -71), (-3, -86), (8, -78), (18, -91)], color='thorn', width=4)
+velvet_hexer.line([(-2, -86), (-9, -97)], color='thorn_light', width=2)
+velvet_hexer.line([(8, -79), (18, -76)], color='thorn_light', width=2)
+velvet_hexer.circle((18, -91), 3, fill='hex', outline='detail', width=1)
+
+# Ritual moth panes and hanging seals.
+velvet_hexer.ellipse((-77, 7), (20, 28), fill='accent', outline='detail', width=2)
+velvet_hexer.ellipse((-77, 7), (10, 15), fill='void', outline='hex', width=2)
+velvet_hexer.circle((-77, 5), 3, fill='eye', outline='detail', width=1)
+velvet_hexer.ellipse((77, 7), (20, 28), fill='lining', outline='detail', width=2)
+velvet_hexer.ellipse((77, 7), (10, 15), fill='void', outline='hex', width=2)
+velvet_hexer.circle((77, 5), 3, fill='eye', outline='detail', width=1)
+velvet_hexer.line([(-66, 55), (-66, 85)], color='thorn_light', width=2)
+velvet_hexer.polygon([(-76, 92), (-66, 78), (-56, 92), (-66, 106)], fill='hex', outline='detail', width=2)
+velvet_hexer.line([(66, 56), (66, 84)], color='thorn_light', width=2)
+velvet_hexer.polygon([(56, 91), (66, 77), (76, 91), (66, 106)], fill='moon', outline='detail', width=2)
+velvet_hexer.circle((-35, 70), 4, fill='thorn_light', outline='detail', width=1)
+velvet_hexer.circle((34, 73), 4, fill='thorn', outline='detail', width=1)
+
 
 siren_engine = Sprite('Siren Engine', siren, id='siren_engine')
 siren_engine.ellipse((0, 6), (74, 94), fill='body', outline='detail', width=2)
@@ -820,48 +1076,117 @@ siren_engine.line([(-12, -12), (-12, -10)], color='detail', width=2)
 siren_engine.line([(12, -12), (12, -10)], color='detail', width=2)
 siren_engine.polyline([(-12, 4), (0, 10), (12, 4)], color='detail', width=2)
 
-space_pirate = Sprite('Space Pirate', raider, id='space_pirate')
-space_pirate.ellipse((0, 10), (80, 92), fill='body', outline='detail', width=2)
-space_pirate.polygon([(-40, -24), (-10, -60), (20, -18)], fill='accent', outline='detail', width=2)
-space_pirate.line([(-34, 34), (-10, 54), (18, 24)], color='detail', width=3)
-space_pirate.rect((34, 12), (20, 52), fill='accent', outline='detail', width=2, border_radius=3)
-space_pirate.circle((16, -16), 8, fill='accent', outline='detail', width=2)
-space_pirate.line([(44, -10), (58, 28), (74, 18)], color='detail', width=3)
-space_pirate.line([(-28, -8), (-50, 6), (-40, 42)], color='accent', width=3)
-space_pirate.circle((-12, -14), 6, fill='eye', outline='detail', width=1)
-space_pirate.circle((12, -14), 6, fill='eye', outline='detail', width=1)
-space_pirate.line([(-12, -14), (-12, -12)], color='detail', width=2)
-space_pirate.line([(12, -14), (12, -12)], color='detail', width=2)
-space_pirate.polyline([(-12, 2), (0, 8), (12, 2)], color='detail', width=2)
+# Space Pirate intentionally uses an SVG instead of Python drawing primitives.
+# This gives art-focused students a second authoring path: edit the vector file
+# directly in a text editor or a tool such as Inkscape, then rerun the same
+# character preview command used for procedural sprites.
+space_pirate = SvgSprite(
+    'Space Pirate',
+    'assets/sprites/space_pirate.svg',
+    id='space_pirate',
+    scale=0.16,
+    flash_color=(84, 225, 255),
+)
 
-tiny_ancient_menace = Sprite('Tiny Ancient Menace', menace, id='tiny_ancient_menace')
-tiny_ancient_menace.circle((0, 18), 30, fill='body', outline='detail', width=2)
-tiny_ancient_menace.polyline([(-20, -12), (-8, -36), (0, -18), (8, -36), (20, -12)], color='accent', width=4)
-tiny_ancient_menace.circle((-28, -6), 6, fill='accent', outline='detail', width=2)
-tiny_ancient_menace.circle((28, -2), 6, fill='accent', outline='detail', width=2)
-tiny_ancient_menace.polyline([(-18, 44), (-8, 24), (0, 44), (8, 24), (18, 44)], color='detail', width=3)
-tiny_ancient_menace.line([(-20, 20), (-36, 34)], color='detail', width=3)
-tiny_ancient_menace.line([(20, 20), (36, 34)], color='detail', width=3)
-tiny_ancient_menace.circle((-12, 2), 6, fill='eye', outline='detail', width=1)
-tiny_ancient_menace.circle((12, 2), 6, fill='eye', outline='detail', width=1)
-tiny_ancient_menace.line([(-12, 2), (-12, 4)], color='detail', width=2)
-tiny_ancient_menace.line([(12, 2), (12, 4)], color='detail', width=2)
-tiny_ancient_menace.polyline([(-12, 18), (0, 24), (12, 18)], color='detail', width=2)
+# Tiny Ancient Menace is now a compact scarab-idol: half relic, half scuttling
+# machine, with a tiny body trying very hard to project monumental authority.
+tiny_ancient_menace = Sprite('Tiny Ancient Menace', menace, id='tiny_ancient_menace', scale=0.52)
 
-cryptid_friend = Sprite('Cryptid Friend', cryptid, id='cryptid_friend')
-cryptid_friend.ellipse((0, 14), (82, 92), fill='body', outline='detail', width=2)
-cryptid_friend.polyline([(-24, -40), (-16, -60), (-8, -40)], color='accent', width=3)
-cryptid_friend.polyline([(24, -40), (16, -60), (8, -40)], color='accent', width=3)
-cryptid_friend.polygon([(-36, 12), (-56, -8), (-46, 30)], fill='accent', outline='detail', width=2)
-cryptid_friend.polygon([(36, 12), (56, -8), (46, 30)], fill='accent', outline='detail', width=2)
-cryptid_friend.polyline([(-28, 34), (-10, 54), (10, 54), (28, 34)], color='accent', width=4)
-cryptid_friend.circle((-30, -12), 5, fill='accent', outline='detail', width=2)
-cryptid_friend.circle((30, -8), 5, fill='accent', outline='detail', width=2)
-cryptid_friend.circle((-12, -10), 6, fill='eye', outline='detail', width=1)
-cryptid_friend.circle((12, -10), 6, fill='eye', outline='detail', width=1)
-cryptid_friend.line([(-12, -10), (-12, -8)], color='detail', width=2)
-cryptid_friend.line([(12, -10), (12, -8)], color='detail', width=2)
-cryptid_friend.polyline([(-12, 6), (0, 12), (12, 6)], color='detail', width=2)
+# Crown-shrine shell.
+tiny_ancient_menace.polygon([(-34, -38), (-11, -76), (17, -76), (38, -38), (46, -4), (40, 46), (16, 71), (-16, 71), (-39, 48), (-47, -6)], fill='stone_dark', outline='detail', width=4)
+tiny_ancient_menace.polygon([(-26, -33), (-9, -63), (13, -63), (28, -34), (34, -5), (31, 39), (12, 59), (-12, 59), (-31, 40), (-36, -6)], fill='body', outline='detail', width=3)
+tiny_ancient_menace.polygon([(-18, -60), (-7, -91), (7, -91), (18, -60)], fill='accent', outline='detail', width=3)
+tiny_ancient_menace.polygon([(-7, -72), (0, -86), (8, -72), (0, -58)], fill='glyph', outline='stone_dark', width=2)
+
+# Face niche and central eye.
+tiny_ancient_menace.polygon([(-20, -17), (0, -31), (21, -17), (18, 12), (0, 27), (-18, 12)], fill='void', outline='detail', width=3)
+tiny_ancient_menace.ellipse((0, -11), (18, 12), fill='eye', outline='patina', width=2)
+tiny_ancient_menace.circle((0, -11), 5, fill='ember', outline='detail', width=1)
+tiny_ancient_menace.line([(-12, 18), (-4, 24), (9, 19)], color='detail', width=2)
+
+# Carved chest plates and glyphs.
+tiny_ancient_menace.polygon([(-22, 31), (-3, 24), (0, 41), (-17, 48)], fill='stone_mid', outline='detail', width=2)
+tiny_ancient_menace.polygon([(4, 24), (23, 31), (18, 48), (0, 41)], fill='stone_light', outline='detail', width=2)
+tiny_ancient_menace.line([(-13, 34), (-6, 34), (-6, 43), (2, 43), (2, 51)], color='patina_light', width=3)
+tiny_ancient_menace.line([(13, 34), (7, 40), (14, 48)], color='glyph', width=2)
+
+# Scuttling scarab legs.
+for leg in [
+    [(-27, 4), (-48, 0), (-60, 12), (-51, 30)],
+    [(-30, 23), (-53, 24), (-64, 42), (-51, 55)],
+    [(-25, 44), (-46, 55), (-48, 74), (-31, 81)],
+    [(27, 4), (48, 0), (60, 13), (51, 31)],
+    [(31, 22), (53, 25), (64, 43), (52, 55)],
+    [(25, 44), (46, 56), (48, 74), (31, 81)],
+]:
+    tiny_ancient_menace.polyline(leg, color='stone_dark', width=5)
+for foot in [(-51, 30), (-51, 55), (-31, 81), (51, 31), (52, 55), (31, 81)]:
+    tiny_ancient_menace.circle(foot, 4, fill='accent', outline='detail', width=1)
+
+# Floating tablets and chips.
+tiny_ancient_menace.rect((-70, -24), (14, 16), fill='stone_mid', outline='detail', width=2, border_radius=1)
+tiny_ancient_menace.rect((70, -30), (12, 14), fill='patina', outline='detail', width=2, border_radius=1)
+tiny_ancient_menace.rect((-79, 13), (9, 9), fill='glyph', outline='detail', width=1, border_radius=1)
+tiny_ancient_menace.circle((62, -58), 4, fill='patina_light', outline='detail', width=1)
+tiny_ancient_menace.polygon([(-34, -3), (-26, -15), (-18, 1), (-29, 13)], fill='patina', outline='detail', width=1)
+tiny_ancient_menace.polygon([(18, 46), (31, 37), (28, 58), (17, 63)], fill='patina', outline='detail', width=1)
+tiny_ancient_menace.ellipse((0, 91), (86, 10), fill='void', outline='void', width=1)
+
+
+# Cryptid Friend is a plush midnight creature with enormous ears, a lantern belly,
+# and long arms that make her read as odd but gentle instead of ominous.
+cryptid_friend = Sprite('Cryptid Friend', cryptid, id='cryptid_friend', scale=0.47)
+
+# Oversized ear-fins define the silhouette.
+cryptid_friend.polygon([(-24, -39), (-71, -103), (-108, -86), (-95, -35), (-50, -6)], fill='accent', outline='detail', width=4)
+cryptid_friend.polygon([(-39, -37), (-73, -86), (-91, -78), (-78, -39), (-48, -14)], fill='mist', outline='detail', width=2)
+cryptid_friend.polygon([(23, -39), (71, -104), (109, -85), (95, -34), (49, -6)], fill='accent', outline='detail', width=4)
+cryptid_friend.polygon([(38, -37), (73, -86), (91, -77), (77, -39), (48, -14)], fill='mist_light', outline='detail', width=2)
+
+# Round fluffy body.
+cryptid_friend.polygon([(-50, -17), (-62, 21), (-53, 66), (-24, 108), (0, 95), (24, 108), (52, 66), (61, 21), (50, -17), (18, -42), (-17, -42)], fill='fur_shadow', outline='detail', width=4)
+cryptid_friend.polygon([(-38, -10), (-47, 23), (-40, 58), (-18, 88), (-1, 78), (17, 89), (39, 58), (46, 23), (38, -10), (14, -29), (-13, -29)], fill='body', outline='detail', width=3)
+cryptid_friend.polygon([(-33, 32), (-15, 23), (-3, 34), (12, 24), (31, 35), (34, 60), (16, 76), (0, 66), (-18, 76), (-34, 60)], fill='fur_light', outline='detail', width=2)
+
+# Shadow face with three warm eyes.
+cryptid_friend.ellipse((0, -26), (44, 35), fill='night', outline='detail', width=3)
+cryptid_friend.circle((-15, -29), 6, fill='eye', outline='detail', width=1)
+cryptid_friend.circle((2, -34), 9, fill='lantern_light', outline='detail', width=1)
+cryptid_friend.circle((19, -27), 5, fill='eye', outline='detail', width=1)
+cryptid_friend.circle((-13, -28), 2, fill='detail', outline='detail', width=1)
+cryptid_friend.circle((4, -33), 3, fill='detail', outline='detail', width=1)
+cryptid_friend.circle((20, -26), 2, fill='detail', outline='detail', width=1)
+cryptid_friend.polyline([(-9, -12), (-1, -8), (10, -12)], color='mist', width=2)
+
+# Long arms and soft paws.
+cryptid_friend.line([(-40, 2), (-77, 34), (-84, 78)], color='fur_shadow', width=12)
+cryptid_friend.line([(-76, 34), (-93, 58)], color='body', width=5)
+cryptid_friend.ellipse((-85, 86), (22, 18), fill='accent', outline='detail', width=2)
+cryptid_friend.line([(40, 3), (76, 34), (84, 78)], color='fur_shadow', width=12)
+cryptid_friend.line([(76, 34), (94, 58)], color='body', width=5)
+cryptid_friend.ellipse((86, 86), (22, 18), fill='accent', outline='detail', width=2)
+
+# Lantern belly.
+cryptid_friend.polygon([(-18, 9), (0, -3), (19, 10), (16, 37), (0, 51), (-16, 36)], fill='lantern', outline='detail', width=3)
+cryptid_friend.polygon([(-9, 13), (0, 7), (10, 13), (9, 30), (0, 39), (-9, 29)], fill='lantern_light', outline='lantern', width=1)
+cryptid_friend.circle((0, 21), 4, fill='eye', outline='lantern', width=1)
+
+# Small feet and a looped tail with glowing tuft.
+cryptid_friend.polygon([(-27, 93), (-6, 86), (-2, 103), (-25, 108)], fill='fur_shadow', outline='detail', width=2)
+cryptid_friend.polygon([(6, 86), (27, 93), (25, 108), (2, 103)], fill='fur_shadow', outline='detail', width=2)
+cryptid_friend.polyline([(42, 55), (74, 64), (93, 86), (72, 99), (47, 91)], color='accent', width=7)
+cryptid_friend.polyline([(43, 57), (72, 66), (88, 84), (70, 94), (49, 88)], color='mist', width=3)
+cryptid_friend.circle((93, 86), 7, fill='lantern', outline='detail', width=2)
+cryptid_friend.circle((92, 84), 3, fill='lantern_light', outline='lantern', width=1)
+
+# Speckles and little night motes.
+cryptid_friend.circle((-32, 54), 4, fill='moss', outline='detail', width=1)
+cryptid_friend.circle((35, 57), 4, fill='moss', outline='detail', width=1)
+cryptid_friend.circle((-69, 104), 3, fill='mist', outline='detail', width=1)
+cryptid_friend.circle((68, 103), 3, fill='mist_light', outline='detail', width=1)
+cryptid_friend.circle((-95, -8), 4, fill='mist', outline='detail', width=1)
+cryptid_friend.circle((98, -11), 4, fill='mist_light', outline='detail', width=1)
+
 
 SPRITES = [
     knight_dawn,

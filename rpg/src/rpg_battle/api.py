@@ -263,10 +263,54 @@ class Sprite:
         if self.scale <= 0:
             raise ValueError(f"Sprite scale must be positive, got {self.scale!r}")
         return {
+            "kind": "procedural",
             "palette": self.palette.palette_id,
             "scale": float(self.scale),
             "shapes": list(self.shapes),
         }
+
+
+@dataclass(frozen=True)
+class SvgSprite:
+    """Vector character art loaded directly by pygame from an SVG resource.
+
+    ``path`` is relative to ``package`` so student artwork remains portable when
+    the game is installed as a package.  SVGs are especially useful for students
+    who want to work in tools such as Inkscape instead of authoring every shape
+    from Python.
+    """
+
+    name: str
+    path: str
+    id: str | None = None
+    scale: float = 1.0
+    package: str = "student_game"
+    flash_color: Color = (210, 235, 255)
+
+    @property
+    def sprite_id(self) -> str:
+        return _id(self.id, self.name)
+
+    def compile(self) -> dict[str, object]:
+        if self.scale <= 0:
+            raise ValueError(f"Sprite scale must be positive, got {self.scale!r}")
+        resource_path = Path(self.path)
+        if resource_path.is_absolute() or ".." in resource_path.parts:
+            raise ValueError(
+                f"SVG sprite path must stay inside its package, got {self.path!r}"
+            )
+        if not self.path.lower().endswith(".svg"):
+            raise ValueError(f"SVG sprite path must end in .svg, got {self.path!r}")
+        return {
+            "kind": "svg",
+            "package": self.package,
+            "path": self.path,
+            "scale": float(self.scale),
+            "flash_color": tuple(self.flash_color),
+        }
+
+
+SpriteAsset = Sprite | SvgSprite
 
 
 @dataclass(frozen=True)
@@ -574,7 +618,7 @@ class Character:
     defense: int
     magic: int
     speed: int
-    sprite: Sprite
+    sprite: SpriteAsset
     moves: Sequence[Move]
     description: str = ""
     id: str | None = None
@@ -696,7 +740,7 @@ class Game:
 
     title: str
     palettes: Sequence[Palette]
-    sprites: Sequence[Sprite]
+    sprites: Sequence[SpriteAsset]
     effects: Sequence[VisualEffect]
     sounds: Sequence[Sound]
     music: Sequence[Music]

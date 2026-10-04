@@ -1,0 +1,1064 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1024"
+   height="1024"
+   viewBox="0 0 1024 1024"
+   version="1.1"
+   id="svg301"
+   sodipodi:docname="space_pirate.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs305" />
+  <sodipodi:namedview
+     id="namedview303"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#505050"
+     showgrid="false"
+     inkscape:zoom="2.8367136"
+     inkscape:cx="225.96571"
+     inkscape:cy="381.60356"
+     inkscape:window-width="2560"
+     inkscape:window-height="1371"
+     inkscape:window-x="0"
+     inkscape:window-y="1472"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="plasma-cutlass" />
+  <!--
+    Space Pirate
+
+    This file is deliberately organized into named groups so students can open
+    it in a text editor or vector drawing program and work on one idea at a
+    time: silhouette, equipment, face, helmet, decals, or weapons.
+
+    The game loads this SVG directly through pygame. Keep the viewBox intact if
+    you want the authored scale in student_game/art.py to keep behaving the
+    same way.
+  -->
+  <!-- Palette used by this one character. -->
+  <g
+     id="space-pirate"
+     stroke="#0b0c14"
+     stroke-linejoin="round"
+     stroke-linecap="round">
+    <!-- Energy cutlass behind the body: thick cyan edge + bright core. -->
+    <!-- Coat tails establish the pirate silhouette. -->
+    <g
+       id="coat-tails">
+      <polygon
+         points="429,555 486,543 500,738 452,883 395,907 411,731"
+         fill="#581928"
+         stroke-width="5"
+         id="polygon11" />
+      <polygon
+         points="548,553 596,573 654,733 697,866 647,900 578,758"
+         fill="#631c2a"
+         stroke-width="5"
+         id="polygon13" />
+      <polygon
+         points="427,587 467,581 467,731 425,851 405,871 419,715"
+         fill="#cb3b41"
+         stroke-width="3"
+         id="polygon15" />
+      <polygon
+         points="575,588 596,599 635,738 679,850 648,876 590,752"
+         fill="#cb3b41"
+         stroke-width="3"
+         id="polygon17" />
+    </g>
+    <!-- Jetpack / life-support unit. -->
+    <g
+       id="jetpack">
+      <rect
+         x="421"
+         y="334"
+         width="179"
+         height="260"
+         rx="28"
+         fill="#233042"
+         stroke-width="6"
+         id="rect20" />
+      <rect
+         x="442"
+         y="357"
+         width="137"
+         height="114"
+         rx="18"
+         fill="#394a5b"
+         stroke="#92aab8"
+         stroke-width="3"
+         id="rect22" />
+      <rect
+         x="431"
+         y="405"
+         width="37"
+         height="167"
+         rx="16"
+         fill="#435363"
+         stroke-width="4"
+         id="rect24" />
+      <rect
+         x="552"
+         y="405"
+         width="37"
+         height="167"
+         rx="16"
+         fill="#435363"
+         stroke-width="4"
+         id="rect26" />
+      <circle
+         cx="510"
+         cy="426"
+         r="35"
+         fill="#15303a"
+         stroke="#a4f8ff"
+         stroke-width="4"
+         id="circle28" />
+      <circle
+         cx="510"
+         cy="426"
+         r="22"
+         fill="#54e1ff"
+         stroke="#0b0c14"
+         stroke-width="3"
+         id="circle30" />
+      <circle
+         cx="510"
+         cy="426"
+         r="10"
+         fill="#d7ffff"
+         stroke="none"
+         id="circle32" />
+      <g
+         stroke="#a4f8ff"
+         stroke-width="3"
+         id="g50">
+        <line
+           x1="510"
+           y1="383"
+           x2="510"
+           y2="394"
+           id="line34" />
+        <line
+           x1="510"
+           y1="458"
+           x2="510"
+           y2="469"
+           id="line36" />
+        <line
+           x1="467"
+           y1="426"
+           x2="478"
+           y2="426"
+           id="line38" />
+        <line
+           x1="542"
+           y1="426"
+           x2="553"
+           y2="426"
+           id="line40" />
+        <line
+           x1="480"
+           y1="396"
+           x2="488"
+           y2="404"
+           id="line42" />
+        <line
+           x1="532"
+           y1="448"
+           x2="540"
+           y2="456"
+           id="line44" />
+        <line
+           x1="540"
+           y1="396"
+           x2="532"
+           y2="404"
+           id="line46" />
+        <line
+           x1="488"
+           y1="448"
+           x2="480"
+           y2="456"
+           id="line48" />
+      </g>
+      <polyline
+         points="453,428 377,424 344,467 354,513"
+         fill="none"
+         stroke="#0b0c14"
+         stroke-width="17"
+         id="polyline52" />
+      <polyline
+         points="453,428 377,424 344,467 354,513"
+         fill="none"
+         stroke="#465665"
+         stroke-width="10"
+         id="polyline54" />
+    </g>
+    <!-- Legs and boots: one planted, one bent. -->
+    <g
+       id="legs">
+      <polygon
+         points="458,676 526,678 517,818 500,906 448,910 451,819"
+         fill="#2c3744"
+         stroke-width="5"
+         id="polygon57" />
+      <polygon
+         points="454,745 518,745 520,800 453,803"
+         fill="#4c5e6e"
+         stroke-width="4"
+         id="polygon59" />
+      <polygon
+         points="449,889 501,887 512,938 494,970 409,969 414,944"
+         fill="#252a33"
+         stroke-width="5"
+         id="polygon61" />
+      <polygon
+         points="449,894 500,894 505,924 445,927"
+         fill="#4d5a69"
+         stroke-width="3"
+         id="polygon63" />
+      <circle
+         cx="457"
+         cy="911"
+         r="6"
+         fill="#54e1ff"
+         stroke="#a4f8ff"
+         stroke-width="2"
+         id="circle65" />
+      <polygon
+         points="536,683 600,690 646,792 626,876 577,861 584,797 540,744"
+         fill="#27313f"
+         stroke-width="5"
+         id="polygon67" />
+      <polygon
+         points="583,737 630,751 644,793 591,803 568,773"
+         fill="#4a5c6d"
+         stroke-width="4"
+         id="polygon69" />
+      <polygon
+         points="578,846 632,857 639,901 690,933 681,962 613,948 576,904"
+         fill="#252a33"
+         stroke-width="5"
+         id="polygon71" />
+      <polygon
+         points="604,862 637,873 640,908 596,901"
+         fill="#4d5a69"
+         stroke-width="3"
+         id="polygon73" />
+      <circle
+         cx="613"
+         cy="887"
+         r="6"
+         fill="#54e1ff"
+         stroke="#a4f8ff"
+         stroke-width="2"
+         id="circle75" />
+    </g>
+    <!-- Main coat and armor. -->
+    <g
+       id="torso">
+      <polygon
+         points="421,418 466,387 544,386 598,421 612,566 578,700 446,698 403,565"
+         fill="#661d2b"
+         stroke-width="6"
+         id="polygon78" />
+      <polygon
+         points="462,403 543,401 575,461 557,596 466,596 440,466"
+         fill="#364555"
+         stroke-width="5"
+         id="polygon80" />
+      <rect
+         x="455"
+         y="482"
+         width="104"
+         height="26"
+         rx="7"
+         fill="#4b5c6a"
+         stroke-width="3"
+         id="rect82" />
+      <rect
+         x="458"
+         y="518"
+         width="98"
+         height="26"
+         rx="7"
+         fill="#4b5c6a"
+         stroke-width="3"
+         id="rect84" />
+      <rect
+         x="463"
+         y="553"
+         width="89"
+         height="26"
+         rx="7"
+         fill="#4b5c6a"
+         stroke-width="3"
+         id="rect86" />
+      <line
+         x1="463"
+         y1="487"
+         x2="551"
+         y2="487"
+         stroke="#869daa"
+         stroke-width="2"
+         id="line88" />
+      <line
+         x1="466"
+         y1="523"
+         x2="548"
+         y2="523"
+         stroke="#869daa"
+         stroke-width="2"
+         id="line90" />
+      <line
+         x1="471"
+         y1="558"
+         x2="544"
+         y2="558"
+         stroke="#869daa"
+         stroke-width="2"
+         id="line92" />
+      <polygon
+         points="421,424 462,398 481,466 451,534 419,505"
+         fill="#cb3b41"
+         stroke-width="4"
+         id="polygon94" />
+      <polygon
+         points="548,399 597,428 597,512 563,532 532,465"
+         fill="#cb3b41"
+         stroke-width="4"
+         id="polygon96" />
+      <polyline
+         points="432,437 463,419 480,468"
+         fill="none"
+         stroke="#e4a939"
+         stroke-width="4"
+         id="polyline98" />
+      <polyline
+         points="585,438 556,417 533,468"
+         fill="none"
+         stroke="#e4a939"
+         stroke-width="4"
+         id="polyline100" />
+      <!-- Chest skull and crossbones. -->
+      <g
+         id="chest-skull"
+         transform="translate(507 451)">
+        <line
+           x1="-26"
+           y1="-18"
+           x2="26"
+           y2="18"
+           stroke="#e6f1f1"
+           stroke-width="8"
+           id="line102" />
+        <line
+           x1="-26"
+           y1="18"
+           x2="26"
+           y2="-18"
+           stroke="#e6f1f1"
+           stroke-width="8"
+           id="line104" />
+        <ellipse
+           cx="0"
+           cy="-7"
+           rx="18"
+           ry="17"
+           fill="#e6f1f1"
+           stroke-width="3"
+           id="ellipse106" />
+        <rect
+           x="-12"
+           y="5"
+           width="24"
+           height="17"
+           rx="4"
+           fill="#e6f1f1"
+           stroke-width="3"
+           id="rect108" />
+        <ellipse
+           cx="-7"
+           cy="-8"
+           rx="4"
+           ry="5"
+           fill="#0b0c14"
+           stroke="none"
+           id="ellipse110" />
+        <ellipse
+           cx="7"
+           cy="-8"
+           rx="4"
+           ry="5"
+           fill="#0b0c14"
+           stroke="none"
+           id="ellipse112" />
+        <polygon
+           points="0,-1 -3,5 3,5"
+           fill="#0b0c14"
+           stroke="none"
+           id="polygon114" />
+        <line
+           x1="-8"
+           y1="13"
+           x2="8"
+           y2="13"
+           stroke="#0b0c14"
+           stroke-width="2"
+           id="line116" />
+      </g>
+      <!-- Belt, sash, buckle, pouches. -->
+      <polygon
+         points="436,582 582,582 590,624 435,632"
+         fill="#302222"
+         stroke-width="4"
+         id="polygon119" />
+      <polygon
+         points="446,586 574,587 559,613 447,618"
+         fill="#b42734"
+         stroke-width="2"
+         id="polygon121" />
+      <rect
+         x="493"
+         y="583"
+         width="38"
+         height="39"
+         rx="7"
+         fill="#e4a939"
+         stroke-width="3"
+         id="rect123" />
+      <rect
+         x="503"
+         y="592"
+         width="18"
+         height="22"
+         rx="4"
+         fill="#2a323a"
+         stroke-width="2"
+         id="rect125" />
+      <rect
+         x="449"
+         y="615"
+         width="37"
+         height="38"
+         rx="7"
+         fill="#372724"
+         stroke-width="3"
+         id="rect127" />
+      <rect
+         x="536"
+         y="614"
+         width="39"
+         height="40"
+         rx="7"
+         fill="#372724"
+         stroke-width="3"
+         id="rect129" />
+    </g>
+    <!-- Left sword arm. -->
+    <g
+       id="cutlass-arm">
+      <polygon
+         points="420,432 390,431 349,486 321,552 355,570 388,522 435,479"
+         fill="#942431"
+         stroke-width="5"
+         id="polygon132" />
+      <polygon
+         points="405,416 372,414 344,443 357,475 400,474 426,447"
+         fill="#475869"
+         stroke-width="4"
+         id="polygon134" />
+      <line
+         x1="352"
+         y1="427"
+         x2="397"
+         y2="419"
+         stroke="#92aab8"
+         stroke-width="3"
+         id="line136" />
+      <polygon
+         points="337,529 305,553 289,607 324,623 354,574"
+         fill="#4f6374"
+         stroke-width="4"
+         id="polygon138" />
+      <polygon
+         points="297,593 318,598 327,623 312,645 286,637 277,613"
+         fill="#23262c"
+         stroke-width="4"
+         id="polygon140" />
+      <!-- Shoulder skull. -->
+      <g
+         id="shoulder-skull"
+         transform="translate(383 444)">
+        <line
+           x1="-13"
+           y1="-9"
+           x2="13"
+           y2="9"
+           stroke="#e6f1f1"
+           stroke-width="5"
+           id="line148" />
+        <line
+           x1="-13"
+           y1="9"
+           x2="13"
+           y2="-9"
+           stroke="#e6f1f1"
+           stroke-width="5"
+           id="line150" />
+        <ellipse
+           cx="0"
+           cy="-3"
+           rx="10"
+           ry="9"
+           fill="#e6f1f1"
+           stroke-width="2"
+           id="ellipse152" />
+        <rect
+           x="-7"
+           y="4"
+           width="14"
+           height="9"
+           rx="2"
+           fill="#e6f1f1"
+           stroke-width="2"
+           id="rect154" />
+        <circle
+           cx="-4"
+           cy="-3"
+           r="2.5"
+           fill="#0b0c14"
+           stroke="none"
+           id="circle156" />
+        <circle
+           cx="4"
+           cy="-3"
+           r="2.5"
+           fill="#0b0c14"
+           stroke="none"
+           id="circle158" />
+      </g>
+    </g>
+    <g
+       id="plasma-cutlass"
+       transform="translate(19.075219,-11.772648)">
+      <path
+         id="polyline2"
+         style="opacity:0.34;fill:none;stroke:#34b9ff;stroke-width:20"
+         d="M 284,650 228,587 185.92764,520.17919 177,506 140,412 c -0.14305,-0.757 6.61361,16.391 -0.4415,-2.26386 -10.80182,-28.56177 -18.63729,-48.43234 -17.48352,-82.51937 l -0.41662,-12.2773 c 3.94313,10.98556 8.60461,33.02341 12.5521,44.00712 32.93989,91.65369 66.47729,171.69767 121.75085,253.89075"
+         sodipodi:nodetypes="cccccsccsc" />
+      <path
+         id="polyline4"
+         style="fill:#b2faff;stroke:#b2faff;stroke-width:9;fill-opacity:1"
+         d="M 283.92495,652.26995 C 182.90515,544.00287 138.66511,413.13796 127.27137,361.87984 c -4.02378,-18.10221 -5.00994,-44.41231 -5.00994,-44.41231 26.0964,107.30898 51.965,145.30945 97.60503,241.03852 l 43.9111,56.40118"
+         sodipodi:nodetypes="csccc" />
+      <path
+         id="line146"
+         style="stroke:#e4a939;stroke-width:5.34701;fill:#e4a939;fill-opacity:1"
+         d="m 269.85558,612.10475 32.98175,36.86565 13.45062,-12.72412 -33.35079,-36.19745"
+         sodipodi:nodetypes="cccc"
+         inkscape:label="line146"
+         transform="translate(-19.075219,11.772648)" />
+    </g>
+    <!-- Right pistol arm. -->
+    <g
+       id="pistol-arm">
+      <polygon
+         points="591,432 628,444 669,500 692,553 658,572 626,526 578,480"
+         fill="#942431"
+         stroke-width="5"
+         id="polygon162" />
+      <polygon
+         points="590,416 629,429 650,462 631,487 590,472 568,445"
+         fill="#4b5c6d"
+         stroke-width="4"
+         id="polygon164" />
+      <line
+         x1="598"
+         y1="422"
+         x2="625"
+         y2="434"
+         stroke="#92aab8"
+         stroke-width="3"
+         id="line166" />
+      <polygon
+         points="678,540 714,570 725,615 691,630 654,577"
+         fill="#3d4b58"
+         stroke-width="4"
+         id="polygon168" />
+      <polygon
+         points="704,594 736,601 749,621 733,644 700,635 685,616"
+         fill="#21252b"
+         stroke-width="4"
+         id="polygon170" />
+      <polygon
+         points="730,590 803,561 833,575 823,603 773,616 762,650 730,646"
+         fill="#425261"
+         stroke-width="5"
+         id="polygon172" />
+      <polygon
+         points="774,566 821,559 839,574 822,592 775,600"
+         fill="#5d7280"
+         stroke-width="4"
+         id="polygon174" />
+      <polygon
+         points="819,559 889,550 904,565 897,583 828,585"
+         fill="#303d49"
+         stroke-width="4"
+         id="polygon176" />
+      <ellipse
+         cx="902"
+         cy="563"
+         rx="13"
+         ry="16"
+         fill="#ff6650"
+         stroke="#0b0c14"
+         stroke-width="3"
+         id="ellipse178" />
+      <ellipse
+         cx="904"
+         cy="563"
+         rx="5"
+         ry="9"
+         fill="#ffdda3"
+         stroke="none"
+         id="ellipse180" />
+      <polygon
+         points="760,611 783,607 771,660 751,678 733,663"
+         fill="#4d312a"
+         stroke-width="4"
+         id="polygon182" />
+    </g>
+    <!-- Neck and pressure collar. -->
+    <g
+       id="neck-collar">
+      <polygon
+         points="476,369 540,368 546,416 470,416"
+         fill="#c0805b"
+         stroke-width="4"
+         id="polygon185" />
+      <line
+         x1="477"
+         y1="393"
+         x2="539"
+         y2="392"
+         stroke="#76493f"
+         stroke-width="4"
+         id="line187" />
+      <ellipse
+         cx="506"
+         cy="381"
+         rx="76"
+         ry="49"
+         fill="#314050"
+         stroke-width="5"
+         id="ellipse189" />
+      <ellipse
+         cx="507"
+         cy="381"
+         rx="58"
+         ry="35"
+         fill="#0e121b"
+         stroke="#92aab8"
+         stroke-width="3"
+         id="ellipse191" />
+    </g>
+    <!-- Human head. -->
+    <g
+       id="head"
+       transform="translate(-4.0603396,44.263784)">
+      <ellipse
+         cx="457"
+         cy="294"
+         rx="13"
+         ry="23"
+         fill="#c0805b"
+         stroke-width="3"
+         id="ellipse194" />
+      <ellipse
+         cx="560"
+         cy="294"
+         rx="13"
+         ry="23"
+         fill="#c0805b"
+         stroke-width="3"
+         id="ellipse196" />
+      <polyline
+         points="454,289 461,296 455,302"
+         fill="none"
+         stroke="#76493f"
+         stroke-width="2"
+         id="polyline198" />
+      <polyline
+         points="564,289 557,296 563,302"
+         fill="none"
+         stroke="#76493f"
+         stroke-width="2"
+         id="polyline200" />
+      <polygon
+         points="491,208 529,208 550,227 560,261 554,319 539,357 512,376 484,362 465,327 457,272 468,226 "
+         fill="#c0805b"
+         stroke-width="5"
+         id="polygon202" />
+      <polygon
+         points="550,230 559,263 553,317 537,354 521,366 526,323 529,278 519,238 530,214 "
+         fill="#965b48"
+         stroke="none"
+         opacity="0.75"
+         id="polygon204" />
+      <!-- Hair and beard. -->
+      <path
+         id="polygon206"
+         style="fill:#321d1b;stroke-width:4"
+         d="m 462,231 18,-27 31,-13 31,13 19.94797,38.67667 0.0591,21.06812 -10.33135,-19.68796 -9.52798,6.28393 -7.84591,-10.9748 -25.12202,10.53192 -20.35814,-14.92548 -14.88364,26.22176 -15.48025,6.43915 z"
+         sodipodi:nodetypes="cccccccccccccc" />
+      <path
+         id="polygon208"
+         style="fill:#321d1b;stroke-width:2"
+         d="m 458.44006,283.44675 6.60321,43.22858 L 486,360 l 25,16 30.96732,-21.37482 14.17941,-36.04194 2.42865,-40.39674 -11.11481,46.29046 -20.41706,22.08201 -25.5831,1.79583 -11.71482,-7.34683 -16.8893,-25.76387 z"
+         sodipodi:nodetypes="ccccccccccccc" />
+      <polyline
+         points="482,333 500,349 524,348 541,332"
+         fill="none"
+         stroke="#5e3730"
+         stroke-width="2"
+         id="polyline210" />
+      <!-- Face. -->
+      <line
+         x1="477.14511"
+         y1="265.85007"
+         x2="497.3027"
+         y2="271.29721"
+         stroke="#321d1b"
+         stroke-width="4"
+         id="line212" />
+      <line
+         x1="525.02856"
+         y1="272.07657"
+         x2="543.97144"
+         y2="264.92343"
+         stroke="#321d1b"
+         stroke-width="4"
+         id="line214" />
+      <ellipse
+         cx="486.5"
+         cy="279.5"
+         rx="6.5"
+         ry="5.5"
+         fill="#f4f6ef"
+         stroke-width="2"
+         id="ellipse216" />
+      <ellipse
+         cx="488"
+         cy="279.5"
+         rx="2.5"
+         ry="4"
+         fill="#2b5b63"
+         stroke="none"
+         id="ellipse218" />
+      <!-- Cyber eyepatch. -->
+      <line
+         x1="542"
+         y1="286"
+         x2="558"
+         y2="307"
+         stroke="#4d535c"
+         stroke-width="5"
+         id="line224" />
+      <line
+         x1="528"
+         y1="271"
+         x2="548"
+         y2="251"
+         stroke="#4d535c"
+         stroke-width="5"
+         id="line222" />
+      <rect
+         x="520"
+         y="268"
+         width="31"
+         height="22"
+         rx="7"
+         fill="#1c1f27"
+         stroke-width="3"
+         id="rect220" />
+      <circle
+         cx="535.5"
+         cy="279.5"
+         r="5"
+         fill="#54e1ff"
+         stroke="#a4f8ff"
+         stroke-width="2"
+         id="circle226" />
+      <polyline
+         points="512,277 506,301 516,304"
+         fill="none"
+         stroke="#76493f"
+         stroke-width="3"
+         id="polyline228" />
+      <line
+         x1="507"
+         y1="303"
+         x2="518"
+         y2="303"
+         stroke="#5c3430"
+         stroke-width="2"
+         id="line230" />
+      <polyline
+         points="493,320 509,324 526,319"
+         fill="none"
+         stroke="#562a2d"
+         stroke-width="3"
+         id="polyline232" />
+      <line
+         x1="499"
+         y1="327"
+         x2="518"
+         y2="328"
+         stroke="#dd8675"
+         stroke-width="2"
+         id="line234" />
+      <polyline
+         points="531,297 539,307 536,316"
+         fill="none"
+         stroke="#6b3739"
+         stroke-width="2"
+         id="polyline236" />
+    </g>
+    <!-- Space-tricorn helmet. -->
+    <g
+       id="helmet"
+       transform="translate(-5.9485109,65.37612)"
+       style="display:inline">
+      <polygon
+         points="568,251 550,226 529,208 490,208 469,229 451,251 447,213 468,167 505,144 548,161 575,207 "
+         fill="#1f2737"
+         stroke-width="6"
+         id="polygon239" />
+      <polygon
+         points="506,217 463,234 425,214 468,172 513,182 552,167 602,214 553,232 "
+         fill="#435160"
+         stroke-width="5"
+         id="polygon241" />
+      <polyline
+         points="442,211 470,187 508,196 552,182 585,211"
+         fill="none"
+         stroke="#92aab8"
+         stroke-width="3"
+         id="polyline243" />
+      <polygon
+         points="533,174 514,190 481,174 507,132 "
+         fill="#5b6977"
+         stroke-width="4"
+         id="polygon245" />
+      <line
+         x1="507"
+         y1="139"
+         x2="512"
+         y2="181"
+         stroke="#54e1ff"
+         stroke-width="3"
+         id="line247" />
+      <!-- Helmet skull emblem. -->
+      <g
+         id="helmet-skull"
+         transform="translate(507,186)"
+         style="display:inline">
+        <line
+           x1="-11"
+           y1="-7"
+           x2="11"
+           y2="7"
+           stroke="#e6f1f1"
+           stroke-width="4"
+           id="line249" />
+        <line
+           x1="-11"
+           y1="7"
+           x2="11"
+           y2="-7"
+           stroke="#e6f1f1"
+           stroke-width="4"
+           id="line251" />
+        <ellipse
+           cx="0"
+           cy="-3"
+           rx="9"
+           ry="8"
+           fill="#e6f1f1"
+           stroke-width="2"
+           id="ellipse253" />
+        <rect
+           x="-6"
+           y="3"
+           width="12"
+           height="8"
+           rx="2"
+           fill="#e6f1f1"
+           stroke-width="2"
+           id="rect255" />
+        <circle
+           cx="-3.5"
+           cy="-3"
+           r="2"
+           fill="#0b0c14"
+           stroke="none"
+           id="circle257" />
+        <circle
+           cx="3.5"
+           cy="-3"
+           r="2"
+           fill="#0b0c14"
+           stroke="none"
+           id="circle259" />
+      </g>
+    </g>
+    <!-- Harness and small suit details. -->
+    <g
+       id="details">
+      <line
+         x1="449"
+         y1="459"
+         x2="568"
+         y2="581"
+         stroke="#181c22"
+         stroke-width="13"
+         id="line263" />
+      <line
+         x1="449"
+         y1="459"
+         x2="568"
+         y2="581"
+         stroke="#795b37"
+         stroke-width="7"
+         id="line265" />
+      <circle
+         cx="476"
+         cy="488"
+         r="5"
+         fill="#e4a939"
+         stroke-width="2"
+         id="circle267" />
+      <circle
+         cx="509"
+         cy="521"
+         r="5"
+         fill="#e4a939"
+         stroke-width="2"
+         id="circle269" />
+      <circle
+         cx="543"
+         cy="556"
+         r="5"
+         fill="#e4a939"
+         stroke-width="2"
+         id="circle271" />
+      <circle
+         cx="441"
+         cy="521"
+         r="5"
+         fill="#e4a939"
+         stroke-width="2"
+         id="circle273" />
+      <circle
+         cx="438"
+         cy="551"
+         r="5"
+         fill="#e4a939"
+         stroke-width="2"
+         id="circle275" />
+      <circle
+         cx="578"
+         cy="520"
+         r="5"
+         fill="#e4a939"
+         stroke-width="2"
+         id="circle277" />
+      <circle
+         cx="581"
+         cy="551"
+         r="5"
+         fill="#e4a939"
+         stroke-width="2"
+         id="circle279" />
+      <rect
+         x="521"
+         y="647"
+         width="44"
+         height="59"
+         rx="8"
+         fill="#372724"
+         stroke-width="3"
+         id="rect281" />
+      <polyline
+         points="561,660 598,678 604,714"
+         fill="none"
+         stroke="#42545e"
+         stroke-width="6"
+         id="polyline283" />
+      <polyline
+         points="561,660 598,678 604,714"
+         fill="none"
+         stroke="#54e1ff"
+         stroke-width="2"
+         id="polyline285" />
+      <circle
+         cx="467"
+         cy="430"
+         r="4"
+         fill="#54e1ff"
+         stroke="#a4f8ff"
+         stroke-width="1"
+         id="circle287" />
+      <circle
+         cx="548"
+         cy="430"
+         r="4"
+         fill="#54e1ff"
+         stroke="#a4f8ff"
+         stroke-width="1"
+         id="circle289" />
+      <circle
+         cx="424"
+         cy="490"
+         r="4"
+         fill="#54e1ff"
+         stroke="#a4f8ff"
+         stroke-width="1"
+         id="circle291" />
+      <circle
+         cx="594"
+         cy="492"
+         r="4"
+         fill="#54e1ff"
+         stroke="#a4f8ff"
+         stroke-width="1"
+         id="circle293" />
+      <circle
+         cx="474"
+         cy="669"
+         r="4"
+         fill="#54e1ff"
+         stroke="#a4f8ff"
+         stroke-width="1"
+         id="circle295" />
+      <circle
+         cx="548"
+         cy="669"
+         r="4"
+         fill="#54e1ff"
+         stroke="#a4f8ff"
+         stroke-width="1"
+         id="circle297" />
+    </g>
+  </g>
+</svg>
