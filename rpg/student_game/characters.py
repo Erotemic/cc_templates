@@ -62,7 +62,7 @@ ranger = Character(
 
 mage = Character(
     'Moon Mage',
-    id='mage',
+    id='moon_mage',
     role='mage',
     hp=44,
     attack=5,
@@ -77,6 +77,8 @@ mage = Character(
     ],
     description='A focused spellcaster.',
 )
+
+moon_mage = mage
 
 guardian = Character(
     'Crystal Guardian',
