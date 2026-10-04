@@ -34,3 +34,10 @@ def test_native_pygame_svg_loader_handles_runtime_space_pirate_asset() -> None:
     surface = _load_svg(svg_path)
     assert surface.get_width() >= 200
     assert surface.get_height() >= 200
+
+
+def test_native_pygame_svg_loader_handles_runtime_moon_mage_asset() -> None:
+    svg_path = Path(__file__).resolve().parents[1] / 'student_game' / 'assets' / 'sprites' / 'moon_mage.svg'
+    surface = _load_svg(svg_path)
+    assert surface.get_width() >= 200
+    assert surface.get_height() >= 200

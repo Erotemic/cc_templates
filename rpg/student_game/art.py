@@ -455,123 +455,17 @@ def _draw_moon_mage_face(sprite: Sprite) -> None:
 
 # Ported from the successful PIL concept: a grounded human battlemage with a
 # readable face, hair, hands, legs, boots, hood, split cloak, and moon staff.
-moon_mage = Sprite('Moon Mage', moon_mage_palette, id='moon_mage', scale=0.32)
-
-# Moon staff, behind the body.
-moon_mage.line([(133, -192), (110, 271)], color='detail', width=15)
-moon_mage.line([(133, -192), (110, 271)], color='staff', width=10)
-moon_mage.line([(130, -180), (114, 256)], color='staff_hi', width=3)
-# Filled crescent approximation and orb.
-moon_mage.ellipse((127, -243), (95, 98), fill='moon', outline='detail', width=4)
-moon_mage.ellipse((138, -245), (74, 70), fill='deep', outline='detail', width=2)
-moon_mage.circle((129, -248), 17, fill='spell', outline='spell', width=1)
-moon_mage.circle((129, -248), 11, fill='spell_core', outline='detail', width=3)
-
-# Ground shadow keeps the boots visually planted in the battle scene.
-moon_mage.ellipse((5, 335), (237, 38), fill='deep', outline='deep', width=1)
-
-# Cape silhouette and fold lines.
-moon_mage.polygon(
-    [(-72, -84), (-106, -2), (-129, 121), (-140, 271), (-76, 300),
-     (-11, 265), (50, 297), (98, 260), (81, 120), (64, 6), (40, -75)],
-    fill='body', outline='detail', width=4,
-)
-moon_mage.line([(-90, -2), (-111, 116), (-118, 242)], color='accent', width=7)
-moon_mage.line([(51, 6), (65, 119), (73, 239)], color='accent', width=7)
-
-# Legs and boots are drawn before the torso/cloak panels so the open front reads
-# as a real figure standing on the ground rather than a floating robe.
-moon_mage.polygon([(-42, 144), (-13, 144), (-18, 277), (-47, 277)], fill='leg', outline='detail', width=3)
-moon_mage.polygon([(10, 144), (38, 144), (53, 273), (24, 277)], fill='leg', outline='detail', width=3)
-moon_mage.polygon([(-51, 258), (-16, 258), (-15, 311), (-60, 311), (-63, 298)], fill='leather', outline='detail', width=3)
-moon_mage.polygon([(23, 258), (55, 258), (66, 307), (23, 307), (17, 296)], fill='leather', outline='detail', width=3)
-moon_mage.line([(-48, 276), (-18, 276)], color='trim', width=3)
-moon_mage.line([(26, 276), (57, 274)], color='trim', width=3)
-
-# Torso and belt.
-moon_mage.polygon([(-48, -66), (26, -66), (50, 136), (-66, 136)], fill='deep', outline='detail', width=4)
-moon_mage.rect((-9, 93), (118, 28), fill='leather', outline='detail', width=3, border_radius=8)
-moon_mage.ellipse((-9, 93), (23, 23), fill='moon', outline='detail', width=2)
-
-# Arms and cuffs.
-moon_mage.polygon([(-61, -49), (-90, -19), (-126, 32), (-106, 53), (-57, 13)], fill='accent', outline='detail', width=4)
-moon_mage.polygon([(26, -47), (62, -20), (95, 42), (72, 61), (28, 18)], fill='accent', outline='detail', width=4)
-moon_mage.polygon([(-124, 26), (-101, 43), (-111, 63), (-134, 46)], fill='trim', outline='detail', width=2)
-moon_mage.polygon([(85, 27), (104, 42), (92, 63), (72, 50)], fill='trim', outline='detail', width=2)
-
-# Hands and staff grip.
-moon_mage.ellipse((-128, 51), (33, 34), fill='skin', outline='detail', width=3)
-moon_mage.ellipse((98, 56), (32, 32), fill='skin', outline='detail', width=3)
-moon_mage.line([(-138, 49), (-118, 55)], color='skin_hi', width=2)
-moon_mage.line([(89, 54), (106, 58)], color='skin_hi', width=2)
-moon_mage.line([(99, 43), (94, 88)], color='detail', width=10)
-moon_mage.line([(99, 43), (94, 88)], color='staff', width=6)
-
-# Neck, hood shell, and hood interior.
-moon_mage.rect((-10, -78), (38, 51), fill='skin', outline='detail', width=3, border_radius=12)
-moon_mage.polygon(
-    [(-71, -174), (-58, -218), (-28, -245), (14, -244), (49, -221),
-     (66, -172), (53, -98), (26, -69), (-45, -71), (-69, -102)],
-    fill='deep', outline='detail', width=5,
-)
-moon_mage.polygon(
-    [(-45, -179), (-35, -206), (-13, -220), (11, -218), (35, -201),
-     (44, -175), (37, -110), (18, -86), (-30, -87), (-49, -114)],
-    fill='detail', outline='detail', width=3,
+moon_mage = SvgSprite(
+    'Moon Mage',
+    'assets/sprites/moon_mage.svg',
+    id='moon_mage',
+    scale=0.14,
+    flash_color=(180, 232, 255),
 )
 
-# Hair behind the face.
-moon_mage.polygon([(-40, -183), (-53, -139), (-47, -70), (-24, -63), (-17, -145)], fill='hair_shadow', outline='detail', width=3)
-moon_mage.polygon([(30, -181), (47, -138), (39, -66), (16, -63), (11, -145)], fill='hair_shadow', outline='detail', width=3)
-
-# Human face component.
-_draw_moon_mage_face(moon_mage)
-
-# Bangs over the forehead.
-moon_mage.polygon(
-    [(-32, -187), (-24, -206), (1, -213), (25, -200), (33, -183),
-     (19, -190), (11, -177), (-4, -194), (-16, -177)],
-    fill='hair', outline='detail', width=2,
-)
-
-# Hood brow and silver trim layered in front of hair/face.
-moon_mage.polygon(
-    [(-66, -177), (-54, -215), (-28, -242), (14, -242), (46, -216),
-     (63, -173), (43, -182), (30, -208), (8, -225), (-18, -226),
-     (-39, -211), (-48, -180)],
-    fill='body', outline='detail', width=4,
-)
-moon_mage.line([(-54, -181), (-42, -213), (-17, -231), (11, -230), (36, -212), (50, -180)], color='trim', width=4)
-
-# Front cloak panels and open center.
-moon_mage.polygon([(-65, -52), (-32, -72), (-11, -46), (-21, 190), (-72, 258), (-99, 236), (-80, 64)], fill='accent', outline='detail', width=4)
-moon_mage.polygon([(-10, -46), (16, -72), (46, -51), (66, 64), (90, 236), (61, 261), (5, 190)], fill='accent', outline='detail', width=4)
-moon_mage.polygon([(-21, -29), (3, -29), (11, 188), (-9, 233), (-28, 188)], fill='deep', outline='detail', width=3)
-moon_mage.line([(-70, -41), (-90, 61), (-97, 219), (-73, 240)], color='trim', width=4)
-moon_mage.line([(46, -43), (60, 62), (82, 218), (61, 244)], color='trim', width=4)
-moon_mage.line([(-30, -46), (-18, 178)], color='trim', width=3)
-moon_mage.line([(15, -47), (2, 178)], color='trim', width=3)
-
-# Crescent clasp at the chest.
-moon_mage.circle((-3, -51), 14, fill='moon', outline='detail', width=3)
-moon_mage.circle((5, -52), 10, fill='deep', outline='deep', width=1)
-
-# Moon sigils near the hem.
-for x, y in [(-66, 182), (45, 183)]:
-    moon_mage.circle((x, y), 10, fill='moon', outline='detail', width=2)
-    moon_mage.line([(x, y - 15), (x, y - 5)], color='silver', width=2)
-    moon_mage.line([(x - 5, y - 10), (x + 5, y - 10)], color='silver', width=2)
-
-# Left-hand moon spell and particles.
-moon_mage.circle((-156, 20), 28, fill='spell', outline='spell', width=1)
-moon_mage.circle((-156, 20), 22, fill='moon', outline='detail', width=2)
-moon_mage.circle((-149, 20), 17, fill='deep', outline='deep', width=1)
-for x, y, r in [(-184, -21, 4), (-136, -24, 3), (-197, 39, 3), (-129, 64, 4), (-168, 71, 2)]:
-    moon_mage.circle((x, y), r, fill='spell', outline='spell', width=1)
-
-# Staff ferrule.
-moon_mage.rect((111, 273), (19, 30), fill='silver', outline='detail', width=2, border_radius=5)
-
+# Moon Mage now uses an SVG so students can edit the art directly in a vector
+# file.  The authored scale is intentionally a bit smaller than before so she
+# fits the existing battle layout more comfortably.
 
 crystal_guardian = Sprite('Crystal Guardian', crystal, id='crystal_guardian')
 crystal_guardian.polygon([(-40, 10), (-14, -44), (14, -44), (40, 10), (20, 52), (-20, 52)], fill='body', outline='detail', width=2)
