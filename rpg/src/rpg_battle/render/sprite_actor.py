@@ -105,6 +105,8 @@ class SpriteActor:
     ) -> None:
         recipe = self.sprites[sprite_id]
         palette = self.palettes[recipe["palette"]]
+        authored_scale = float(recipe.get("scale", 1.0))
+        effective_scale = scale * authored_scale
         center = (pos[0], pos[1])
         facing = 1 if self.side == "left" else -1
         glow = 16 if self.flash_timer > 0 else 0
@@ -114,7 +116,7 @@ class SpriteActor:
             pygame.draw.circle(glow_surface, (*palette["accent"], 70), (110, 110), 78)
             rect = glow_surface.get_rect(center=draw_center)
             surface.blit(glow_surface, rect)
-        canvas_size = max(280, int(320 * scale))
+        canvas_size = max(280, int(320 * max(scale, effective_scale)))
         sprite_surface = pygame.Surface((canvas_size, canvas_size), pygame.SRCALPHA)
         local_center = (canvas_size // 2, canvas_size // 2)
         for shape in recipe["shapes"]:
@@ -122,14 +124,14 @@ class SpriteActor:
                 sprite_surface,
                 shape,
                 local_center,
-                scale,
+                effective_scale,
                 palette,
                 facing=facing,
                 offset=(0.0, 0.0),
             )
         sprite_surface = apply_signal_transforms(sprite_surface, render_transforms)
         if self.faint:
-            self._draw_x_eyes(sprite_surface, local_center, scale)
+            self._draw_x_eyes(sprite_surface, local_center, effective_scale)
             angle = min(180.0, (self.faint_elapsed / 0.24) * 180.0)
             sprite_surface = pygame.transform.rotozoom(sprite_surface, angle, 1.0)
         rect = sprite_surface.get_rect(center=draw_center)

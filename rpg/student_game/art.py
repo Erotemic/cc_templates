@@ -15,11 +15,22 @@ dawn = Palette(
 
 verdant = Palette(
     'Verdant',
-    body=(77, 152, 101),
-    accent=(182, 222, 124),
-    eye=(244, 255, 241),
-    detail=(44, 87, 53),
+    body=(70, 116, 72),
+    accent=(175, 207, 92),
+    eye=(239, 250, 198),
+    detail=(35, 55, 40),
     id='verdant',
+    extra={
+        'leaf_dark': (43, 83, 55),
+        'leaf_mid': (93, 145, 70),
+        'leaf_light': (197, 221, 114),
+        'bark': (104, 74, 50),
+        'bark_light': (158, 117, 73),
+        'seed': (245, 204, 92),
+        'seed_light': (255, 239, 161),
+        'flower': (205, 120, 143),
+        'shadow': (29, 49, 35),
+    },
 )
 
 storm = Palette(
@@ -58,6 +69,29 @@ mist = Palette(
     id='mist',
 )
 
+# Mist Spirit uses a colder, lower-contrast palette than the project's friendly
+# default ghosts.  The sprite is built around negative space, a porcelain mask,
+# and layered vapor ribbons rather than a conventional body.
+mist_spirit_palette = Palette(
+    'Mist Spirit',
+    body=(99, 112, 148),
+    accent=(190, 216, 229),
+    eye=(221, 255, 242),
+    detail=(43, 49, 76),
+    id='mist_spirit_palette',
+    extra={
+        'void': (23, 27, 43),
+        'fog_shadow': (66, 76, 110),
+        'fog_mid': (131, 151, 180),
+        'fog_light': (221, 235, 238),
+        'porcelain': (229, 231, 224),
+        'porcelain_shadow': (177, 186, 191),
+        'glow': (153, 239, 220),
+        'spark': (111, 192, 211),
+        'crack': (77, 88, 119),
+    },
+)
+
 rune = Palette(
     'Rune',
     body=(102, 124, 156),
@@ -65,6 +99,25 @@ rune = Palette(
     eye=(247, 248, 255),
     detail=(51, 60, 81),
     id='rune',
+)
+
+rune_sage = Palette(
+    'Rune Sage',
+    body=(55, 64, 96),
+    accent=(202, 156, 73),
+    eye=(223, 255, 244),
+    detail=(25, 28, 47),
+    id='rune_sage',
+    extra={
+        'robe_shadow': (34, 39, 66),
+        'robe_light': (82, 96, 132),
+        'stone': (97, 105, 126),
+        'stone_light': (132, 142, 160),
+        'rune': (81, 224, 207),
+        'rune_light': (176, 255, 235),
+        'gold_light': (242, 205, 111),
+        'void': (12, 14, 27),
+    },
 )
 
 slop = Palette(
@@ -158,7 +211,9 @@ PALETTES = [
     moon,
     crystal,
     mist,
+    mist_spirit_palette,
     rune,
+    rune_sage,
     slop,
     slop_prime,
     corsair,
@@ -181,17 +236,105 @@ knight_dawn.line([(-12, -14), (-12, -12)], color='detail', width=2)
 knight_dawn.line([(12, -14), (12, -12)], color='detail', width=2)
 knight_dawn.polyline([(-12, 2), (0, 8), (12, 2)], color='detail', width=2)
 
-verdant_druid = Sprite('Verdant Druid', verdant, id='verdant_druid')
-verdant_druid.ellipse((0, 12), (76, 90), fill='body', outline='detail', width=2)
-verdant_druid.polygon([(-26, -36), (-6, -56), (0, -28)], fill='accent', outline='detail', width=2)
-verdant_druid.polygon([(26, -36), (6, -56), (0, -28)], fill='accent', outline='detail', width=2)
-verdant_druid.line([(-20, 20), (0, 42), (20, 20)], color='detail', width=3)
-verdant_druid.polyline([(-38, -4), (-56, -28), (-52, 26)], color='detail', width=4)
-verdant_druid.circle((-12, -10), 6, fill='eye', outline='detail', width=1)
-verdant_druid.circle((12, -10), 6, fill='eye', outline='detail', width=1)
-verdant_druid.line([(-12, -10), (-12, -8)], color='detail', width=2)
-verdant_druid.line([(12, -10), (12, -8)], color='detail', width=2)
-verdant_druid.polyline([(-12, 6), (0, 12), (12, 6)], color='detail', width=2)
+verdant_druid = Sprite('Verdant Druid', verdant, id='verdant_druid', scale=0.50)
+
+# Verdant Druid is a walking seed-shrine: part masked wanderer, part young
+# tree.  The character is intentionally not a conventional green-robed wizard.
+# A crooked branch crown, broad leaf mantle, hanging seed lantern, root-split
+# cloak, and a glowing germinating heart give the silhouette its own language.
+
+# Rooted lower cloak: the dark back mass establishes a bell-shaped silhouette,
+# then overlapping leaf/root plates split it into an organic three-pronged hem.
+verdant_druid.polygon(
+    [(-48, 10), (-64, 59), (-54, 102), (-29, 91), (-9, 118), (4, 91), (27, 111), (39, 83), (61, 96), (58, 54), (43, 8)],
+    fill='shadow', outline='detail', width=3,
+)
+verdant_druid.polygon(
+    [(-38, 9), (-49, 55), (-38, 88), (-20, 80), (-7, 104), (4, 79), (22, 98), (31, 73), (47, 82), (46, 48), (34, 9)],
+    fill='body', outline='leaf_dark', width=2,
+)
+verdant_druid.polygon([(-35, 36), (-50, 68), (-33, 84), (-12, 69), (-6, 31)], fill='leaf_mid', outline='leaf_dark', width=2)
+verdant_druid.polygon([(8, 31), (18, 74), (35, 88), (43, 62), (31, 34)], fill='leaf_dark', outline='detail', width=2)
+verdant_druid.polygon([(-9, 42), (1, 82), (13, 45), (4, 24)], fill='leaf_light', outline='body', width=2)
+
+# Broad asymmetrical mantle made from leaves rather than shoulders.  The left
+# leaf turns upward while the right leaf droops, keeping the pose from feeling
+# like a mirrored icon.
+verdant_druid.polygon([(-69, 4), (-91, -15), (-82, -43), (-49, -36), (-20, -10), (-33, 20)], fill='leaf_dark', outline='detail', width=3)
+verdant_druid.polygon([(-63, 0), (-78, -15), (-70, -33), (-49, -27), (-28, -8), (-38, 12)], fill='leaf_mid', outline='leaf_dark', width=2)
+verdant_druid.line([(-70, -28), (-48, -10), (-34, 7)], color='leaf_light', width=3)
+verdant_druid.polygon([(27, -8), (57, -31), (89, -19), (83, 9), (57, 28), (35, 18)], fill='leaf_mid', outline='detail', width=3)
+verdant_druid.polygon([(35, -5), (58, -23), (78, -15), (73, 4), (55, 17), (40, 12)], fill='leaf_light', outline='leaf_dark', width=2)
+verdant_druid.line([(43, 5), (61, -8), (75, -13)], color='body', width=3)
+
+# Wooden seed-mask.  It is narrow and elongated, with two tiny luminous slits
+# instead of the project's friendly default face.
+verdant_druid.polygon(
+    [(-27, -56), (-15, -79), (5, -88), (25, -73), (29, -47), (17, -25), (-2, -18), (-23, -31)],
+    fill='bark', outline='detail', width=3,
+)
+verdant_druid.polygon(
+    [(-20, -54), (-10, -71), (5, -77), (18, -66), (21, -48), (12, -32), (-2, -27), (-16, -37)],
+    fill='bark_light', outline='bark', width=2,
+)
+verdant_druid.polygon([(-11, -55), (-4, -59), (-1, -52), (-7, -48)], fill='eye', outline='detail', width=1)
+verdant_druid.polygon([(7, -58), (14, -54), (10, -47), (4, -51)], fill='eye', outline='detail', width=1)
+verdant_druid.line([(-2, -71), (2, -62), (-1, -54)], color='detail', width=2)
+verdant_druid.line([(0, -28), (6, -38), (4, -47)], color='bark', width=2)
+
+# Branch crown / antlers: thick bark under-strokes with thinner lit branches.
+# Buds and leaves are deliberately sparse so the silhouette stays readable.
+_left_branch = [(-14, -73), (-38, -94), (-58, -102), (-73, -119)]
+_right_branch = [(15, -72), (40, -91), (59, -89), (78, -108)]
+for branch in (_left_branch, _right_branch):
+    verdant_druid.polyline(branch, color='detail', width=8)
+    verdant_druid.polyline(branch, color='bark', width=5)
+verdant_druid.line([(-42, -96), (-48, -115)], color='bark', width=5)
+verdant_druid.line([(-57, -101), (-67, -89)], color='bark', width=5)
+verdant_druid.line([(42, -91), (48, -111)], color='bark', width=5)
+verdant_druid.line([(58, -90), (66, -76)], color='bark', width=5)
+verdant_druid.polygon([(-54, -120), (-45, -126), (-39, -116), (-47, -109)], fill='leaf_light', outline='leaf_dark', width=1)
+verdant_druid.polygon([(-76, -123), (-69, -132), (-60, -125), (-67, -116)], fill='leaf_mid', outline='leaf_dark', width=1)
+verdant_druid.polygon([(43, -116), (50, -125), (59, -118), (51, -108)], fill='leaf_light', outline='leaf_dark', width=1)
+verdant_druid.polygon([(76, -112), (84, -119), (91, -110), (83, -102)], fill='leaf_mid', outline='leaf_dark', width=1)
+verdant_druid.circle((-65, -90), 5, fill='flower', outline='detail', width=1)
+verdant_druid.circle((68, -76), 4, fill='seed', outline='detail', width=1)
+
+# Germinating heart / seed shrine at the chest.  Concentric shapes make this the
+# visual focus and connect naturally to the character's healing role.
+verdant_druid.circle((0, 8), 19, fill='leaf_dark', outline='detail', width=2)
+verdant_druid.circle((0, 8), 13, fill='seed', outline='bark', width=2)
+verdant_druid.ellipse((0, 7), (11, 17), fill='seed_light', outline='seed', width=1)
+verdant_druid.line([(0, -1), (0, -12)], color='leaf_light', width=3)
+verdant_druid.polygon([(0, -11), (-10, -17), (-4, -25), (3, -17)], fill='leaf_light', outline='leaf_dark', width=1)
+verdant_druid.polygon([(1, -11), (10, -19), (14, -12), (7, -6)], fill='leaf_mid', outline='leaf_dark', width=1)
+
+# A crooked staff grows from the right side and carries a hanging seed lantern.
+# The lantern gives the support/healer silhouette an immediate gameplay cue.
+_staff = [(54, 22), (72, 4), (67, -21), (82, -42), (74, -64)]
+verdant_druid.polyline(_staff, color='detail', width=9)
+verdant_druid.polyline(_staff, color='bark', width=6)
+verdant_druid.line([(79, -43), (96, -49)], color='bark', width=5)
+verdant_druid.line([(95, -49), (95, -30)], color='detail', width=3)
+verdant_druid.ellipse((95, -20), (20, 27), fill='seed', outline='detail', width=2)
+verdant_druid.ellipse((95, -22), (10, 15), fill='seed_light', outline='seed', width=1)
+verdant_druid.polygon([(87, -34), (94, -43), (101, -34), (95, -29)], fill='leaf_light', outline='leaf_dark', width=1)
+
+# The opposite side is a living thorn-vine rather than a second arm.
+verdant_druid.polyline([(-49, 19), (-70, 31), (-77, 52), (-67, 70), (-83, 87)], color='detail', width=8)
+verdant_druid.polyline([(-48, 19), (-68, 31), (-74, 51), (-64, 69), (-80, 85)], color='leaf_dark', width=5)
+verdant_druid.polygon([(-72, 39), (-84, 35), (-76, 48)], fill='leaf_light', outline='detail', width=1)
+verdant_druid.polygon([(-66, 68), (-55, 73), (-67, 78)], fill='leaf_mid', outline='detail', width=1)
+verdant_druid.polygon([(-80, 83), (-93, 86), (-84, 95)], fill='leaf_light', outline='detail', width=1)
+
+# A few spores and drifting seeds keep the air around the druid alive without
+# filling every empty space.
+verdant_druid.circle((-91, -61), 4, fill='seed_light', outline='leaf_dark', width=1)
+verdant_druid.circle((-102, -47), 2, fill='seed', outline='leaf_dark', width=1)
+verdant_druid.circle((105, 7), 3, fill='seed_light', outline='leaf_dark', width=1)
+verdant_druid.circle((85, 44), 2, fill='flower', outline='leaf_dark', width=1)
+verdant_druid.circle((-93, 61), 3, fill='flower', outline='leaf_dark', width=1)
+
 
 storm_ranger = Sprite('Storm Ranger', storm, id='storm_ranger')
 storm_ranger.ellipse((0, 8), (70, 88), fill='body', outline='detail', width=2)
@@ -227,29 +370,246 @@ crystal_guardian.line([(-12, -10), (-12, -8)], color='detail', width=2)
 crystal_guardian.line([(12, -10), (12, -8)], color='detail', width=2)
 crystal_guardian.polyline([(-12, 6), (0, 12), (12, 6)], color='detail', width=2)
 
-mist_spirit = Sprite('Mist Spirit', mist, id='mist_spirit')
-mist_spirit.ellipse((0, 8), (78, 88), fill='body', outline='detail', width=2)
-mist_spirit.ellipse((0, 26), (56, 40), fill='accent', outline='detail', width=2)
-mist_spirit.polyline([(-30, 20), (-10, 44), (8, 20), (28, 44)], color='detail', width=3)
-mist_spirit.circle((-28, -30), 7, fill='accent', outline='detail', width=2)
-mist_spirit.circle((28, -36), 9, fill='accent', outline='detail', width=2)
-mist_spirit.circle((-12, -16), 6, fill='eye', outline='detail', width=1)
-mist_spirit.circle((12, -16), 6, fill='eye', outline='detail', width=1)
-mist_spirit.line([(-12, -16), (-12, -14)], color='detail', width=2)
-mist_spirit.line([(12, -16), (12, -14)], color='detail', width=2)
-mist_spirit.polyline([(-12, 0), (0, 6), (12, 0)], color='detail', width=2)
+mist_spirit = Sprite('Mist Spirit', mist_spirit_palette, id='mist_spirit', scale=0.46)
 
-runesage = Sprite('Runesage', rune, id='runesage')
-runesage.circle((0, 10), 40, fill='body', outline='detail', width=2)
-runesage.circle((0, 10), 28, fill='accent', outline='detail', width=2)
-runesage.polyline([(-42, -30), (-18, -50), (0, -30), (18, -50), (42, -30)], color='accent', width=3)
-runesage.line([(-52, 16), (52, 16)], color='detail', width=3)
-runesage.polyline([(-30, 28), (-14, 14), (0, 28), (14, 14), (30, 28)], color='accent', width=3)
-runesage.circle((-12, -8), 6, fill='eye', outline='detail', width=1)
-runesage.circle((12, -8), 6, fill='eye', outline='detail', width=1)
-runesage.line([(-12, -8), (-12, -6)], color='detail', width=2)
-runesage.line([(12, -8), (12, -6)], color='detail', width=2)
-runesage.polyline([(-12, 8), (0, 14), (12, 8)], color='detail', width=2)
+# Mist Spirit is an empty presence held together by drifting veils.  It has no
+# ordinary face or torso: a cracked mask hangs inside a dark aperture while long
+# vapor ribbons fold around it and trail into three independent tails.
+
+# Distant vapor strokes establish a wide, drifting silhouette before the denser
+# body layers are painted over them.
+mist_spirit.polyline([(-104, 22), (-126, 0), (-111, -27), (-82, -43), (-63, -68)], color='fog_shadow', width=10)
+mist_spirit.polyline([(-103, 21), (-124, 0), (-109, -26), (-81, -42), (-62, -67)], color='fog_mid', width=5)
+mist_spirit.polyline([(77, -64), (104, -47), (119, -19), (111, 8), (132, 33)], color='fog_shadow', width=9)
+mist_spirit.polyline([(77, -63), (102, -46), (117, -19), (109, 8), (130, 32)], color='accent', width=4)
+mist_spirit.polyline([(-92, 55), (-117, 70), (-120, 91), (-100, 103)], color='fog_shadow', width=8)
+mist_spirit.polyline([(88, 49), (114, 65), (122, 88), (108, 106)], color='fog_mid', width=7)
+
+# Detached mist knots make the outer vapor feel discontinuous rather than like
+# tentacles attached to a hidden round body.
+mist_spirit.ellipse((-115, -47), (22, 12), fill='fog_mid', outline='fog_shadow', width=1)
+mist_spirit.circle((-130, -57), 5, fill='fog_light', outline='fog_mid', width=1)
+mist_spirit.ellipse((118, -47), (18, 10), fill='accent', outline='fog_shadow', width=1)
+mist_spirit.circle((135, -38), 4, fill='glow', outline='fog_mid', width=1)
+mist_spirit.ellipse((-126, 57), (18, 10), fill='body', outline='fog_shadow', width=1)
+mist_spirit.circle((126, 59), 5, fill='fog_light', outline='fog_mid', width=1)
+
+# Three forked tail masses form the lower silhouette.  They overlap instead of
+# joining at one point, leaving narrow dark seams that keep the spirit airy.
+mist_spirit.polygon([(-45, 24), (-15, 31), (-8, 77), (-36, 118), (-61, 104), (-50, 69)], fill='fog_shadow', outline='detail', width=2)
+mist_spirit.polygon([(-14, 27), (17, 29), (30, 77), (9, 128), (-15, 109), (-5, 72)], fill='body', outline='detail', width=2)
+mist_spirit.polygon([(15, 28), (45, 20), (62, 61), (53, 108), (27, 119), (31, 72)], fill='fog_mid', outline='detail', width=2)
+mist_spirit.polygon([(-38, 38), (-21, 43), (-20, 86), (-37, 105), (-44, 91)], fill='body', outline='fog_shadow', width=1)
+mist_spirit.polygon([(6, 39), (18, 42), (19, 83), (8, 111), (0, 89)], fill='fog_mid', outline='body', width=1)
+mist_spirit.polygon([(31, 34), (43, 30), (52, 62), (46, 91), (34, 100)], fill='fog_light', outline='fog_mid', width=1)
+
+# A broad asymmetric mantle of fog frames the face aperture.
+mist_spirit.polygon([(-70, -7), (-54, -45), (-24, -68), (7, -65), (30, -48), (64, -34), (76, -3), (57, 26), (21, 38), (-21, 35), (-55, 22)], fill='fog_shadow', outline='detail', width=2)
+mist_spirit.polygon([(-62, -7), (-46, -39), (-19, -56), (9, -53), (29, -39), (55, -27), (65, -4), (50, 18), (18, 28), (-18, 26), (-46, 17)], fill='body', outline='fog_shadow', width=2)
+mist_spirit.polygon([(-53, -4), (-38, -31), (-16, -45), (6, -42), (22, -30), (46, -20), (54, -2), (42, 11), (14, 18), (-15, 17), (-38, 10)], fill='void', outline='detail', width=2)
+
+# Broken halo strokes orbit the aperture without closing into a conventional
+# magic circle.  Their unequal lengths reinforce the character's patient drift.
+mist_spirit.polyline([(-72, -53), (-49, -76), (-18, -87), (12, -84)], color='accent', width=5)
+mist_spirit.polyline([(-71, -52), (-48, -74), (-18, -85), (10, -82)], color='fog_light', width=2)
+mist_spirit.polyline([(27, -81), (52, -69), (69, -49)], color='fog_mid', width=6)
+mist_spirit.polyline([(29, -80), (52, -67), (67, -48)], color='accent', width=2)
+mist_spirit.line([(-83, -37), (-73, -27)], color='glow', width=3)
+mist_spirit.line([(78, -38), (86, -25)], color='spark', width=3)
+
+# The porcelain mask is intentionally off-center and faceted.  Its lower edge
+# ends before the mantle does, so it reads as an object suspended in the mist.
+mist_spirit.polygon([(-23, -57), (5, -61), (27, -45), (31, -19), (18, 3), (-3, 14), (-24, 3), (-36, -20), (-34, -40)], fill='porcelain_shadow', outline='detail', width=2)
+mist_spirit.polygon([(-20, -55), (4, -58), (23, -43), (26, -20), (14, 0), (-3, 9), (-20, 0), (-31, -20), (-29, -39)], fill='porcelain', outline='crack', width=2)
+
+# A single diamond eye gives the spirit a fixed, unreadable gaze rather than the
+# project's default friendly two-eye face.
+mist_spirit.polygon([(-3, -37), (8, -28), (-2, -17), (-14, -27)], fill='glow', outline='detail', width=2)
+mist_spirit.polygon([(-1, -32), (4, -28), (-1, -23), (-6, -27)], fill='eye', outline='glow', width=1)
+mist_spirit.circle((2, -28), 2, fill='void', outline='void', width=1)
+
+# Fine cracks make the mask feel old and brittle without turning them into a
+# literal mouth or second eye.
+mist_spirit.polyline([(10, -52), (5, -43), (11, -37), (8, -30)], color='crack', width=2)
+mist_spirit.polyline([(-23, -13), (-14, -8), (-12, 0), (-4, 6)], color='crack', width=2)
+mist_spirit.polyline([(20, -9), (13, -5), (12, 2)], color='porcelain_shadow', width=2)
+
+# A luminous tear hangs below the mask and anchors the eye vertically.
+mist_spirit.line([(-1, 9), (-1, 24)], color='glow', width=2)
+mist_spirit.circle((-1, 29), 5, fill='glow', outline='detail', width=1)
+mist_spirit.circle((-2, 27), 2, fill='eye', outline='eye', width=1)
+
+# Calligraphic veil strokes cross in front of the lower body.  Parallel dark and
+# light lines fake depth using only the classroom-friendly primitive API.
+mist_spirit.polyline([(-73, 19), (-91, 36), (-79, 54), (-50, 60), (-26, 53)], color='detail', width=9)
+mist_spirit.polyline([(-72, 18), (-89, 36), (-77, 52), (-49, 58), (-25, 51)], color='accent', width=5)
+mist_spirit.polyline([(34, 45), (61, 37), (78, 48), (76, 67), (99, 77)], color='detail', width=8)
+mist_spirit.polyline([(35, 43), (60, 36), (76, 48), (74, 65), (98, 75)], color='fog_light', width=4)
+mist_spirit.polyline([(-39, 75), (-58, 83), (-69, 99)], color='fog_mid', width=6)
+mist_spirit.polyline([(26, 86), (43, 95), (54, 111)], color='accent', width=5)
+
+# Small floating shards/motes provide a visual rhythm around the broad ribbons.
+mist_spirit.polygon([(-84, -70), (-76, -75), (-70, -67), (-78, -61)], fill='glow', outline='detail', width=1)
+mist_spirit.polygon([(76, -74), (84, -68), (80, -58), (71, -64)], fill='fog_light', outline='detail', width=1)
+mist_spirit.polygon([(-99, 0), (-92, -6), (-85, -1), (-91, 7)], fill='spark', outline='detail', width=1)
+mist_spirit.polygon([(91, 13), (98, 7), (105, 13), (98, 20)], fill='glow', outline='detail', width=1)
+mist_spirit.circle((-67, 79), 4, fill='fog_light', outline='fog_mid', width=1)
+mist_spirit.circle((70, 89), 3, fill='glow', outline='fog_mid', width=1)
+mist_spirit.circle((-101, 37), 3, fill='spark', outline='fog_shadow', width=1)
+mist_spirit.circle((108, 43), 4, fill='accent', outline='fog_shadow', width=1)
+mist_spirit.circle((-48, -83), 3, fill='glow', outline='fog_shadow', width=1)
+mist_spirit.circle((50, -81), 2, fill='fog_light', outline='fog_shadow', width=1)
+
+# Sparse internal strokes suggest slow circulation inside the veils.
+mist_spirit.polyline([(-42, -1), (-30, 6), (-22, 15)], color='fog_mid', width=2)
+mist_spirit.polyline([(31, 1), (23, 10), (17, 20)], color='accent', width=2)
+mist_spirit.polyline([(-25, 55), (-13, 62), (-9, 74)], color='fog_light', width=2)
+mist_spirit.polyline([(23, 55), (16, 65), (17, 76)], color='fog_shadow', width=2)
+
+runesage = Sprite('Runesage', rune_sage, id='runesage', scale=0.52)
+
+# Rune Sage is a floating geometer rather than a conventional robed person.
+# The design is assembled from the same primitives students can use: polygons
+# build the faceted robe and hood, doubled lines make the broken astrolabe halo,
+# and tiny line motifs become readable, non-textual runes.
+
+# Broken astrolabe / theorem halo.  Dark under-strokes keep the geometry
+# readable against every battle background; the luminous inner strokes make it
+# feel like suspended notation instead of a physical wheel.
+_halo_segments = [
+    [(-92, -38), (-76, -72), (-42, -96)],
+    [(-30, -104), (0, -116), (30, -104)],
+    [(42, -96), (76, -72), (92, -38)],
+    [(96, -22), (102, 12), (88, 40)],
+    [(72, 58), (44, 78), (22, 84)],
+    [(-22, 84), (-44, 78), (-72, 58)],
+    [(-88, 40), (-102, 12), (-96, -22)],
+]
+for segment in _halo_segments:
+    runesage.line(segment, color='detail', width=9)
+    runesage.line(segment, color='rune', width=3)
+
+# Small calibration marks around the halo make the ring feel diagrammatic.
+for p1, p2 in [
+    ((-82, -57), (-70, -49)),
+    ((-58, -86), (-52, -72)),
+    ((0, -116), (0, -101)),
+    ((58, -86), (52, -72)),
+    ((82, -57), (70, -49)),
+    ((98, 4), (84, 4)),
+    ((60, 68), (52, 55)),
+    ((-60, 68), (-52, 55)),
+    ((-98, 4), (-84, 4)),
+]:
+    runesage.line([p1, p2], color='gold_light', width=3)
+
+# Long floating robe: a dark outer silhouette, then offset slate facets so the
+# figure reads as layered stone/cloth instead of one flat triangle.
+runesage.polygon(
+    [(-46, 8), (-66, 70), (-45, 102), (-18, 116), (0, 98), (18, 116), (45, 102), (66, 70), (46, 8)],
+    fill='robe_shadow', outline='detail', width=3,
+)
+runesage.polygon(
+    [(-34, 10), (-44, 68), (-18, 94), (0, 82), (18, 94), (44, 68), (34, 10)],
+    fill='body', outline='detail', width=2,
+)
+runesage.polygon(
+    [(-12, 18), (-16, 76), (0, 88), (16, 76), (12, 18)],
+    fill='robe_light', outline='detail', width=2,
+)
+# Split lower hems create a memorable forked silhouette.
+runesage.polygon([(-43, 70), (-58, 104), (-30, 95), (-15, 72)], fill='stone', outline='detail', width=2)
+runesage.polygon([(43, 70), (58, 104), (30, 95), (15, 72)], fill='stone', outline='detail', width=2)
+
+# Broad mantle gives the otherwise narrow figure a strong shoulder line.
+runesage.polygon(
+    [(-72, -4), (-48, -37), (-25, -29), (0, -43), (25, -29), (48, -37), (72, -4), (49, 20), (0, 12), (-49, 20)],
+    fill='stone', outline='detail', width=3,
+)
+runesage.polygon(
+    [(-62, -7), (-45, -27), (-20, -20), (0, -31), (20, -20), (45, -27), (62, -7), (43, 8), (0, 2), (-43, 8)],
+    fill='stone_light', outline='body', width=2,
+)
+# Gold mantle edge.
+runesage.line([(-65, -2), (-46, 15), (0, 7), (46, 15), (65, -2)], color='accent', width=5)
+runesage.line([(-65, -2), (-46, 15), (0, 7), (46, 15), (65, -2)], color='gold_light', width=2)
+
+# Faceted hood and deep face aperture.  The single diamond eye makes the face
+# icon-like rather than conventionally human.
+runesage.polygon(
+    [(-37, -58), (-23, -88), (0, -105), (23, -88), (37, -58), (29, -25), (0, -12), (-29, -25)],
+    fill='body', outline='detail', width=3,
+)
+runesage.polygon(
+    [(-25, -58), (-13, -78), (0, -87), (13, -78), (25, -58), (18, -35), (0, -25), (-18, -35)],
+    fill='void', outline='detail', width=2,
+)
+# Eye aura, iris diamond, and tiny pupil.
+runesage.circle((0, -56), 15, fill='rune', outline='detail', width=2)
+runesage.circle((0, -56), 10, fill='void', outline='rune_light', width=2)
+runesage.polygon([(0, -68), (9, -56), (0, -44), (-9, -56)], fill='rune_light', outline='gold_light', width=2)
+runesage.polygon([(0, -63), (4, -56), (0, -49), (-4, -56)], fill='detail', outline='detail', width=1)
+# Brow/hood seams point toward the eye.
+runesage.line([(-27, -66), (-12, -60)], color='stone_light', width=3)
+runesage.line([(27, -66), (12, -60)], color='stone_light', width=3)
+runesage.line([(0, -87), (0, -72)], color='accent', width=3)
+
+# Central theorem glyph on the robe: a spine with mirrored branches and a
+# floating diamond.  It is intentionally symbolic, not alphabetic text.
+runesage.line([(0, 18), (0, 68)], color='rune', width=4)
+runesage.line([(0, 30), (-16, 42), (-26, 34)], color='rune_light', width=3)
+runesage.line([(0, 30), (16, 42), (26, 34)], color='rune_light', width=3)
+runesage.line([(0, 50), (-12, 60)], color='accent', width=3)
+runesage.line([(0, 50), (12, 60)], color='accent', width=3)
+runesage.polygon([(0, 67), (7, 75), (0, 83), (-7, 75)], fill='gold_light', outline='detail', width=2)
+
+# Left orbiting tablet: angular slate with a sampled-wave glyph.
+runesage.polygon(
+    [(-96, -8), (-82, -25), (-61, -20), (-57, 6), (-74, 21), (-96, 12)],
+    fill='robe_shadow', outline='detail', width=3,
+)
+runesage.polygon(
+    [(-89, -7), (-79, -17), (-67, -14), (-65, 3), (-75, 12), (-88, 7)],
+    fill='stone_light', outline='accent', width=2,
+)
+runesage.polyline([(-84, 0), (-79, -7), (-74, 4), (-69, -5)], color='rune', width=3)
+# Three detached chips imply that the tablets are levitating fragments.
+runesage.polygon([(-107, -16), (-101, -22), (-95, -17), (-101, -10)], fill='accent', outline='detail', width=1)
+runesage.polygon([(-105, 22), (-98, 17), (-92, 23), (-99, 29)], fill='rune', outline='detail', width=1)
+
+# Right orbiting instrument: a ring/diamond construction with a square-wave
+# glyph.  It deliberately differs from the left side to avoid mirror symmetry.
+runesage.circle((84, 4), 24, fill='accent', outline='detail', width=3)
+runesage.circle((84, 4), 17, fill='void', outline='gold_light', width=2)
+runesage.polygon([(84, -12), (100, 4), (84, 20), (68, 4)], fill='body', outline='rune', width=2)
+runesage.polyline([(74, 6), (78, 6), (78, -2), (86, -2), (86, 7), (94, 7)], color='rune_light', width=3)
+runesage.circle((104, 30), 4, fill='rune_light', outline='detail', width=1)
+runesage.circle((112, 20), 3, fill='accent', outline='detail', width=1)
+
+# Two small geometric "hands" hover under the mantle.  Their orientation makes
+# the pose feel composed and intentional without literal arms.
+runesage.polygon([(-55, 31), (-43, 20), (-31, 31), (-43, 44)], fill='accent', outline='detail', width=2)
+runesage.polygon([(-43, 25), (-37, 31), (-43, 38), (-49, 31)], fill='rune_light', outline='detail', width=1)
+runesage.line([(-43, 44), (-47, 54)], color='rune', width=3)
+runesage.polygon([(53, 26), (65, 36), (55, 49), (42, 38)], fill='stone_light', outline='detail', width=2)
+runesage.polygon([(51, 33), (58, 37), (53, 43), (47, 39)], fill='gold_light', outline='detail', width=1)
+
+# Sparse floating notation around the lower robe gives depth without turning
+# the character into visual noise.
+for center, radius, fill in [
+    ((-76, 57), 4, 'rune'),
+    ((74, 66), 5, 'accent'),
+    ((-68, 82), 3, 'gold_light'),
+    ((71, 90), 3, 'rune_light'),
+]:
+    runesage.circle(center, radius, fill=fill, outline='detail', width=1)
+runesage.polygon([(-89, 73), (-82, 66), (-75, 73), (-82, 80)], fill='body', outline='rune', width=2)
+runesage.polygon([(79, 48), (86, 42), (93, 49), (86, 56)], fill='robe_shadow', outline='accent', width=2)
+
+# A final narrow gold line pulls the eye down the silhouette and ties the hood,
+# mantle, and robe together.
+runesage.line([(0, -25), (0, 7)], color='gold_light', width=2)
+runesage.line([(-25, 95), (0, 82), (25, 95)], color='accent', width=3)
 
 ai_slop = Sprite('Ai Slop', slop, id='ai_slop')
 ai_slop.ellipse((0, 8), (82, 88), fill='body', outline='detail', width=2)

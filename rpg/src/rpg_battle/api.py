@@ -126,12 +126,17 @@ class Palette:
 
 @dataclass
 class Sprite:
-    """Procedural character drawing built from readable shape calls."""
+    """Procedural character drawing built from readable shape calls.
+
+    ``scale`` fits an elaborate drawing into the standard battle layout without
+    forcing every authored coordinate to be rewritten.
+    """
 
     name: str
     palette: Palette
     id: str | None = None
     shapes: list[dict[str, object]] = field(default_factory=list)
+    scale: float = 1.0
 
     @property
     def sprite_id(self) -> str:
@@ -255,7 +260,13 @@ class Sprite:
         )
 
     def compile(self) -> dict[str, object]:
-        return {"palette": self.palette.palette_id, "shapes": list(self.shapes)}
+        if self.scale <= 0:
+            raise ValueError(f"Sprite scale must be positive, got {self.scale!r}")
+        return {
+            "palette": self.palette.palette_id,
+            "scale": float(self.scale),
+            "shapes": list(self.shapes),
+        }
 
 
 @dataclass(frozen=True)

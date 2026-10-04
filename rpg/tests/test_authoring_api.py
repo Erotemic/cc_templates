@@ -8,7 +8,7 @@ import pytest
 from student_game import CONTENT
 from student_game import characters, moves
 from student_game.catalog import GAME
-from rpg_battle.api import Battle, Move, Team
+from rpg_battle.api import Battle, Move, Palette, Sprite, Team
 from rpg_battle.catalog import ContentValidationError, format_validation_report
 from rpg_battle.core.actions import attack_action, skill_action
 from rpg_battle.core.battle_state import new_battle
@@ -81,6 +81,14 @@ def test_student_game_uses_direct_object_references() -> None:
     assert characters.knight.moves[0] is moves.shield_bash
     assert characters.knight.sprite.sprite_id == "knight_dawn"
     assert CONTENT.characters["knight"].move_ids == ("shield_bash", "stone_ward", "strike")
+
+
+def test_sprite_authored_scale_compiles_for_layout_fitting() -> None:
+    palette = Palette("Test", body=(1, 2, 3), accent=(4, 5, 6))
+    sprite = Sprite("Large Drawing", palette, scale=0.5).circle((0, 0), 20)
+    compiled = sprite.compile()
+    assert compiled["scale"] == 0.5
+    assert compiled["shapes"][0]["radius"] == 20
 
 
 def test_validation_report_is_short_and_actionable() -> None:
