@@ -40,13 +40,21 @@ correct. Use deliberate scenarios to investigate specific cases.
   engine;
 - `base_attack/base_defense/base_magic/base_speed` expose original stats;
 - AI strategies cannot choose an illegal explicit target for a move;
-- scripted moves receive non-fatal advisories when `Move.power` or declarative
-  effects are likely to be mistaken for runtime scripted behavior.
+- declarative moves use `power=`, while scripted moves use `ai_power=` only for
+  computer move-selection estimates; the API rejects the misleading combination
+  of `power=` with `action=...`;
+- scripted moves return status/stat commands instead of mixing an `action`
+  function with declarative `effects=[...]`.
 
 ## The move lab explains the real engine
 
-The lab's damage/healing details are emitted by `core/rules.py` while the move
-actually resolves. Do not duplicate the damage formula in worksheets.
+The default lab view shows only the inputs, named intermediate observations,
+function return, and visible result. This keeps early conditional/loop lessons
+focused on the code students are expected to understand.
+
+When deeper inspection is useful, add `--engine-details`. Those damage/healing
+details are emitted by `core/rules.py` while the move actually resolves. Do not
+duplicate the damage formula in worksheets.
 
 Use:
 
@@ -55,6 +63,7 @@ python lab.py scenario threshold_25
 python lab.py scenario threshold_26
 python lab.py scenario threshold_27
 python lab.py scenario chain_lightning
+python lab.py scenario threshold_25 --engine-details
 ```
 
 Require a prediction before execution and an explanation afterward.

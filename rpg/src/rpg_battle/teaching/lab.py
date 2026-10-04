@@ -329,76 +329,46 @@ def _records(result: MoveLabResult, kind: str) -> list[TraceRecord]:
     return [record for record in result.trace_records if record.kind == kind]
 
 
-def _print_result(content: GameContent, move_id: str, result: MoveLabResult) -> None:
+def _print_result(
+    content: GameContent,
+    move_id: str,
+    result: MoveLabResult,
+    *,
+    engine_details: bool = False,
+) -> None:
+    """Print a student-first explanation, with engine internals on demand."""
+
     move = content.moves[move_id]
     print(f"\n{move.name} experiment")
     print("=" * (len(move.name) + 11))
     print(f"seed: {result.seed}")
 
-    print("\n1. Input")
     ratio = result.actor_before / result.actor_max_hp
+    print("\nInput")
     print(
-        f"   {result.actor_name}: HP {result.actor_before}/{result.actor_max_hp} "
+        f"  {result.actor_name}: HP {result.actor_before}/{result.actor_max_hp} "
         f"-> ratio {ratio:.3f}"
-    )
-    print(
-        f"   effective attack={result.actor_attack} (base {result.actor_base_attack}); "
-        f"effective magic={result.actor_magic} (base {result.actor_base_magic})"
     )
     for target_id, before in result.targets_before.items():
         statuses = result.target_statuses[target_id]
         status_text = ", ".join(statuses) if statuses else "none"
-        print(
-            f"   target {result.target_names[target_id]}: HP {before}; statuses: {status_text}"
-        )
+        print(f"  {result.target_names[target_id]}: HP {before}; statuses: {status_text}")
 
     observations = _records(result, "observation")
     if observations:
-        print("\n2. Values/conditions observed by the function")
+        print("\nObserved by your function")
         for record in observations:
-            print(f"   {record.data['label']} -> {record.data['value']}")
+            print(f"  {record.data['label']} -> {record.data['value']}")
 
     returns = _records(result, "script_return")
     normalized = _records(result, "normalized_commands")
     if returns:
-        print("\n3. Function return")
-        print(f"   original return value: {returns[-1].data['result']}")
-        if normalized:
-            print("   commands the engine will execute:")
-            for command in normalized[-1].data["commands"]:
-                print(f"     - {command}")
-
-    calculations = [
-        record
-        for record in result.trace_records
-        if record.kind in {"damage_calculation", "heal_calculation"}
-    ]
-    if calculations:
-        print("\n4. Engine calculation (recorded by the real rules engine)")
-        for record in calculations:
-            data = record.data
-            if record.kind == "damage_calculation":
-                print(f"   target: {data['target_name']}")
-                print(
-                    "     base = power "
-                    f"{data['power']} + {data['attack_stat_name']} {data['attack_stat']} * 1.4 "
-                    f"- defense {data['defense_stat']} * 0.8 = {data['base']:.2f}"
-                )
-                print(
-                    f"     variance = {data['variance']:.3f}; "
-                    f"guard multiplier = {data['guard_multiplier']:.1f}; "
-                    f"damage = {data['damage']}"
-                )
-            else:
-                print(
-                    f"   {data['target_name']}: power {data['power']} + "
-                    f"effective magic {data['magic']} -> requested {data['requested']}; "
-                    f"restored {data['amount']}"
-                )
+        print("\nFunction return")
+        print(f"  {returns[-1].data['result']}")
 
     commands = _records(result, "script_command")
     if len(commands) > 1:
-        print("\n   Loop/command trace")
+        print("\nLoop decisions")
         for record in commands:
             data = record.data
             names = [
@@ -406,15 +376,58 @@ def _print_result(content: GameContent, move_id: str, result: MoveLabResult) -> 
                 for target_id in data["target_ids"]
             ]
             print(
-                f"     command {data['command_index']}: {data['command_type']} "
+                f"  {data['command_index']}. {data['command']} "
                 f"-> {', '.join(names) or 'no target'}"
             )
 
-    print("\n5. Result")
-    print(f"   user HP: {result.actor_before} -> {result.actor_after}")
+    print("\nResult")
+    if result.actor_after != result.actor_before:
+        print(f"  {result.actor_name}: HP {result.actor_before} -> {result.actor_after}")
     for target_id, before in result.targets_before.items():
         target_name = result.target_names[target_id]
-        print(f"   {target_name} HP: {before} -> {result.targets_after[target_id]}")
+        print(f"  {target_name}: HP {before} -> {result.targets_after[target_id]}")
+
+    if not engine_details:
+        print("\nTip: add --engine-details to see stats, formulas, normalized commands, and events.")
+        return
+
+    print("\nEngine details")
+    print(
+        f"  user effective attack={result.actor_attack} (base {result.actor_base_attack}); "
+        f"effective magic={result.actor_magic} (base {result.actor_base_magic})"
+    )
+    if normalized:
+        print("  normalized commands:")
+        for command in normalized[-1].data["commands"]:
+            print(f"    - {command}")
+
+    calculations = [
+        record
+        for record in result.trace_records
+        if record.kind in {"damage_calculation", "heal_calculation"}
+    ]
+    if calculations:
+        print("  calculations recorded by the real rules engine:")
+        for record in calculations:
+            data = record.data
+            if record.kind == "damage_calculation":
+                print(f"    target: {data['target_name']}")
+                print(
+                    "      base = power "
+                    f"{data['power']} + {data['attack_stat_name']} {data['attack_stat']} * 1.4 "
+                    f"- defense {data['defense_stat']} * 0.8 = {data['base']:.2f}"
+                )
+                print(
+                    f"      variance = {data['variance']:.3f}; "
+                    f"guard multiplier = {data['guard_multiplier']:.1f}; "
+                    f"damage = {data['damage']}"
+                )
+            else:
+                print(
+                    f"    {data['target_name']}: power {data['power']} + "
+                    f"effective magic {data['magic']} -> requested {data['requested']}; "
+                    f"restored {data['amount']}"
+                )
 
     interesting = [
         event
@@ -422,11 +435,10 @@ def _print_result(content: GameContent, move_id: str, result: MoveLabResult) -> 
         if event.get("type") in {"move", "damage", "heal", "status", "stat", "miss", "ko"}
     ]
     if interesting:
-        print("\n   Battle events")
+        print("  battle events:")
         for event in interesting:
-            text = event.get("text") or repr(event)
-            print(f"     [{event.get('type')}] {text}")
-
+            event_text = event.get("text") or repr(event)
+            print(f"    [{event.get('type')}] {event_text}")
 
 def run_strategy_scenario(
     content: GameContent,
@@ -519,6 +531,7 @@ def build_parser(
     )
     move_parser.add_argument("--round", type=int, default=1, dest="round_number")
     move_parser.add_argument("--seed", type=int, default=0)
+    move_parser.add_argument("--engine-details", action="store_true", help="Show the full rules calculation and engine events")
     move_parser.add_argument("--debug-traceback", action="store_true")
 
     if scenarios:
@@ -527,6 +540,7 @@ def build_parser(
         )
         scenario_parser.add_argument("scenario_id", choices=sorted(scenarios))
         scenario_parser.add_argument("--seed", type=int)
+        scenario_parser.add_argument("--engine-details", action="store_true", help="Show the full rules calculation and engine events")
         scenario_parser.add_argument("--debug-traceback", action="store_true")
     return parser
 
@@ -603,7 +617,7 @@ def _run_command(content, scenarios, parser, args) -> None:
         move = content.moves[scenario.move_id]
         _print_script(move)
         result = run_move_scenario(content, scenario)
-        _print_result(content, scenario.move_id, result)
+        _print_result(content, scenario.move_id, result, engine_details=args.engine_details)
         return
 
     move = content.moves[args.move_id]
@@ -623,7 +637,7 @@ def _run_command(content, scenarios, parser, args) -> None:
         )
     except (KeyError, ValueError) as exc:
         parser.error(str(exc))
-    _print_result(content, args.move_id, result)
+    _print_result(content, args.move_id, result, engine_details=args.engine_details)
 
 
 if __name__ == "__main__":

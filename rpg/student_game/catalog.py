@@ -4,19 +4,29 @@ from __future__ import annotations
 
 from rpg_battle.api import Game, GamePresentation
 
-from student_game import art, audio, battles, characters, effects, moves, workshop
+from student_game import (
+    art,
+    audio,
+    battles,
+    characters,
+    effects,
+    moves,
+    workshop,
+    workshop_assets,
+    workshop_battles,
+)
 
 GAME = Game(
     title="RPG Battle Classroom Project",
-    palettes=[*art.PALETTES, *workshop.PALETTES],
-    sprites=[*art.SPRITES, *workshop.SPRITES],
-    effects=[*effects.EFFECTS, *workshop.EFFECTS],
-    sounds=[*audio.SOUNDS, *workshop.SOUNDS],
-    music=[*audio.MUSIC, *workshop.MUSIC],
+    palettes=[*art.PALETTES, *workshop_assets.PALETTES],
+    sprites=[*art.SPRITES, *workshop_assets.SPRITES],
+    effects=[*effects.EFFECTS, *workshop_assets.EFFECTS],
+    sounds=[*audio.SOUNDS, *workshop_assets.SOUNDS],
+    music=[*audio.MUSIC, *workshop_assets.MUSIC],
     moves=[*moves.MOVES, *workshop.MOVES],
     characters=[*characters.CHARACTERS, *workshop.CHARACTERS],
-    teams=[*battles.TEAMS, *workshop.TEAMS],
-    battles=[*battles.BATTLES, *workshop.BATTLES],
+    teams=[*battles.TEAMS, *workshop_battles.TEAMS],
+    battles=[*battles.BATTLES, *workshop_battles.BATTLES],
     presentation=GamePresentation(
         basic_attack=moves.strike,
         menu_move_sound=audio.menu_move,

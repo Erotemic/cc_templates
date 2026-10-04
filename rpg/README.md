@@ -19,9 +19,11 @@ Then open:
 student_game/workshop.py
 ```
 
-The workshop is a small starting surface inside the full game. It contains a
-complete example of original art, effects, sound, music, moves, a character,
-teams, and battles.
+The workshop is a small starting surface inside the full game. It focuses on
+move functions, a character, and a simple enemy strategy. Supporting art/audio
+and battle wiring live in `workshop_assets.py` and `workshop_battles.py`, so
+students encounter those concepts when they are ready for them rather than in
+their first conditional lesson.
 
 ## Trustworthy feedback
 
@@ -34,7 +36,7 @@ The teaching tools are intended to agree with the actual engine:
 - importing the game performs structural validation without executing student
   behavior functions;
 - `python main.py --check` explicitly tests those behaviors;
-- the move lab's damage/healing explanation is recorded by the real rules
+- the move lab's optional engine details are recorded by the real rules
   engine while the move resolves.
 
 ## Deliberate teaching scenarios

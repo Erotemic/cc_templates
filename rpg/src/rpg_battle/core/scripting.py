@@ -115,8 +115,10 @@ class MoveContext:
     def observe(self, label: str, value: object) -> object:
         """Record one value in teaching traces and return it unchanged.
 
-        This is optional. A move works the same without ``observe``. It is handy
-        when a lesson wants the lab to show the exact boolean a branch used.
+        This is optional. A move works the same without ``observe``. Prefer a
+        short conceptual label such as ``"low_health"`` instead of copying the
+        source expression into a string; then the trace cannot become misleading
+        when the expression is edited.
         """
 
         if self._observer is not None:

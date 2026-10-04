@@ -56,6 +56,27 @@ def test_custom_move_function_can_use_normal_python_branching() -> None:
     assert desperate_damage > healthy_damage
 
 
+
+def test_scripted_move_separates_real_power_from_ai_estimate() -> None:
+    def scripted(ctx):
+        from rpg_battle.api import damage
+
+        return damage(12)
+
+    move = Move("Scripted", action=scripted, ai_power=7)
+    compiled = move.compile()
+    assert compiled.power == 7
+
+    misleading = Move("Misleading", action=scripted, power=7)
+    with pytest.raises(ContentValidationError, match="cannot use power"):
+        misleading.compile()
+
+
+def test_declarative_move_rejects_ai_power() -> None:
+    move = Move("Normal", power=7, ai_power=5)
+    with pytest.raises(ContentValidationError, match="ai_power is only for moves with action"):
+        move.compile()
+
 def test_student_game_uses_direct_object_references() -> None:
     assert characters.knight.moves[0] is moves.shield_bash
     assert characters.knight.sprite.sprite_id == "knight_dawn"

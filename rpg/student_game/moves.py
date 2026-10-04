@@ -247,7 +247,7 @@ desperate_strike = Move(
     "Desperate Strike",
     id="desperate_strike",
     kind="physical",
-    power=8,  # lets the basic AI estimate roughly how strong the move is
+    ai_power=8,  # estimate used only when the computer compares scripted moves
     animation=effects.impact,
     sound=audio.attack_basic,
     action=desperate_strike_logic,

@@ -6,9 +6,16 @@
 
 Implement this behavior in `power_strike_logic`:
 
-- above 70% HP: power 7;
-- from 30% through 70% HP: power 11;
-- below 30% HP: power 17.
+- above 75% HP: power 7;
+- from 25% through 75% HP: power 11;
+- below 25% HP: power 17.
+
+These boundaries fit Workshop Hero's existing 52 HP exactly:
+
+- 13/52 = 25%;
+- 39/52 = 75%.
+
+You do **not** need to change the character's maximum HP for this lesson.
 
 ## Worked pattern
 
@@ -17,17 +24,17 @@ Write the cases in an order that makes them easy to reason about.
 
 ## Test boundaries
 
-For this experiment, set `workshop_hero`'s `hp=100` so the 30% and 70% boundaries
-can be represented exactly with integer HP. Test 29, 30, 31, 69, 70, and 71 HP
-using the move lab with a fixed seed, for example:
+Test one value on each side of both boundaries:
 
 ```bash
-python lab.py move workshop_power_strike --user-hp 30 --seed 5
-```
+python lab.py move workshop_power_strike --user-hp 12 --seed 5
+python lab.py move workshop_power_strike --user-hp 13 --seed 5
+python lab.py move workshop_power_strike --user-hp 14 --seed 5
 
-The named `threshold_25/26/27` scenarios were designed for a 52-HP hero; use the
-explicit move command for this experiment. With maximum HP 52, neither 30% nor
-70% falls on an integer HP value.
+python lab.py move workshop_power_strike --user-hp 38 --seed 5
+python lab.py move workshop_power_strike --user-hp 39 --seed 5
+python lab.py move workshop_power_strike --user-hp 40 --seed 5
+```
 
 ## Independent task
 

@@ -448,23 +448,12 @@ class GameContent:
         for move in self.moves.values():
             if move.script is None:
                 continue
-            where = f'move "{move.name}"'
-            if move.power:
-                notes.append(
-                    ContentIssue(
-                        where,
-                        f"power={move.power} is an AI estimate because this move has a custom "
-                        "action function; the function's damage(...) or heal(...) command "
-                        "controls the actual amount",
-                    )
-                )
             if move.effects:
                 notes.append(
                     ContentIssue(
-                        where,
-                        "effects=[...] are not automatically applied when a custom action "
-                        "function is present; return add_status(...) or change_stat(...) "
-                        "from the function instead",
+                        f'move "{move.name}"',
+                        "scripted moves should return add_status(...) or change_stat(...) "
+                        "instead of relying on declarative effects",
                     )
                 )
         return notes

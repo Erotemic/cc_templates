@@ -466,11 +466,20 @@ class Music:
 
 @dataclass(frozen=True)
 class Move:
-    """One move a character can choose in battle."""
+    """One move a character can choose in battle.
+
+    Declarative moves use ``power`` because the engine applies that value
+    directly. Scripted moves use ``ai_power`` only as a rough estimate for
+    computer-controlled move selection; the commands returned by ``action``
+    determine what actually happens in battle. Keeping those names separate
+    prevents a student from editing a value that looks important but has no
+    effect on their Python function.
+    """
 
     name: str
     kind: MoveKind = "physical"
-    power: int = 0
+    power: int | None = None
+    ai_power: int | None = None
     accuracy: float = 1.0
     target: TargetMode = "single_enemy"
     animation: VisualEffect | str = "impact"
@@ -486,6 +495,40 @@ class Move:
         return _id(self.id, self.name)
 
     def compile(self) -> MoveSpec:
+        if self.action is None:
+            if self.ai_power is not None:
+                raise ContentValidationError(
+                    [
+                        ContentIssue(
+                            f'move "{self.name}"',
+                            "ai_power is only for moves with action=...; use power for a normal move",
+                        )
+                    ]
+                )
+            compiled_power = 0 if self.power is None else self.power
+        else:
+            if self.power is not None:
+                raise ContentValidationError(
+                    [
+                        ContentIssue(
+                            f'move "{self.name}"',
+                            "a scripted move cannot use power=... because its action function controls "
+                            "the real damage/healing; use ai_power=... only if the computer needs an estimate",
+                        )
+                    ]
+                )
+            if self.effects:
+                raise ContentValidationError(
+                    [
+                        ContentIssue(
+                            f'move "{self.name}"',
+                            "a scripted move cannot use effects=[...]; return add_status(...) or "
+                            "change_stat(...) from the action function instead",
+                        )
+                    ]
+                )
+            compiled_power = 0 if self.ai_power is None else self.ai_power
+
         animation_id = self.animation.effect_id if isinstance(self.animation, VisualEffect) else self.animation
         if isinstance(self.sound, Sound):
             sound_id = self.sound.sound_id
@@ -497,7 +540,7 @@ class Move:
             move_id=self.move_id,
             name=self.name,
             kind=self.kind,
-            power=self.power,
+            power=compiled_power,
             accuracy=self.accuracy,
             target_mode=self.target,
             animation=animation_id,

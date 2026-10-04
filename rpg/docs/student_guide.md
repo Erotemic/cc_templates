@@ -28,14 +28,20 @@ python lab.py scenario chain_lightning
 python lab.py scenario target_selection
 ```
 
-The lab uses the real rules engine. It separates:
+The lab uses the real rules engine. Its default view stays focused on the
+programming idea:
 
 1. the input facts;
 2. values/conditions observed by the function;
-3. the function's original return value;
-4. the normalized commands the engine executes;
-5. the actual damage/healing calculation;
-6. the resulting HP changes.
+3. the function's return value;
+4. the resulting HP changes.
+
+When you want to inspect how the engine turns a returned command into exact
+damage or healing, add `--engine-details`:
+
+```bash
+python lab.py scenario threshold_25 --engine-details
+```
 
 Play the same setup with:
 
@@ -123,10 +129,11 @@ def my_function(ctx):
     return damage(18)
 ```
 
-Here `damage(18)` controls the damage power. A `power=` value on the `Move`
-remains useful to the built-in AI as an estimate, but changing it does not
-change the command your Python function returns. `python main.py --check`
-prints a teaching note when this distinction matters.
+Here `damage(18)` controls the damage power. Scripted moves therefore do not
+accept `power=` at all. If a computer-controlled character needs a rough
+strength estimate when choosing among scripted moves, use the explicitly named
+`ai_power=` field instead. That estimate never changes what the function
+returns.
 
 ## Effective versus base stats
 
@@ -138,7 +145,7 @@ ctx.user.base_attack  # original character-sheet attack
 ```
 
 Burn, temporary stat changes, guarding, and similar mechanics can make them
-different. The move lab prints both when relevant.
+different. Add `--engine-details` in the move lab when you want to inspect both.
 
 ## Debugging
 
@@ -155,23 +162,19 @@ python main.py --scenario threshold_25 --debug-traceback
 
 ## Creating completely new content
 
-The workshop demonstrates registration for every supported content type:
+The first file stays small on purpose:
 
-```python
-PALETTES = [...]
-SPRITES = [...]
-EFFECTS = [...]
-SOUNDS = [...]
-MUSIC = [...]
-MOVES = [...]
-CHARACTERS = [...]
-TEAMS = [...]
-BATTLES = [...]
-```
+- `student_game/workshop.py` contains the move functions, character, and simple
+  strategy used in the common lessons;
+- `workshop_assets.py` contains the workshop's palette, sprite, effect, sound,
+  and music;
+- `workshop_battles.py` contains teams and battles.
 
-`student_game/catalog.py` combines all of these workshop lists with the larger
-reference game. That means original workshop art/audio/effects are first-class
-registered game content rather than one-off objects that fail validation later.
+Together they demonstrate registration for every supported content type without
+putting all of that wiring in front of a student learning their first
+conditional. `student_game/catalog.py` combines those lists with the larger
+reference game, so original workshop content remains first-class registered
+game content.
 
 ## Going deeper
 

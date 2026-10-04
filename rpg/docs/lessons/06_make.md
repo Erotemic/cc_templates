@@ -2,8 +2,10 @@
 
 **Prerequisites:** the earlier common lessons.
 
-`student_game/workshop.py` now contains a complete registered example: palette,
-sprite, effect, sound, music, moves, character, teams, and battles.
+`student_game/workshop.py` is intentionally small: it contains the first move
+functions, a character, and a simple enemy strategy. The neighboring
+`workshop_assets.py` and `workshop_battles.py` show how the same project adds
+art/audio and battle setup when students are ready for them.
 
 ## Supported creation
 

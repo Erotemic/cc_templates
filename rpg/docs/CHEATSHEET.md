@@ -45,10 +45,15 @@ battler.
 
 ```python
 def my_move(ctx):
-    if ctx.user.hp_ratio < 0.5:
+    low_health = ctx.user.hp_ratio < 0.5
+    if low_health:
         return damage(18)
     return damage(8)
 ```
+
+The workshop uses `ctx.observe("low_health", low_health)` when it wants the lab
+to display a named intermediate fact. The name is only a label; the Python
+expression determines the value.
 
 ## Loop pattern
 
@@ -67,9 +72,21 @@ def my_strategy(turn):
     if turn.user.hp_ratio < 0.3:
         return turn.defend()
 
-    target = min(turn.enemies, key=lambda enemy: enemy.hp_ratio)
+    target = turn.enemies[0]
+    for enemy in turn.enemies[1:]:
+        if enemy.hp_ratio < target.hp_ratio:
+            target = enemy
+
     return turn.use(moves.arc_bolt, target=target)
 ```
+
+## Scripted move power
+
+For a normal move, `power=10` is the power the engine uses.
+
+For a move with `action=my_function`, the function's returned `damage(...)` or
+`heal(...)` command controls the real amount. If computer-controlled characters
+need a rough strength estimate for that scripted move, use `ai_power=...`.
 
 ## Fast feedback
 
@@ -81,11 +98,13 @@ python main.py --scenario threshold_25 --teach
 python simulate.py --scenario balance --runs 50
 ```
 
-Add `--debug-traceback` when you intentionally want the full Python traceback
-from a student-authored runtime function.
-
-For the lab, put it after `move` or `scenario`, for example:
+The default lab output stays focused on your Python and the visible result. Add
+`--engine-details` when you want the effective stats, damage/healing formula,
+normalized commands, and battle events:
 
 ```bash
-python lab.py scenario threshold_25 --debug-traceback
+python lab.py scenario threshold_25 --engine-details
 ```
+
+Add `--debug-traceback` when you intentionally want the full Python traceback
+from a student-authored runtime function.

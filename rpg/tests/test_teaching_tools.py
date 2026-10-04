@@ -8,7 +8,7 @@ from rpg_battle.core.ai import choose_ai_action
 from rpg_battle.core.battle_state import new_battle
 from rpg_battle.core.models import EncounterSpec, StatusState, TeamSpec
 from rpg_battle.core.rules import resolve_action
-from rpg_battle.teaching.lab import run_move_lab
+from rpg_battle.teaching.lab import _print_result, run_move_lab
 from rpg_battle.teaching.simulate import simulate_many
 from student_game import CONTENT
 from student_game import characters, workshop
@@ -138,3 +138,33 @@ def test_check_smoke_tests_student_ai_strategy() -> None:
     report = "\n".join(str(issue) for issue in broken.validate())
     assert "strategy" in report
     assert "turn.use(...) or turn.defend()" in report
+
+
+def test_lab_progressively_discloses_engine_details(capsys) -> None:
+    result = run_move_lab(
+        CONTENT,
+        "workshop_power_strike",
+        user_char_id="workshop_hero",
+        target_char_ids=["spirit"],
+        user_hp=25,
+        seed=5,
+    )
+
+    _print_result(CONTENT, "workshop_power_strike", result)
+    simple = capsys.readouterr().out
+    assert "Observed by your function" in simple
+    assert "low_health -> True" in simple
+    assert "Engine details" not in simple
+    assert "variance =" not in simple
+    assert "--engine-details" in simple
+
+    _print_result(
+        CONTENT,
+        "workshop_power_strike",
+        result,
+        engine_details=True,
+    )
+    detailed = capsys.readouterr().out
+    assert "Engine details" in detailed
+    assert "variance =" in detailed
+    assert "normalized commands" in detailed

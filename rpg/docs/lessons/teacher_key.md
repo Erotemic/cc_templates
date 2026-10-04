@@ -10,17 +10,18 @@ Expected Power Strike command powers before modification:
 
 Changing `<` to `<=` changes the exactly-half case. A common misconception is
 thinking “half health” automatically belongs to the low-health branch without
-reading the comparison operator.
+reading the comparison operator. `ctx.observe("low_health", ...)` names the fact
+shown by the lab; the expression itself determines the value.
 
 ## Lesson 2
 
 Look for logically complete, non-overlapping regions. Students often create a
 gap or write the broadest condition first, making later branches unreachable.
 Ask them to test each boundary from both sides.
-The lesson temporarily uses a 100-HP hero because 30% and 70% of 52 are not
-integer HP values. Expected powers for 29/30/31/69/70/71 HP are
-17/11/11/11/11/7. The text label in `ctx.observe` must describe the updated
-expression; editing only the label does not change the branch.
+
+The lesson keeps the hero at 52 maximum HP and deliberately uses 25% and 75%
+because those are exact integer boundaries: 13/52 and 39/52. Expected powers
+for 12/13/14/38/39/40 HP are 17/11/11/11/11/7.
 
 ## Lesson 3
 
@@ -38,8 +39,10 @@ logic errors that require a specification and deliberate tests.
 ## Lesson 5
 
 In the supplied setup, Storm Ranger has lower raw HP (19 < 20), while Workshop
-Hero has lower HP ratio (20/52 < 19/46). The shipped strategy chooses Workshop
-Hero because it minimizes HP ratio.
+Hero has lower HP ratio (20/52 < 19/46). The shipped strategy uses an explicit
+loop to find the smallest HP ratio and therefore chooses Workshop Hero. After
+students understand that algorithm, `min(..., key=...)` can be introduced as a
+concise Python refactor.
 
 ## Lesson 6
 

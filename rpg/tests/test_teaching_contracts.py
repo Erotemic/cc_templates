@@ -22,7 +22,7 @@ from rpg_battle.render.effect_builder import PathProfile, evaluate_path_y
 from rpg_battle.teaching.lab import run_move_scenario
 from rpg_battle.teaching.simulate import simulate_many
 from student_game import CONTENT, SCENARIOS
-from student_game import workshop
+from student_game import workshop, workshop_assets
 from student_game.catalog import GAME
 
 
@@ -131,12 +131,11 @@ def test_game_compile_does_not_execute_student_behavior() -> None:
     assert calls
 
 
-def test_scripted_power_field_has_nonfatal_advisory() -> None:
+def test_scripted_move_has_no_misleading_power_advisory() -> None:
     notes = "\n".join(str(note) for note in CONTENT.advisories())
-    assert "Workshop Power Strike" in notes
-    assert "does not control" not in notes  # wording should explain positively
-    assert "action function" in notes
-    assert "controls the actual amount" in notes
+    assert "Workshop Power Strike" not in notes
+    assert workshop.power_strike.power is None
+    assert workshop.power_strike.ai_power == 8
 
 
 def test_cycles_one_means_one_full_sine_period() -> None:
@@ -193,11 +192,11 @@ def test_restart_reuses_original_seed() -> None:
 
 
 def test_workshop_registers_every_content_kind_it_defines() -> None:
-    assert workshop.workshop_palette.palette_id in CONTENT.palettes
-    assert workshop.workshop_sprite.sprite_id in CONTENT.sprites
-    assert workshop.workshop_impact.effect_id in CONTENT.effects
-    assert workshop.workshop_hit.sound_id in CONTENT.sound_effects
-    assert workshop.workshop_theme.music_id in CONTENT.music_tracks
+    assert workshop_assets.workshop_palette.palette_id in CONTENT.palettes
+    assert workshop_assets.workshop_sprite.sprite_id in CONTENT.sprites
+    assert workshop_assets.workshop_impact.effect_id in CONTENT.effects
+    assert workshop_assets.workshop_hit.sound_id in CONTENT.sound_effects
+    assert workshop_assets.workshop_theme.music_id in CONTENT.music_tracks
 
 
 def test_balance_scenario_exercises_both_power_strike_branches() -> None:
