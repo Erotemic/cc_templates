@@ -76,6 +76,27 @@ slop = Palette(
     id='slop',
 )
 
+# AI Slop Prime deliberately keeps the Slop family colors, but pushes them
+# farther apart so the boss can support layering, highlights, and readable
+# embedded machinery without becoming a different species.
+slop_prime = Palette(
+    'Slop Prime',
+    body=(151, 153, 119),
+    accent=(226, 102, 176),
+    eye=(247, 255, 205),
+    detail=(64, 47, 82),
+    id='slop_prime',
+    extra={
+        'body_shadow': (112, 112, 88),
+        'body_light': (190, 190, 145),
+        'accent_dark': (153, 65, 126),
+        'accent_light': (246, 155, 207),
+        'glitch': (255, 91, 198),
+        'core': (221, 255, 156),
+        'void': (39, 31, 51),
+    },
+)
+
 corsair = Palette(
     'Corsair',
     body=(94, 92, 165),
@@ -139,6 +160,7 @@ PALETTES = [
     mist,
     rune,
     slop,
+    slop_prime,
     corsair,
     velvet,
     siren,
@@ -243,19 +265,143 @@ ai_slop.line([(-30, 22), (-2, 32), (18, 18), (30, 34)], color='detail', width=3)
 ai_slop.rect((-12, -34), (10, 10), fill='accent', outline='detail', width=2, border_radius=2)
 ai_slop.rect((32, 24), (12, 12), fill='accent', outline='detail', width=2, border_radius=2)
 
-ai_slop_prime = Sprite('Ai Slop Prime', slop, id='ai_slop_prime')
-ai_slop_prime.ellipse((0, 0), (112, 104), fill='body', outline='detail', width=2)
-ai_slop_prime.polygon([(-34, -66), (22, -60), (48, -18), (-42, -24)], fill='accent', outline='detail', width=2)
-ai_slop_prime.rect((-62, 10), (20, 54), fill='accent', outline='detail', width=2, border_radius=4)
-ai_slop_prime.rect((58, -8), (22, 62), fill='accent', outline='detail', width=2, border_radius=4)
-ai_slop_prime.line([(-60, 8), (-104, -10), (-84, 34), (-116, 44)], color='detail', width=4)
-ai_slop_prime.line([(58, -4), (104, -30), (84, 14), (122, 8)], color='detail', width=4)
-ai_slop_prime.circle((-30, -12), 7, fill='eye', outline='detail', width=1)
-ai_slop_prime.circle((10, -6), 8, fill='eye', outline='detail', width=1)
-ai_slop_prime.circle((38, 10), 6, fill='eye', outline='detail', width=1)
-ai_slop_prime.line([(-36, 30), (-6, 42), (18, 26), (36, 44)], color='detail', width=4)
-ai_slop_prime.rect((-16, -40), (12, 12), fill='accent', outline='detail', width=2, border_radius=2)
-ai_slop_prime.rect((36, 28), (14, 14), fill='accent', outline='detail', width=2, border_radius=2)
+# AI Slop Prime is the same synthetic-ooze idea pushed into a boss silhouette.
+# It intentionally uses only the same readable Sprite primitives students use:
+# overlapping ellipses for volume, polygons for panels/shards, circles for eyes,
+# and doubled lines for the angular glitch limbs.
+ai_slop_prime = Sprite('Ai Slop Prime', slop_prime, id='ai_slop_prime')
+
+# Ground contact and lower shadow.  The wide puddle makes Prime feel heavy and
+# keeps the irregular upper silhouette readable instead of looking like a ball.
+ai_slop_prime.ellipse((0, 66), (174, 34), fill='body_shadow', outline='detail', width=3)
+ai_slop_prime.ellipse((-58, 70), (64, 24), fill='body', outline='detail', width=2)
+ai_slop_prime.ellipse((62, 72), (74, 22), fill='body', outline='detail', width=2)
+ai_slop_prime.ellipse((-94, 68), (34, 15), fill='body_light', outline='body', width=1)
+ai_slop_prime.ellipse((99, 70), (31, 13), fill='body_light', outline='body', width=1)
+
+# Outer sludge mass, then a brighter inner mass.  Several asymmetric lobes break
+# the contour so the boss reads as unstable liquid rather than a smooth mascot.
+ai_slop_prime.ellipse((0, 5), (158, 132), fill='body_shadow', outline='detail', width=4)
+ai_slop_prime.ellipse((-3, -3), (142, 116), fill='body', outline='detail', width=3)
+ai_slop_prime.ellipse((-49, -48), (61, 52), fill='body', outline='detail', width=3)
+ai_slop_prime.ellipse((12, -57), (78, 49), fill='body', outline='detail', width=3)
+ai_slop_prime.ellipse((58, -36), (49, 66), fill='body', outline='detail', width=3)
+ai_slop_prime.ellipse((-70, 18), (46, 70), fill='body', outline='detail', width=3)
+ai_slop_prime.ellipse((73, 24), (43, 64), fill='body', outline='detail', width=3)
+
+# Slime drips and splashes extend the silhouette past the core body.
+ai_slop_prime.polygon([(-66, 35), (-82, 60), (-69, 57), (-61, 79), (-51, 50)], fill='body', outline='detail', width=2)
+ai_slop_prime.polygon([(60, 40), (74, 66), (80, 52), (91, 75), (90, 34)], fill='body', outline='detail', width=2)
+ai_slop_prime.polygon([(-27, 53), (-19, 91), (-8, 69), (3, 94), (11, 55)], fill='body', outline='detail', width=2)
+ai_slop_prime.circle((-103, 46), 11, fill='body', outline='detail', width=2)
+ai_slop_prime.circle((-116, 56), 6, fill='body_light', outline='detail', width=1)
+ai_slop_prime.circle((105, 43), 10, fill='body', outline='detail', width=2)
+ai_slop_prime.circle((118, 54), 5, fill='body_light', outline='detail', width=1)
+
+# Wet highlights are separate shapes instead of a gradient so the sprite still
+# advertises how far simple geometry can be pushed.
+ai_slop_prime.ellipse((-29, -47), (38, 14), fill='body_light', outline='body_light', width=0)
+ai_slop_prime.ellipse((31, -53), (27, 10), fill='body_light', outline='body_light', width=0)
+ai_slop_prime.ellipse((-57, -9), (15, 31), fill='body_light', outline='body_light', width=0)
+ai_slop_prime.ellipse((61, -12), (11, 25), fill='body_light', outline='body_light', width=0)
+ai_slop_prime.circle((-74, 42), 5, fill='body_light', outline='body_light', width=0)
+ai_slop_prime.circle((78, 47), 4, fill='body_light', outline='body_light', width=0)
+
+# Side modules are deliberately mismatched.  They suggest failed synthetic
+# hardware embedded in the ooze rather than symmetrical armor.
+ai_slop_prime.rect((-76, -11), (31, 70), fill='accent_dark', outline='detail', width=3, border_radius=8)
+ai_slop_prime.rect((-73, -15), (23, 54), fill='accent', outline='accent_light', width=2, border_radius=6)
+ai_slop_prime.rect((-73, -30), (14, 15), fill='accent_light', outline='detail', width=2, border_radius=3)
+ai_slop_prime.line([(-83, 2), (-63, 2)], color='detail', width=3)
+ai_slop_prime.line([(-83, 12), (-66, 12)], color='detail', width=3)
+
+ai_slop_prime.polygon([(68, -36), (88, -25), (91, 34), (68, 46), (61, 21)], fill='accent_dark', outline='detail', width=3)
+ai_slop_prime.polygon([(72, -27), (83, -20), (84, 27), (70, 34), (67, 16)], fill='accent', outline='accent_light', width=2)
+ai_slop_prime.rect((77, -8), (11, 17), fill='accent_light', outline='detail', width=2, border_radius=2)
+ai_slop_prime.line([(72, 9), (83, 14)], color='detail', width=3)
+
+# The broken crown/brace is a strong identifying shape.  Drawing each segment
+# twice gives it a dark structural edge with a hot-pink signal running through.
+_prime_crown = [(-58, -66), (-24, -83), (5, -68), (31, -91), (56, -66)]
+ai_slop_prime.line(_prime_crown, color='detail', width=10)
+ai_slop_prime.line(_prime_crown, color='accent', width=4)
+ai_slop_prime.rect((35, -72), (19, 18), fill='accent', outline='detail', width=3, border_radius=3)
+ai_slop_prime.rect((35, -72), (9, 8), fill='accent_light', outline='accent_light', width=0, border_radius=2)
+
+# Three eyes keep the original Slop identity, but Prime gets layered sockets,
+# different sizes, and offset pupils so the expression is more intentional.
+ai_slop_prime.circle((-39, -16), 15, fill='accent_dark', outline='detail', width=2)
+ai_slop_prime.circle((-39, -16), 11, fill='eye', outline='detail', width=2)
+ai_slop_prime.circle((-42, -18), 3, fill='core', outline='core', width=0)
+ai_slop_prime.circle((-36, -14), 2, fill='void', outline='void', width=0)
+
+ai_slop_prime.circle((3, -23), 20, fill='accent_dark', outline='detail', width=3)
+ai_slop_prime.circle((3, -23), 15, fill='eye', outline='detail', width=2)
+ai_slop_prime.circle((-2, -28), 4, fill='core', outline='core', width=0)
+ai_slop_prime.circle((7, -20), 3, fill='void', outline='void', width=0)
+
+ai_slop_prime.circle((46, -11), 16, fill='accent_dark', outline='detail', width=2)
+ai_slop_prime.circle((46, -11), 12, fill='eye', outline='detail', width=2)
+ai_slop_prime.circle((42, -15), 3, fill='core', outline='core', width=0)
+ai_slop_prime.circle((50, -8), 2, fill='void', outline='void', width=0)
+
+# Pixel tears around the eye sockets make the clean circles look as if the
+# generated image is breaking through a low-resolution mask.
+ai_slop_prime.rect((-55, -26), (8, 8), fill='glitch', outline='glitch', width=0, border_radius=0)
+ai_slop_prime.rect((-49, -33), (6, 6), fill='accent_light', outline='accent_light', width=0, border_radius=0)
+ai_slop_prime.rect((20, -33), (8, 8), fill='glitch', outline='glitch', width=0, border_radius=0)
+ai_slop_prime.rect((25, -25), (6, 6), fill='accent_light', outline='accent_light', width=0, border_radius=0)
+ai_slop_prime.rect((58, -19), (7, 7), fill='glitch', outline='glitch', width=0, border_radius=0)
+
+# The large jaw-like artifact plate is the boss's focal piece.  It is visibly
+# cracked and partially swallowed by slime instead of being a flat pink block.
+ai_slop_prime.polygon([(-57, 18), (-16, 14), (25, 17), (59, 27), (49, 58), (11, 65), (-39, 60)], fill='accent_dark', outline='detail', width=3)
+ai_slop_prime.polygon([(-50, 22), (-15, 19), (22, 22), (52, 30), (43, 51), (9, 58), (-34, 54)], fill='accent', outline='accent_light', width=2)
+ai_slop_prime.polygon([(-4, 20), (7, 31), (0, 42), (14, 56)], fill='accent_light', outline='detail', width=2)
+ai_slop_prime.line([(25, 24), (17, 34), (29, 42), (22, 55)], color='detail', width=2)
+ai_slop_prime.rect((-27, 39), (17, 17), fill='void', outline='detail', width=2, border_radius=3)
+ai_slop_prime.rect((-27, 39), (9, 9), fill='glitch', outline='glitch', width=0, border_radius=1)
+
+# Slime visibly spills over the machinery so the plates feel embedded.
+ai_slop_prime.ellipse((-49, 18), (18, 31), fill='body', outline='detail', width=2)
+ai_slop_prime.circle((-45, 34), 6, fill='body', outline='detail', width=1)
+ai_slop_prime.ellipse((47, 24), (15, 26), fill='body', outline='detail', width=2)
+ai_slop_prime.circle((45, 39), 5, fill='body_light', outline='body', width=1)
+
+# Four glitch limbs make the silhouette boss-sized.  Each has a dark chassis
+# and a thinner magenta signal trace, matching the crown construction above.
+_prime_left_arm = [(-78, -10), (-116, -31), (-100, 4), (-132, 20)]
+ai_slop_prime.line(_prime_left_arm, color='detail', width=9)
+ai_slop_prime.line(_prime_left_arm, color='glitch', width=3)
+ai_slop_prime.circle((-132, 20), 8, fill='body', outline='detail', width=2)
+ai_slop_prime.circle((-137, 26), 4, fill='body_light', outline='body', width=1)
+
+_prime_right_arm = [(80, -8), (117, -40), (102, -4), (133, 3)]
+ai_slop_prime.line(_prime_right_arm, color='detail', width=9)
+ai_slop_prime.line(_prime_right_arm, color='glitch', width=3)
+ai_slop_prime.circle((133, 3), 8, fill='body', outline='detail', width=2)
+ai_slop_prime.circle((139, 8), 4, fill='body_light', outline='body', width=1)
+
+_prime_left_leg = [(-56, 55), (-92, 92), (-75, 116), (-111, 108)]
+ai_slop_prime.line(_prime_left_leg, color='detail', width=10)
+ai_slop_prime.line(_prime_left_leg, color='accent', width=4)
+ai_slop_prime.ellipse((-111, 108), (28, 12), fill='body', outline='detail', width=2)
+
+_prime_right_leg = [(56, 55), (88, 92), (78, 119), (116, 111)]
+ai_slop_prime.line(_prime_right_leg, color='detail', width=10)
+ai_slop_prime.line(_prime_right_leg, color='accent', width=4)
+ai_slop_prime.ellipse((116, 111), (30, 12), fill='body', outline='detail', width=2)
+
+# Loose artifact fragments sell the unstable/generated quality without making
+# the main face harder to read.
+ai_slop_prime.rect((-106, -48), (12, 12), fill='accent', outline='detail', width=2, border_radius=1)
+ai_slop_prime.rect((-119, -58), (6, 6), fill='glitch', outline='glitch', width=0, border_radius=0)
+ai_slop_prime.polygon([(101, -57), (111, -66), (119, -53), (108, -47)], fill='accent_light', outline='detail', width=2)
+ai_slop_prime.rect((113, 43), (9, 9), fill='glitch', outline='glitch', width=0, border_radius=0)
+ai_slop_prime.rect((-91, 83), (8, 8), fill='accent_light', outline='detail', width=1, border_radius=1)
+ai_slop_prime.rect((83, 82), (7, 7), fill='accent', outline='detail', width=1, border_radius=1)
+ai_slop_prime.circle((-124, 39), 4, fill='body', outline='detail', width=1)
+ai_slop_prime.circle((125, 30), 3, fill='body_light', outline='body', width=1)
 
 null_hydra = Sprite('Null Hydra', rune, id='null_hydra')
 null_hydra.ellipse((0, 8), (108, 96), fill='body', outline='detail', width=2)
