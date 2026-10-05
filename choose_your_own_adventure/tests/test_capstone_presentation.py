@@ -11,7 +11,7 @@ sys.path.insert(0, str(CAPSTONE))
 
 from art.catalog import DUST_EVENT_RULES, STAR_EVENT_RULES, choose_art
 from art.dust_vault import DUST_VAULT_ART
-from art.star_crystal import REDRAWN_ART, STAR_CRYSTAL_ART
+from art.star_crystal import STAR_CRYSTAL_ART, STAR_CRYSTAL_RAW_ART
 from engine.game import AdventureGame
 from worlds.dust_vault import WORLD_DATA as DUST_VAULT
 from worlds.star_crystal import WORLD_DATA as STAR_CRYSTAL
@@ -44,18 +44,37 @@ def slug(name: str) -> str:
 
 
 def test_all_original_star_crystal_art_is_preserved_and_polished():
-    assert set(STAR_CRYSTAL_ART) == ORIGINAL_STAR_ART_KEYS
-    assert len(STAR_CRYSTAL_ART) == 50
+    assert ORIGINAL_STAR_ART_KEYS <= set(STAR_CRYSTAL_ART)
+    assert len(STAR_CRYSTAL_ART) > 50
     assert "ELDER MIRA" in STAR_CRYSTAL_ART["npc::elder_mira::alive"]
     assert all(max(map(len, art.splitlines())) <= 64 for art in STAR_CRYSTAL_ART.values())
     assert all(not art.splitlines()[1].strip() == "\\" for art in STAR_CRYSTAL_ART.values())
-    assert {key for key, _ in STAR_EVENT_RULES} == {
+    original_scenarios = {
         key for key in ORIGINAL_STAR_ART_KEYS
         if not key.startswith("loc::") and not key.startswith("npc::")
     }
+    assert original_scenarios <= {key for key, _ in STAR_EVENT_RULES}
     scenario_keys = {key for key in ORIGINAL_STAR_ART_KEYS if "::" not in key}
-    assert scenario_keys <= set(REDRAWN_ART)
+    assert scenario_keys <= set(STAR_CRYSTAL_RAW_ART)
+    assert {
+        "loc::hearthfield_farm",
+        "loc::river_west",
+        "loc::river_east",
+        "npc::farmer_elowen::alive",
+        "npc::farmer_elowen::dead",
+        "river_delivery_started",
+        "river_crossing_blocked",
+        "river_delivery_complete",
+    } <= set(STAR_CRYSTAL_ART)
 
+
+
+def test_star_crystal_art_keeps_only_the_current_polished_catalog():
+    source = (CAPSTONE / "art" / "star_crystal.py").read_text()
+    assert "ORIGINAL_SCENARIO_ART" not in source
+    assert "REDRAWN_ART" not in source
+    assert "STAR_CRYSTAL_RAW_ART" in source
+    assert len(source.splitlines()) < 800
 
 def test_dust_vault_has_art_for_every_room_and_character():
     expected_locations = {f"loc::{room_key}" for room_key in DUST_VAULT["rooms"]}

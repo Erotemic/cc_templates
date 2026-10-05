@@ -244,3 +244,17 @@ mechanics.
 
 Add save/load, deterministic replay, or generalize a mechanic only after
 multiple worlds demonstrate real repetition.
+
+
+## Capstone state-machine case study: wolf, goat, and cabbage
+
+The Hearthfield Farm delivery quest is intentionally a small state machine
+inside a much larger game. `capstone/engine/river_crossing.py` is a good file to
+read after students understand functions and dataclasses: the complete puzzle
+state fits on one screen, transitions are pure, and unsafe transitions are
+rejected before mutation. `capstone/tests/test_river_crossing.py` then shows the
+same idea at two scales: exhaustively exploring reachable pure states and
+driving the quest through the real `AdventureGame` API.
+
+The teaching point is not the specific riddle. It is that a complicated game
+can still contain small subsystems with crisp state, invariants, and tests.

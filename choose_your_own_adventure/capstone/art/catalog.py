@@ -36,6 +36,9 @@ SCENE_TITLES = {
     "guard_arrest": "Guard arrest",
     "item_shatter": "A tonic shatters",
     "mercy_choice": "Mercy",
+    "river_delivery_started": "River delivery",
+    "river_crossing_blocked": "Think it through",
+    "river_delivery_complete": "Delivery complete",
     "scene::station_patrol": "Station patrol",
     "scene::glass_maw_ambush": "Glass Maw ambush",
     "scene::rafe_offer": "Rafe's offer",
@@ -118,6 +121,18 @@ STAR_EVENT_RULES: list[tuple[str, tuple[str, ...]]] = [
     # broken-crossing consequence should select the shatter illustration.
     ("item_shatter", ("shatters on the rocks",)),
     ("mercy_choice", ("spare", "mercy")),
+    (
+        "river_delivery_started",
+        ("wolf, goat, and cabbage are now traveling with you",),
+    ),
+    (
+        "river_crossing_blocked",
+        ("break the delivery puzzle's safety rule",),
+    ),
+    (
+        "river_delivery_complete",
+        ("all three passengers are safely on the east bank",),
+    ),
 ]
 
 

@@ -108,8 +108,10 @@ Capstone means **larger game**, not “you must understand harder Python.”
 - `capstone/worlds/` preserves the authored rooms, exits, NPCs, dialogue,
   trades, riddles, features, encounters, item data, gates, and endings.
 - `capstone/engine/` contains the mechanics plus both console and Textual frontends.
-- `capstone/art/` restores the original Star Crystal scene/character catalog and
-  adds equivalent full coverage for Dust Vault.
+- `capstone/art/` contains one current polished Star Crystal scene/character
+  catalog plus equivalent full coverage for Dust Vault.
+- Star Crystal also contains an optional Hearthfield Farm delivery quest whose
+  wolf/goat/cabbage river crossing is a small, explicitly tested state machine.
 
 Each world file ends with `EXTRA_ROOMS` and `EXTRA_CHOICES`. A student can add a
 side room or branch there without reading or modifying the combat, dialogue,
@@ -163,8 +165,10 @@ python capstone/simulate.py --world both --runs 25 --steps 250
 
 The tests include complete scripted paths through the teaching games and the
 capstones. They lock the preserved capstone world data with fingerprints and
-also lock presentation coverage: the original 50 Star Crystal art states, every
-Dust Vault room/character, and the full Textual interaction surface. The
+also lock presentation coverage: the original 50 Star Crystal scene keys plus
+new capstone art, every Dust Vault room/character, and the full Textual
+interaction surface. The wolf/goat/cabbage tests separately exercise the pure
+transition graph and its full in-game quest integration. The
 capstone additionally validates world references at startup and stress-tests
 legal state transitions headlessly, so those checks work even on a machine
 without Textual installed.

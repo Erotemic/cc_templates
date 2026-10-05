@@ -76,8 +76,10 @@ def main():
         require(dust_game.choices(), "capstone Dust Vault should be playable")
         require(not validate_state(star_game), "capstone Star Crystal initial state should validate")
         require(not validate_state(dust_game), "capstone Dust Vault initial state should validate")
-        require(len(STAR_CRYSTAL_ART) == 50, "all original Star Crystal art states should be present")
+        require(len(STAR_CRYSTAL_ART) >= 50, "all original Star Crystal art states should be present")
         require("npc::elder_mira::alive" in STAR_CRYSTAL_ART, "Elder Mira art should be present")
+        require("loc::river_west" in STAR_CRYSTAL_ART, "the river quest should have presentation art")
+        require("river_crossing" in STAR_CRYSTAL, "the capstone should include the river state machine")
         require(
             all(f"loc::{key}" in DUST_VAULT_ART for key in DUST_VAULT["rooms"]),
             "every Dust Vault location should have art",

@@ -1180,33 +1180,190 @@ WORLD_DATA = {'source_version': 'version4.py',
                  'predicate': '<lambda>'}]}
 
 # ---------------------------------------------------------------------------
+# CAPSTONE ADDITIONS
+# ---------------------------------------------------------------------------
+# These rooms extend the preserved original world without changing its records.
+# The river quest is intentionally ordinary world data plus one small, tested
+# state machine in ``engine/river_crossing.py``.
+CAPSTONE_ROOMS = {
+    "hearthfield_farm": {
+        "key": "hearthfield_farm",
+        "name": "Hearthfield Farm",
+        "description": (
+            "A small farm sits beyond the crossroads. A patient goat watches a "
+            "cabbage crate from one side of a cart while a rescued young wolf "
+            "paces on the other. Willow River glints through the trees eastward."
+        ),
+        "exits": [
+            {"direction": "back to the crossroads", "destination": "crossroads"},
+            {"direction": "east toward Willow River", "destination": "river_west"},
+        ],
+        "items": [],
+        "npcs": [
+            {
+                "type": "NPC",
+                "name": "Farmer Elowen",
+                "base_stats": {
+                    "type": "Stats",
+                    "max_hp": 35,
+                    "attack_min": 2,
+                    "attack_max": 4,
+                    "defense": 0,
+                },
+                "location": "hearthfield_farm",
+                "health": 35,
+                "gold": 8,
+                "inventory": [],
+                "equipment": {"weapon": None, "armor": None, "charm": None},
+                "description": (
+                    "A practical farmer with muddy boots, rolled sleeves, and a "
+                    "problem that sounds suspiciously like a logic puzzle."
+                ),
+                "tags": ["civilian", "quest_giver"],
+                "aggression": 0,
+                "courage": 20,
+                "willingness_to_trade": 10,
+                "hostile": False,
+                "dialogue_topics": [
+                    {
+                        "type": "DialogueTopic",
+                        "key": "river_delivery",
+                        "title": "Accept the wolf, goat, and cabbage delivery",
+                        "lines": [
+                            "Miller Tamsin needs all three delivered to the far bank.",
+                            "The boat only has room for you and one passenger at a time.",
+                            "Do not leave the wolf alone with the goat, or the goat alone with the cabbage.",
+                            "Will you take them across for me?",
+                        ],
+                        "required_flags": [],
+                        "blocked_flags": [
+                            "river_delivery_active",
+                            "river_delivery_complete",
+                        ],
+                        "required_items": [],
+                        "once": True,
+                        "outcome_effect": {
+                            "type": "CompositeEffect",
+                            "effects": [
+                                {
+                                    "type": "SetFlagEffect",
+                                    "flags": ["river_delivery_active"],
+                                },
+                                {
+                                    "type": "PrintEffect",
+                                    "lines": [
+                                        "The wolf, goat, and cabbage are now traveling with you.",
+                                        "Farmer Elowen points east toward Willow River.",
+                                    ],
+                                },
+                            ],
+                        },
+                    },
+                    {
+                        "type": "DialogueTopic",
+                        "key": "river_delivery_done",
+                        "title": "Tell Elowen the delivery made it across",
+                        "lines": [
+                            "I heard from Tamsin. Nicely done.",
+                            "You kept your head and kept everyone in one piece.",
+                        ],
+                        "required_flags": ["river_delivery_complete"],
+                        "blocked_flags": [],
+                        "required_items": [],
+                        "once": False,
+                        "outcome_effect": None,
+                    },
+                ],
+                "trade_offers": [],
+                "surrender_trade_offers": [],
+                "riddle": None,
+                "surrender_threshold": None,
+                "surrender_lines": [],
+                "surrender_accept_effect": None,
+                "defeat_lines": ["Farmer Elowen falls beside the delivery cart."],
+                "reward_items": [],
+                "reward_gold": 0,
+                "reward_flags": [],
+                "persistent": True,
+                "used_topics": [],
+                "completed_trades": [],
+                "surrendered": False,
+                "riddle_solved": False,
+                "defeated": False,
+            }
+        ],
+        "features": [],
+        "choices": [],
+    },
+    "river_west": {
+        "key": "river_west",
+        "name": "Willow River - West Bank",
+        "description": (
+            "A narrow wooden boat is tied beneath a willow. The current is calm, "
+            "but the boat only has room for you and one passenger besides you."
+        ),
+        "exits": [
+            {"direction": "west to Hearthfield Farm", "destination": "hearthfield_farm"},
+            {"direction": "take the boat east", "destination": "river_east"},
+        ],
+        "items": [],
+        "npcs": [],
+        "features": [],
+        "choices": [],
+    },
+    "river_east": {
+        "key": "river_east",
+        "name": "Willow River - East Bank",
+        "description": (
+            "The far bank opens onto a mill road. Miller Tamsin's empty delivery "
+            "pen waits beside a hitching post."
+        ),
+        "exits": [
+            {"direction": "take the boat west", "destination": "river_west"},
+        ],
+        "items": [],
+        "npcs": [],
+        "features": [],
+        "choices": [],
+    },
+}
+
+CAPSTONE_CHOICES = {
+    "crossroads": [
+        {
+            "text": "Take the country lane to Hearthfield Farm",
+            "go": "hearthfield_farm",
+        }
+    ],
+}
+
+WORLD_DATA["rooms"].update(CAPSTONE_ROOMS)
+for _room_key, _choices in CAPSTONE_CHOICES.items():
+    WORLD_DATA["rooms"][_room_key].setdefault("choices", []).extend(_choices)
+
+WORLD_DATA["river_crossing"] = {
+    "active_flag": "river_delivery_active",
+    "complete_flag": "river_delivery_complete",
+    "west_room": "river_west",
+    "east_room": "river_east",
+    "passenger_labels": {
+        "wolf": "Wolf",
+        "goat": "Goat",
+        "cabbage": "Cabbage",
+    },
+    "reward_gold": 20,
+    "completion_lines": [
+        "All three passengers are safely on the east bank.",
+        "Miller Tamsin takes charge of the wolf, goat, and cabbage and thanks you for the delivery.",
+    ],
+}
+
+# ---------------------------------------------------------------------------
 # STUDENT EXTENSION ZONE
 # ---------------------------------------------------------------------------
-# Add rooms here instead of editing the preserved original records above.
-# A simple room needs only a name, description, exits, and optional choices.
-# The engine treats omitted items, NPCs, and features as empty.
+# Add your own rooms and choices here.  Ordinary content does not require an
+# engine change: copy a room block, connect it with a choice, and keep building.
 EXTRA_ROOMS = {}
-
-# Add simple choices to an existing room without changing engine code. A
-# choice can also move into one of your extra rooms. For example:
-# EXTRA_ROOMS = {
-#     "old_observatory": {
-#         "name": "Old Observatory",
-#         "description": "Dusty lenses point through a hole in the roof.",
-#         "exits": [{"direction": "back", "destination": "crossroads"}],
-#         "choices": [
-#             {
-#                 "text": "Look through the telescope",
-#                 "result": ["A blue star flickers above the hills."],
-#             },
-#         ],
-#     },
-# }
-# EXTRA_CHOICES = {
-#     "crossroads": [
-#         {"text": "Climb the hill to the old observatory", "go": "old_observatory"},
-#     ],
-# }
 EXTRA_CHOICES = {}
 
 WORLD_DATA["rooms"].update(EXTRA_ROOMS)

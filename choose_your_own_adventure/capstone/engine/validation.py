@@ -261,6 +261,22 @@ def validate_world(world: dict[str, Any]) -> list[str]:
             for item_id in choice.get("give_items", []):
                 item_ref(item_id, f"{cpath}.give_items")
 
+    river = world.get("river_crossing")
+    if river is not None:
+        if not isinstance(river, dict):
+            errors.append("river_crossing must be a mapping")
+        else:
+            for field in ("west_room", "east_room"):
+                room_ref(river.get(field), f"river_crossing.{field}")
+            if river.get("west_room") == river.get("east_room"):
+                errors.append("river_crossing west_room and east_room must differ")
+            for field in ("active_flag", "complete_flag"):
+                if not river.get(field):
+                    errors.append(f"river_crossing.{field} must be a non-empty flag name")
+            reward_gold = river.get("reward_gold", 0)
+            if not isinstance(reward_gold, int) or reward_gold < 0:
+                errors.append("river_crossing.reward_gold must be a non-negative integer")
+
     for index, encounter in enumerate(world.get("encounters", [])):
         path = f"encounters[{index}]"
         for room_key in encounter.get("locations", []):
@@ -325,6 +341,18 @@ def validate_state(game: "AdventureGame") -> list[str]:
     if game.mode == "loot" and game.current_npc_name in game.npcs:
         if not game.npcs[game.current_npc_name].get("defeated"):
             errors.append("loot mode requires a defeated NPC")
+
+    if game.river_delivery_active:
+        state = game.river_state
+        reason = state.unsafe_reason()
+        if reason is not None:
+            errors.append(f"river crossing entered unsafe state: {reason}")
+        if game.player_location in game.river_rooms:
+            expected_room = game.river_config[f"{state.player}_room"]
+            if game.player_location != expected_room:
+                errors.append(
+                    "river crossing player bank disagrees with current river room"
+                )
 
     for slot, item_id in game.player.equipment.items():
         if item_id is None:
