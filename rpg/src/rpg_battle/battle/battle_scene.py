@@ -52,6 +52,14 @@ NEUTRAL_EVENT_COLOR = TEXT_COLOR
 PLAYER_GLOW = (120, 195, 255)
 ENEMY_GLOW = (255, 145, 145)
 TARGET_GLOW = (255, 240, 150)
+
+
+def move_uses_attack_presentation(move_kind: str | None) -> bool:
+    """Return whether a move should use the character's ``attack`` art state."""
+
+    return move_kind in {"physical", "magical"}
+
+
 STATUS_BADGE_COLORS = {
     "burn": (255, 145, 95),
     "slow": (172, 214, 255),
@@ -555,7 +563,14 @@ class BattleScene:
             self.current_event_timer = 0.65 if event_type != "move" else 0.95
         if event_type == "move":
             actor_id = event["actor_id"]
-            self.sprite_actors[actor_id].play_attack(get_combatant(self.controller.state, actor_id).spec.sprite_id)
+            # "attack" is a literal presentation state, not a synonym for
+            # "used any move". Healing, buffs, debuffs, and status moves keep
+            # their ordinary idle art unless we intentionally add states for
+            # them later.
+            if move_uses_attack_presentation(event.get("move_kind")):
+                self.sprite_actors[actor_id].play_attack(
+                    get_combatant(self.controller.state, actor_id).spec.sprite_id
+                )
             actor_x, actor_y, _ = self._position_for(actor_id)
             target_x, target_y = self._make_effect_target(event)
             self.effects.append(

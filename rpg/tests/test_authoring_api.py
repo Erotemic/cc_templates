@@ -6,7 +6,7 @@ import random
 import pytest
 
 from student_game import CONTENT
-from student_game import characters, moves
+from student_game import art, characters, moves
 from student_game.catalog import GAME
 from rpg_battle.api import (
     Battle,
@@ -88,11 +88,28 @@ def test_declarative_move_rejects_ai_power() -> None:
 
 def test_student_game_uses_direct_object_references() -> None:
     assert characters.knight.moves[0] is moves.shield_bash
-    assert characters.knight.sprite.sprite_id == "knight_dawn"
+    assert characters.knight.art is art.knight_dawn_art
+    # Older classroom code can still read ``sprite`` while new examples use ``art``.
+    assert characters.knight.sprite is characters.knight.art
     assert CONTENT.characters["knight"].move_ids == ("shield_bash", "stone_ward", "strike")
 
 
-def test_sprite_authored_scale_compiles_for_layout_fitting() -> None:
+def test_game_uses_art_assets_as_the_student_facing_registry_name() -> None:
+    assert art.knight_dawn_art in GAME.art_assets
+    assert GAME.sprites is GAME.art_assets
+
+
+def test_knight_is_the_runnable_frame_animation_reference() -> None:
+    recipe = CONTENT.sprites["knight_dawn"]
+    assert recipe["kind"] == "character_art"
+    assert recipe["states"]["idle"]["kind"] == "procedural"
+    assert recipe["states"]["attack"]["kind"] == "frame_animation"
+    assert len(recipe["states"]["attack"]["frames"]) == 3
+    # Hurt is intentionally omitted so students can observe idle fallback.
+    assert "hurt" not in recipe["states"]
+
+
+def test_code_sprite_frame_authored_scale_compiles_for_layout_fitting() -> None:
     palette = Palette("Test", body=(1, 2, 3), accent=(4, 5, 6))
     sprite = CodeSpriteFrame("Large Drawing", palette, scale=0.5).circle((0, 0), 20)
     compiled = sprite.compile()
@@ -100,7 +117,7 @@ def test_sprite_authored_scale_compiles_for_layout_fitting() -> None:
     assert compiled["shapes"][0]["radius"] == 20
 
 
-def test_svg_sprite_compiles_as_packaged_vector_art() -> None:
+def test_svg_sprite_frame_compiles_as_packaged_vector_art() -> None:
     sprite = SvgSpriteFrame(
         "Vector Hero",
         "assets/sprites/space_pirate.svg",
@@ -194,3 +211,54 @@ def test_presentation_refs_are_validated() -> None:
     )
     report = format_validation_report(broken.validate())
     assert 'menu confirm sound "missing_blip" is not defined' in report
+
+
+def _move_event_for(character, move):
+    player = TeamSpec(
+        name="Move Kind Test Player",
+        members=(character.character_id,),
+        starting_active=(character.character_id,),
+    )
+    enemy = TeamSpec(
+        name="Move Kind Test Enemy",
+        members=(characters.ai_slop.character_id,),
+        controller_type="ai",
+        starting_active=(characters.ai_slop.character_id,),
+    )
+    encounter = EncounterSpec(
+        encounter_id=f"move_kind_{move.move_id}",
+        title="Move Kind Test",
+        player_team=player,
+        enemy_team=enemy,
+        active_limits=(1, 1),
+        music_track_id=CONTENT.default_battle_track,
+    )
+    state = new_battle(encounter, content=CONTENT)
+    actor_id = state.teams[0].active_ids[0]
+    enemy_id = state.teams[1].active_ids[0]
+    compiled = CONTENT.moves[move.move_id]
+    if compiled.target_mode in {"self", "single_ally", "all_allies"}:
+        targets = (actor_id,)
+    elif compiled.target_mode == "none":
+        targets = ()
+    else:
+        targets = (enemy_id,)
+    events = resolve_action(
+        state,
+        skill_action(actor_id, move.move_id, target_ids=targets),
+        random.Random(5),
+    )
+    return next(event for event in events if event["type"] == "move")
+
+
+def test_move_events_preserve_semantic_move_kind_for_presentation() -> None:
+    cases = [
+        (characters.knight, moves.shield_bash, "physical"),
+        (characters.moon_mage, moves.arc_bolt, "magical"),
+        (characters.druid, moves.healing_light, "heal"),
+        (characters.ranger, moves.wind_step, "buff"),
+        (characters.spirit, moves.mist_veil, "debuff"),
+        (characters.runesage, moves.fractal_veil, "status"),
+    ]
+    for character, move, expected_kind in cases:
+        assert _move_event_for(character, move)["move_kind"] == expected_kind

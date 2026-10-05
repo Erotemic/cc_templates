@@ -45,3 +45,22 @@ def test_engine_does_not_import_the_shipped_game_or_legacy_content_catalogs() ->
                 offenders.append(str(path.relative_to(package_root)))
 
     assert offenders == []
+
+
+def test_gameplay_core_does_not_depend_on_rendering() -> None:
+    package_root = Path(__file__).parents[1] / "src" / "rpg_battle"
+    offenders: list[str] = []
+    for path in (package_root / "core").glob("*.py"):
+        tree = ast.parse(path.read_text(), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                modules = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                modules = [node.module]
+            else:
+                continue
+            if any(module == "rpg_battle.render" or module.startswith("rpg_battle.render.") for module in modules):
+                offenders.append(str(path.relative_to(package_root)))
+                break
+
+    assert offenders == []

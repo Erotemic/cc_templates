@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Still character frames. Change one frame and preview it immediately."""
 
-from rpg_battle.api import CodeSpriteFrame, Palette, SvgSpriteFrame
+from rpg_battle.api import CharacterArt, CodeSpriteFrame, FrameAnimation, Palette, SvgSpriteFrame
 
 dawn = Palette(
     'Dawn',
@@ -266,17 +266,67 @@ PALETTES = [
     cryptid,
 ]
 
-knight_dawn = CodeSpriteFrame('Knight Dawn', dawn, id='knight_dawn')
-knight_dawn.polygon([(-28, 14), (0, -52), (28, 14)], fill='accent', outline='detail', width=2)
-knight_dawn.rect((0, 14), (68, 78), fill='body', outline='detail', width=2, border_radius=10)
-knight_dawn.rect((0, -8), (46, 52), fill='accent', outline='detail', width=2, border_radius=10)
-knight_dawn.rect((-40, 10), (24, 48), fill='accent', outline='detail', width=2, border_radius=10)
-knight_dawn.line([(-40, -12), (-40, 34)], color='detail', width=4)
-knight_dawn.circle((-12, -14), 6, fill='eye', outline='detail', width=1)
-knight_dawn.circle((12, -14), 6, fill='eye', outline='detail', width=1)
-knight_dawn.line([(-12, -14), (-12, -12)], color='detail', width=2)
-knight_dawn.line([(12, -14), (12, -12)], color='detail', width=2)
-knight_dawn.polyline([(-12, 2), (0, 8), (12, 2)], color='detail', width=2)
+def _draw_knight_dawn(frame: CodeSpriteFrame, *, sword_tip: tuple[int, int] | None = None) -> CodeSpriteFrame:
+    """Draw one Knight of Dawn frame.
+
+    The attack frames reuse the same drawing function and only change the sword
+    tip. This keeps the frame-by-frame example small enough for students to
+    compare directly.
+    """
+
+    frame.polygon([(-28, 14), (0, -52), (28, 14)], fill='accent', outline='detail', width=2)
+    frame.rect((0, 14), (68, 78), fill='body', outline='detail', width=2, border_radius=10)
+    frame.rect((0, -8), (46, 52), fill='accent', outline='detail', width=2, border_radius=10)
+    frame.rect((-40, 10), (24, 48), fill='accent', outline='detail', width=2, border_radius=10)
+    frame.line([(-40, -12), (-40, 34)], color='detail', width=4)
+    frame.circle((-12, -14), 6, fill='eye', outline='detail', width=1)
+    frame.circle((12, -14), 6, fill='eye', outline='detail', width=1)
+    frame.line([(-12, -14), (-12, -12)], color='detail', width=2)
+    frame.line([(12, -14), (12, -12)], color='detail', width=2)
+    frame.polyline([(-12, 2), (0, 8), (12, 2)], color='detail', width=2)
+    if sword_tip is not None:
+        # A simple sword makes the frame changes obvious: raised, forward, down.
+        frame.line([(28, 18), sword_tip], color='detail', width=8)
+        frame.line([(28, 18), sword_tip], color='accent', width=4)
+        frame.line([(22, 14), (34, 22)], color='detail', width=5)
+    return frame
+
+
+knight_dawn_idle_frame = _draw_knight_dawn(
+    CodeSpriteFrame('Knight Dawn Idle', dawn, id='knight_dawn_idle')
+)
+knight_dawn_attack_1_frame = _draw_knight_dawn(
+    CodeSpriteFrame('Knight Dawn Attack 1', dawn, id='knight_dawn_attack_1'),
+    sword_tip=(61, -48),
+)
+knight_dawn_attack_2_frame = _draw_knight_dawn(
+    CodeSpriteFrame('Knight Dawn Attack 2', dawn, id='knight_dawn_attack_2'),
+    sword_tip=(88, -7),
+)
+knight_dawn_attack_3_frame = _draw_knight_dawn(
+    CodeSpriteFrame('Knight Dawn Attack 3', dawn, id='knight_dawn_attack_3'),
+    sword_tip=(76, 44),
+)
+
+# This is the complete frame-animation example. Hurt and faint are deliberately
+# omitted, so students can see that missing states fall back to the idle frame.
+knight_dawn_art = CharacterArt(
+    'Knight Dawn Art',
+    id='knight_dawn',
+    idle=knight_dawn_idle_frame,
+    attack=FrameAnimation(
+        frames=[
+            knight_dawn_attack_1_frame,
+            knight_dawn_attack_2_frame,
+            knight_dawn_attack_3_frame,
+        ],
+        fps=8,
+        loop=False,
+    ),
+)
+
+# Compatibility name used by older exercises.
+knight_dawn = knight_dawn_art
 
 verdant_druid = CodeSpriteFrame('Verdant Druid', verdant, id='verdant_druid', scale=0.50)
 
@@ -1047,8 +1097,8 @@ cryptid_friend.circle((-95, -8), 4, fill='mist', outline='detail', width=1)
 cryptid_friend.circle((98, -11), 4, fill='mist_light', outline='detail', width=1)
 
 
-SPRITE_ASSETS = [
-    knight_dawn,
+ART_ASSETS = [
+    knight_dawn_art,
     verdant_druid,
     storm_ranger,
     moon_mage,
@@ -1066,5 +1116,6 @@ SPRITE_ASSETS = [
     cryptid_friend,
 ]
 
-# Compatibility name used by older exercises.
-SPRITES = SPRITE_ASSETS
+# Compatibility names used by older exercises.
+SPRITE_ASSETS = ART_ASSETS
+SPRITES = ART_ASSETS

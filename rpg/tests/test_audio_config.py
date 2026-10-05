@@ -1,6 +1,10 @@
 from rpg_battle.audio.library import GeneratedTrackSpec, render_generated_track
-from rpg_battle.content.audio import DEFAULT_BATTLE_TRACK, MUSIC_TRACKS, SOUND_EFFECTS
-from rpg_battle.content.moves import MOVES
+from student_game import CONTENT
+
+DEFAULT_BATTLE_TRACK = CONTENT.default_battle_track
+MUSIC_TRACKS = CONTENT.music_tracks
+SOUND_EFFECTS = CONTENT.sound_effects
+MOVES = CONTENT.moves
 
 
 def test_default_track_exists() -> None:

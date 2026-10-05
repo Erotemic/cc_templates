@@ -15,7 +15,7 @@ knight = Character(
     defense=9,
     magic=4,
     speed=4,
-    sprite=art.knight_dawn,
+    art=art.knight_dawn_art,
     moves=[
         moves.shield_bash,
         moves.stone_ward,
@@ -33,7 +33,7 @@ druid = Character(
     defense=6,
     magic=9,
     speed=6,
-    sprite=art.verdant_druid,
+    art=art.verdant_druid,
     moves=[
         moves.healing_light,
         moves.thorn_bind,
@@ -51,7 +51,7 @@ ranger = Character(
     defense=5,
     magic=5,
     speed=10,
-    sprite=art.storm_ranger,
+    art=art.storm_ranger,
     moves=[
         moves.arc_bolt,
         moves.wind_step,
@@ -69,7 +69,7 @@ mage = Character(
     defense=4,
     magic=11,
     speed=7,
-    sprite=art.moon_mage,
+    art=art.moon_mage,
     moves=[
         moves.arc_bolt,
         moves.ember,
@@ -89,7 +89,7 @@ guardian = Character(
     defense=10,
     magic=6,
     speed=4,
-    sprite=art.crystal_guardian,
+    art=art.crystal_guardian,
     moves=[
         moves.stone_ward,
         moves.shield_bash,
@@ -107,7 +107,7 @@ spirit = Character(
     defense=5,
     magic=10,
     speed=5,
-    sprite=art.mist_spirit,
+    art=art.mist_spirit,
     moves=[
         moves.mist_veil,
         moves.arc_bolt,
@@ -125,7 +125,7 @@ runesage = Character(
     defense=5,
     magic=12,
     speed=8,
-    sprite=art.runesage,
+    art=art.runesage,
     moves=[
         moves.sine_wave,
         moves.square_pulse,
@@ -144,7 +144,7 @@ ai_slop = Character(
     defense=6,
     magic=10,
     speed=3,
-    sprite=art.ai_slop,
+    art=art.ai_slop,
     moves=[
         moves.gradient_descent,
         moves.regularization,
@@ -162,7 +162,7 @@ ai_slop_prime = Character(
     defense=8,
     magic=13,
     speed=3,
-    sprite=art.ai_slop_prime,
+    art=art.ai_slop_prime,
     moves=[
         moves.gradient_descent,
         moves.regularization,
@@ -180,7 +180,7 @@ null_hydra = Character(
     defense=9,
     magic=14,
     speed=4,
-    sprite=art.null_hydra,
+    art=art.null_hydra,
     moves=[
         moves.singularity_coil,
         moves.pixel_storm,
@@ -198,7 +198,7 @@ star_corsair = Character(
     defense=5,
     magic=6,
     speed=9,
-    sprite=art.star_corsair,
+    art=art.star_corsair,
     moves=[
         moves.strike,
         moves.wind_step,
@@ -216,7 +216,7 @@ velvet_hexer = Character(
     defense=5,
     magic=12,
     speed=7,
-    sprite=art.velvet_hexer,
+    art=art.velvet_hexer,
     moves=[
         moves.arc_bolt,
         moves.thorn_bind,
@@ -234,7 +234,7 @@ siren_engine = Character(
     defense=6,
     magic=10,
     speed=6,
-    sprite=art.siren_engine,
+    art=art.siren_engine,
     moves=[
         moves.arc_bolt,
         moves.healing_light,
@@ -252,7 +252,7 @@ space_pirate = Character(
     defense=6,
     magic=5,
     speed=8,
-    sprite=art.space_pirate,
+    art=art.space_pirate,
     moves=[
         moves.strike,
         moves.shield_bash,
@@ -270,7 +270,7 @@ tiny_ancient_menace = Character(
     defense=6,
     magic=11,
     speed=8,
-    sprite=art.tiny_ancient_menace,
+    art=art.tiny_ancient_menace,
     moves=[
         moves.square_pulse,
         moves.entropy_shield,
@@ -288,7 +288,7 @@ cryptid_friend = Character(
     defense=6,
     magic=9,
     speed=7,
-    sprite=art.cryptid_friend,
+    art=art.cryptid_friend,
     moves=[
         moves.healing_light,
         moves.thorn_bind,

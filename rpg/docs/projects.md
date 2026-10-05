@@ -11,18 +11,69 @@ phase deliberately.
 
 ## Character art
 
-There are two intentionally different art paths.
+There are two intentionally different still-frame art paths.
 
-**Python procedural art:** use repeated shapes, symmetry, coordinates, helper
-functions, and loops to create a coherent character family. Refactor repeated
-drawing ideas into functions only after the repetition is visible.
+**Python code art:** use `CodeSpriteFrame` with repeated shapes, symmetry,
+coordinates, helper functions, and loops. Refactor repeated drawing ideas into
+functions only after the repetition is visible.
 
-**SVG vector art:** edit `student_game/assets/sprites/space_pirate.svg` directly
-in a text editor or vector editor. This path introduces vector geometry,
-layering, fill/stroke styling, groups, and transforms without requiring students
-to express every visual change as Python. The primary classroom editing model is
-path-based SVG, so students can mostly learn `path d="..."` data, groups, and
-basic styling. Preview it with `python render_character.py space_pirate`.
+**SVG vector art:** use `SvgSpriteFrame` with files in
+`student_game/assets/sprites/`. `space_pirate.svg` and `moon_mage.svg` are
+examples. The primary classroom workflow is path-based SVG, so students can
+mostly work with `<path d="...">`, fill/stroke styling, groups, and transforms.
+SVGs load through pygame/SDL_image rather than an extra Cairo dependency.
+
+A frame is only one picture. Preview a still frame with:
+
+```bash
+python render_character.py moon_mage
+```
+
+## Character animation
+
+The presentation path is deliberately incremental. You can stop at any stage.
+
+1. Draw one still `CodeSpriteFrame` or `SvgSpriteFrame`.
+2. Run it with the default battle motions. The picture itself has not changed;
+   the renderer moves the whole picture.
+3. Tune the explicit `BobMotion`, `LungeMotion`, `ShakeMotion`, and `FallMotion`
+   values in `student_game/catalog.py`.
+4. Combine several still frames with `FrameAnimation`.
+5. Use `CharacterArt` to associate visuals with semantic states such as
+   `idle`, `attack`, `hurt`, and `faint`. Missing states reuse `idle`.
+6. For an engine-reading project, trace gameplay state through `BattleScene`
+   into `SpriteActor`, frame selection, and whole-character motion.
+
+`Knight of Dawn` is the runnable frame-animation reference in
+`student_game/art.py`. Its attack has three `CodeSpriteFrame` objects while its
+hurt/faint states deliberately fall back to the idle frame. The same
+`FrameAnimation` class can contain `SvgSpriteFrame` objects instead.
+
+Use live preview to see the distinction between static artwork, frame animation,
+and whole-character motion:
+
+```bash
+python render_character.py knight --state idle --animate
+python render_character.py knight --state attack --animate
+```
+
+For an exact deterministic instant instead of a live loop:
+
+```bash
+python render_character.py knight --state attack --time 0.125
+```
+
+The public motion objects currently expose a small **battle motion policy**,
+not an arbitrary motion framework. Students tune their parameters. Stronger
+students who want the actual arithmetic can inspect:
+
+- `src/rpg_battle/render/sprite_motion.py` for bob/lunge/shake/fall math;
+- `src/rpg_battle/render/sprite_animation.py` for `int(time * fps)`, modulo,
+  and clamping.
+
+Gameplay remains authoritative. A move or damage event decides what happened;
+presentation decides what that state looks like. Do not make gameplay outcomes
+depend on animation frame numbers.
 
 ## Effects and mathematics
 
@@ -40,8 +91,8 @@ function-based system.
 
 Use `python simulate.py --scenario balance --runs 50`. Make one change, predict
 its effect, reuse the seed range, and compare wins, rounds, remaining HP, damage,
-and scripted damage/healing command counts. These counts include commands
-whose attacks miss; they describe commands returned, not automatic code coverage.
+and scripted damage/healing command counts. These counts include commands whose
+attacks miss; they describe commands returned, not automatic code coverage.
 
 ## Software engineering / engine exploration
 
@@ -51,25 +102,9 @@ Follow a question into the engine. Examples:
 - How does guarding alter the calculation?
 - Where is a target declared legal?
 - Why are behavior functions given read-only views?
+- Why does `attack` presentation only run for physical/magical moves?
+- How does a semantic battle event become a visual animation without letting
+  animation frames control game rules?
 
 Change one engine rule, write or update a test, and explain the path from
 student API to engine implementation.
-
-## Character animation
-
-Start with a still frame. The default whole-character motions are written out in
-`student_game/catalog.py`, so students can see that a static drawing becomes
-animated because the renderer changes its position and rotation over time.
-
-The progression is intentionally incremental:
-
-1. `CodeSpriteFrame` or `SvgSpriteFrame`: draw one picture.
-2. Edit `BobMotion`, `LungeMotion`, or `ShakeMotion`: animate the whole picture
-   with simple arithmetic and time.
-3. `FrameAnimation`: draw multiple still frames and select them with
-   `int(time * fps)`.
-4. `CharacterArt`: choose optional frame animations for `idle`, `attack`,
-   `hurt`, or `faint`. Missing states reuse `idle`.
-
-This keeps gameplay authority separate from presentation. The battle engine says
-that a character is attacking; the presentation decides how that state looks.

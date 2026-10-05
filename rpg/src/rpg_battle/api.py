@@ -100,7 +100,7 @@ def change_stat(
 
 @dataclass(frozen=True)
 class Palette:
-    """Named colors used by one or more procedural sprites."""
+    """Named colors used by one or more code-drawn sprite frames."""
 
     name: str
     body: Color
@@ -402,7 +402,9 @@ class CharacterArt:
         return result
 
 
-SpriteAsset = SpriteFrame | CharacterArt
+ArtAsset = SpriteFrame | CharacterArt
+# Compatibility type name used by older exercises and internal renderer code.
+SpriteAsset = ArtAsset
 
 
 @dataclass(frozen=True)
@@ -486,10 +488,11 @@ SpriteMotion = BobMotion | LungeMotion | ShakeMotion | FallMotion
 
 @dataclass(frozen=True)
 class CharacterMotionSet:
-    """Default whole-character motion for the four battle presentation states.
+    """Tunable whole-character motion policy for the four battle states.
 
     These motions work even when the character art is one completely static
-    frame. Attack and hurt motion are layered on top of the idle bob.
+    frame. Attack and hurt motion are layered on top of the idle bob. This is
+    intentionally a small fixed policy rather than an arbitrary motion system.
     """
 
     idle: BobMotion = field(default_factory=BobMotion)
@@ -800,9 +803,14 @@ class Move:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class Character:
-    """A reusable battler described with direct object references."""
+    """A reusable battler described with direct object references.
+
+    ``art`` is the student-facing name: it can be one still sprite frame or a
+    :class:`CharacterArt` object with state-specific animation. ``sprite=`` is
+    accepted as a compatibility keyword for older classroom exercises.
+    """
 
     name: str
     role: str
@@ -811,10 +819,50 @@ class Character:
     defense: int
     magic: int
     speed: int
-    sprite: SpriteAsset
+    art: ArtAsset
     moves: Sequence[Move]
     description: str = ""
     id: str | None = None
+
+    def __init__(
+        self,
+        name: str,
+        role: str,
+        hp: int,
+        attack: int,
+        defense: int,
+        magic: int,
+        speed: int,
+        art: ArtAsset | None = None,
+        moves: Sequence[Move] = (),
+        description: str = "",
+        id: str | None = None,
+        *,
+        sprite: ArtAsset | None = None,
+    ) -> None:
+        if art is None:
+            art = sprite
+        elif sprite is not None and sprite is not art:
+            raise ValueError("Character received both art= and sprite= with different objects")
+        if art is None:
+            raise ValueError("Character needs art= with a sprite frame or CharacterArt")
+
+        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "role", role)
+        object.__setattr__(self, "hp", hp)
+        object.__setattr__(self, "attack", attack)
+        object.__setattr__(self, "defense", defense)
+        object.__setattr__(self, "magic", magic)
+        object.__setattr__(self, "speed", speed)
+        object.__setattr__(self, "art", art)
+        object.__setattr__(self, "moves", moves)
+        object.__setattr__(self, "description", description)
+        object.__setattr__(self, "id", id)
+
+    @property
+    def sprite(self) -> ArtAsset:
+        """Compatibility alias for older code; new student code should use ``art``."""
+        return self.art
 
     @property
     def character_id(self) -> str:
@@ -830,7 +878,7 @@ class Character:
             defense=self.defense,
             magic=self.magic,
             speed=self.speed,
-            sprite_id=self.sprite.sprite_id,
+            sprite_id=self.art.sprite_id,
             move_ids=tuple(move.move_id for move in self.moves),
             description=self.description,
         )
@@ -929,13 +977,18 @@ class GamePresentation:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class Game:
-    """Student-authored game definition that compiles to :class:`GameContent`."""
+    """Student-authored game definition that compiles to :class:`GameContent`.
+
+    ``art_assets`` is the canonical student-facing collection. The compiled
+    engine still calls this registry ``sprites`` internally; ``sprites=`` is
+    accepted here as a compatibility keyword for older exercises.
+    """
 
     title: str
     palettes: Sequence[Palette]
-    sprites: Sequence[SpriteAsset]
+    art_assets: Sequence[ArtAsset]
     effects: Sequence[VisualEffect]
     sounds: Sequence[Sound]
     music: Sequence[Music]
@@ -948,6 +1001,72 @@ class Game:
     default_battle_music: Music
     victory_music: Music
     defeat_music: Music
+
+    def __init__(
+        self,
+        title: str,
+        palettes: Sequence[Palette],
+        art_assets: Sequence[ArtAsset] | None = None,
+        effects: Sequence[VisualEffect] | None = None,
+        sounds: Sequence[Sound] | None = None,
+        music: Sequence[Music] | None = None,
+        moves: Sequence[Move] | None = None,
+        characters: Sequence[Character] | None = None,
+        teams: Sequence[Team] | None = None,
+        battles: Sequence[Battle] | None = None,
+        presentation: GamePresentation | None = None,
+        default_battle: Battle | None = None,
+        default_battle_music: Music | None = None,
+        victory_music: Music | None = None,
+        defeat_music: Music | None = None,
+        *,
+        sprites: Sequence[ArtAsset] | None = None,
+    ) -> None:
+        if art_assets is None:
+            art_assets = sprites
+        elif sprites is not None and sprites is not art_assets:
+            raise ValueError("Game received both art_assets= and sprites= with different objects")
+        if art_assets is None:
+            raise ValueError("Game needs art_assets=")
+
+        required = {
+            "effects": effects,
+            "sounds": sounds,
+            "music": music,
+            "moves": moves,
+            "characters": characters,
+            "teams": teams,
+            "battles": battles,
+            "presentation": presentation,
+            "default_battle": default_battle,
+            "default_battle_music": default_battle_music,
+            "victory_music": victory_music,
+            "defeat_music": defeat_music,
+        }
+        missing = [name for name, value in required.items() if value is None]
+        if missing:
+            raise ValueError(f"Game is missing required fields: {', '.join(missing)}")
+
+        object.__setattr__(self, "title", title)
+        object.__setattr__(self, "palettes", palettes)
+        object.__setattr__(self, "art_assets", art_assets)
+        object.__setattr__(self, "effects", effects)
+        object.__setattr__(self, "sounds", sounds)
+        object.__setattr__(self, "music", music)
+        object.__setattr__(self, "moves", moves)
+        object.__setattr__(self, "characters", characters)
+        object.__setattr__(self, "teams", teams)
+        object.__setattr__(self, "battles", battles)
+        object.__setattr__(self, "presentation", presentation)
+        object.__setattr__(self, "default_battle", default_battle)
+        object.__setattr__(self, "default_battle_music", default_battle_music)
+        object.__setattr__(self, "victory_music", victory_music)
+        object.__setattr__(self, "defeat_music", defeat_music)
+
+    @property
+    def sprites(self) -> Sequence[ArtAsset]:
+        """Compatibility alias; new student code should use ``art_assets``."""
+        return self.art_assets
 
     @staticmethod
     def _unique(items: Iterable[object], id_getter: Callable[[object], str], label: str) -> dict[str, object]:
@@ -963,7 +1082,7 @@ class Game:
 
     def compile(self, *, validate: bool = True) -> GameContent:
         palette_objects = self._unique(self.palettes, lambda item: item.palette_id, "palette")
-        sprite_objects = self._unique(self.sprites, lambda item: item.sprite_id, "sprite")
+        art_objects = self._unique(self.art_assets, lambda item: item.sprite_id, "art asset")
         effect_objects = self._unique(self.effects, lambda item: item.effect_id, "effect")
         sound_objects = self._unique(self.sounds, lambda item: item.sound_id, "sound")
         music_objects = self._unique(self.music, lambda item: item.music_id, "music track")
@@ -986,7 +1105,10 @@ class Game:
         content = GameContent(
             title=self.title,
             palettes={item_id: item.compile() for item_id, item in palette_objects.items()},
-            sprites={item_id: item.compile() for item_id, item in sprite_objects.items()},
+            # ``sprites`` remains the renderer's internal registry name. Student
+            # authoring uses ``art_assets`` so one frame is not confused with a
+            # complete character presentation.
+            sprites={item_id: item.compile() for item_id, item in art_objects.items()},
             effects={item_id: item.compile() for item_id, item in effect_objects.items()},
             sound_effects={item_id: item.compile() for item_id, item in sound_objects.items()},
             music_tracks={item_id: item.spec for item_id, item in music_objects.items()},

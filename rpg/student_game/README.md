@@ -26,9 +26,15 @@ work with `<path>` elements without needing an extra Cairo-based dependency on
 school machines.
 
 A still `CodeSpriteFrame` or `SvgSpriteFrame` already gets the default battle
-motion defined explicitly in `catalog.py`: idle bob, attack lunge, hurt shake,
-and knockout fall. Students who want to go farther can combine several still
-frames with `FrameAnimation` and `CharacterArt`. See `assets/sprites/README.md`.
+motion defined explicitly as `DEFAULT_CHARACTER_MOTION` in `catalog.py`: idle
+bob, attack lunge, hurt shake, and knockout fall. Students who want to go
+farther can combine several still frames with `FrameAnimation` and
+`CharacterArt`. `Knight of Dawn` in `art.py` is the small runnable example: its
+attack uses three code-drawn frames while missing states fall back to idle.
+
+The student-facing vocabulary is `frame` / `art` / `animation` / `motion`.
+Characters therefore use `art=...`, and the game registers `ART_ASSETS`. Older
+`sprite=` and `SPRITE_ASSETS` names remain only as compatibility aliases.
 
 Useful commands from the `rpg` directory:
 
@@ -38,6 +44,7 @@ python lab.py scenario threshold_25
 python lab.py scenario threshold_25 --engine-details
 python main.py --scenario threshold_25 --teach
 python simulate.py --scenario balance --runs 50
+python render_character.py knight --state attack --animate
 ```
 
 See `docs/student_guide.md`, `docs/CHEATSHEET.md`, and `docs/lessons/`.

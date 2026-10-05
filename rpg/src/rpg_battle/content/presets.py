@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-"""Helper constructors for declarative procedural sprite recipes."""
+"""Legacy procedural-shape helpers kept for compatibility.
+
+New student art should use :class:`rpg_battle.api.CodeSpriteFrame` in
+``student_game/art.py``. These raw recipe constructors are intentionally not
+part of the current teaching path.
+"""
 
 
 def circle(center, radius, fill="body", outline="detail", width=2):

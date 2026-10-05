@@ -14,7 +14,7 @@ from student_game import audio, characters, effects, moves
 from student_game.workshop_assets import (
     workshop_hit,
     workshop_impact,
-    workshop_sprite,
+    workshop_frame,
 )
 
 
@@ -87,7 +87,7 @@ workshop_hero = Character(
     defense=7,
     magic=9,
     speed=7,
-    sprite=workshop_sprite,
+    art=workshop_frame,
     moves=[power_strike, chain_lightning, moves.strike],
     description="A small character definition intended to be edited in class.",
 )

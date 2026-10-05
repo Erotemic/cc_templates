@@ -24,10 +24,27 @@ from student_game import (
     workshop_battles,
 )
 
+
+
+# A static frame still feels alive because these motions transform the whole
+# drawing. Students can tune these numbers before they ever draw a second frame.
+DEFAULT_CHARACTER_MOTION = CharacterMotionSet(
+    idle=BobMotion(height=3, period=2.85),
+    attack=LungeMotion(distance=18, duration=0.25),
+    hurt=ShakeMotion(distance=6, duration=0.30, cycles=2),
+    faint=FallMotion(
+        distance=110,
+        duration=0.90,
+        rotation=180,
+        rotation_duration=0.24,
+        show_x_eyes=True,
+    ),
+)
+
 GAME = Game(
     title="RPG Battle Classroom Project",
     palettes=[*art.PALETTES, *workshop_assets.PALETTES],
-    sprites=[*art.SPRITE_ASSETS, *workshop_assets.SPRITE_ASSETS],
+    art_assets=[*art.ART_ASSETS, *workshop_assets.ART_ASSETS],
     effects=[*effects.EFFECTS, *workshop_assets.EFFECTS],
     sounds=[*audio.SOUNDS, *workshop_assets.SOUNDS],
     music=[*audio.MUSIC, *workshop_assets.MUSIC],
@@ -46,21 +63,7 @@ GAME = Game(
         switch_sound=audio.switch,
         defend_sound=audio.defend,
         heal_effect=effects.heal_pulse,
-        # These are whole-character motions. They work even when the art is one
-        # completely static frame, which makes the default animation behavior
-        # visible and easy to experiment with.
-        character_motion=CharacterMotionSet(
-            idle=BobMotion(height=3, period=2.85),
-            attack=LungeMotion(distance=18, duration=0.25),
-            hurt=ShakeMotion(distance=6, duration=0.30, cycles=2),
-            faint=FallMotion(
-                distance=110,
-                duration=0.90,
-                rotation=180,
-                rotation_duration=0.24,
-                show_x_eyes=True,
-            ),
-        ),
+        character_motion=DEFAULT_CHARACTER_MOTION,
     ),
     default_battle=battles.DEFAULT_BATTLE,
     default_battle_music=audio.bluesy_overhaul,

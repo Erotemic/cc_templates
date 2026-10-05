@@ -176,6 +176,18 @@ conditional. `student_game/catalog.py` combines those lists with the larger
 reference game, so original workshop content remains first-class registered
 game content.
 
+For presentation code, use the words according to what they mean:
+
+```text
+CodeSpriteFrame / SvgSpriteFrame = one picture
+FrameAnimation                  = pictures changing over time
+CharacterArt                    = which visual belongs to each semantic state
+CharacterMotionSet              = whole-character battle motion
+```
+
+Characters use `art=...`. A single frame is valid art; animation is optional.
+See `docs/projects.md` when you are ready to move beyond one still frame.
+
 ## Going deeper
 
 When you want to know *why* something happens, follow one question downward:

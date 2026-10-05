@@ -1,4 +1,6 @@
-from rpg_battle.content.encounters import DEFAULT_ENCOUNTER
+from student_game import CONTENT
+
+DEFAULT_ENCOUNTER = CONTENT.default_encounter
 from rpg_battle.core.battle_state import new_battle
 
 
@@ -16,7 +18,6 @@ from rpg_battle.core.battle_state import (
     mark_fainted,
     new_battle,
 )
-from rpg_battle.content.encounters import DEFAULT_ENCOUNTER
 
 
 def test_active_slots_stay_stable_after_ko_and_replacement() -> None:

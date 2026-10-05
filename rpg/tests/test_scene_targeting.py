@@ -5,7 +5,7 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 import pygame
 
-from rpg_battle.battle.battle_scene import BattleScene
+from rpg_battle.battle.battle_scene import BattleScene, move_uses_attack_presentation
 from rpg_battle.settings import SCREEN_HEIGHT, SCREEN_WIDTH
 
 
@@ -56,3 +56,12 @@ def test_make_effect_target_averages_multiple_target_positions() -> None:
         assert y == 150.0
     finally:
         pygame.quit()
+
+
+def test_attack_presentation_is_reserved_for_offensive_moves() -> None:
+    assert move_uses_attack_presentation("physical")
+    assert move_uses_attack_presentation("magical")
+    assert not move_uses_attack_presentation("heal")
+    assert not move_uses_attack_presentation("buff")
+    assert not move_uses_attack_presentation("debuff")
+    assert not move_uses_attack_presentation("status")

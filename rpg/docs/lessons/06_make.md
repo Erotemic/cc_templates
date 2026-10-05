@@ -14,13 +14,22 @@ for art/effects and the lab for move behavior.
 
 ## Independent task
 
-Create an original playable character with:
+Create or substantially modify **one meaningful playable behavior**, integrate
+it into the game, test it, and be able to explain how it works.
 
-- original art using a `CodeSpriteFrame` or `SvgSpriteFrame`;
-- at least two original moves;
-- one move containing student-written Python behavior;
-- a sound or visual effect you changed intentionally;
-- a battle in which the character can be played.
+Good choices include:
+
+- write a new move with a conditional or loop;
+- change targeting or enemy decision-making;
+- create a new `CodeSpriteFrame` or `SvgSpriteFrame`;
+- turn several frames into a `FrameAnimation`;
+- tune the game's default whole-character motion;
+- design a new battle or boss phase;
+- intentionally redesign an effect or sound.
+
+You do **not** have to do every discipline at once. Art, audio, animation, game
+mechanics, and AI are different project tracks after the common programming
+lessons.
 
 Your work should pass:
 
@@ -28,17 +37,24 @@ Your work should pass:
 python main.py --check
 ```
 
+If you edited SVG art, also preview at least one SVG character so the actual
+pygame/SDL_image renderer is exercised:
+
+```bash
+python render_character.py moon_mage --no-show
+```
+
 ## Explain
 
 Demonstrate one behavior to another student. Explain:
 
 1. the important input facts;
-2. the control flow in your function;
-3. the command(s) returned;
-4. what the engine then calculated or changed.
+2. the control flow or data that you changed;
+3. what your code asks the game to do;
+4. what the engine then calculated, animated, or changed.
 
 ## Choose a project direction
 
 Continue with mechanics/boss design, procedural or SVG art, frame-by-frame
 animation, mathematical effects, sound/music, experiments and balance, or
-engine/software-engineering work.
+engine/software-engineering work. See `docs/projects.md` for concrete paths.

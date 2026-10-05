@@ -6,7 +6,9 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 import pygame
 
-from rpg_battle.content.encounters import ENCOUNTERS
+from student_game import CONTENT
+
+ENCOUNTERS = CONTENT.encounters
 from rpg_battle.core.actions import skill_action
 from rpg_battle.core.battle_state import get_combatant, new_battle
 from rpg_battle.core.rules import finish_round, resolve_action

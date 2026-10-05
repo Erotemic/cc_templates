@@ -16,14 +16,14 @@ workshop_palette = Palette(
     detail=(28, 40, 70),
 )
 
-workshop_sprite = CodeSpriteFrame(
+workshop_frame = CodeSpriteFrame(
     "Workshop Hero Sprite",
-    id="workshop_hero_sprite",
+    id="workshop_hero_frame",
     palette=workshop_palette,
 )
-workshop_sprite.circle((0, 5), 38, fill="body")
-workshop_sprite.polygon([(-28, -18), (0, -55), (28, -18)], fill="accent")
-workshop_sprite.face(-3)
+workshop_frame.circle((0, 5), 38, fill="body")
+workshop_frame.polygon([(-28, -18), (0, -55), (28, -18)], fill="accent")
+workshop_frame.face(-3)
 
 workshop_impact = VisualEffect.ring(
     "Workshop Impact",
@@ -50,8 +50,12 @@ workshop_theme = Music.generated(
 )
 
 PALETTES = [workshop_palette]
-SPRITE_ASSETS = [workshop_sprite]
-SPRITES = SPRITE_ASSETS
+ART_ASSETS = [workshop_frame]
+
+# Compatibility names used by older exercises.
+workshop_sprite = workshop_frame
+SPRITE_ASSETS = ART_ASSETS
+SPRITES = ART_ASSETS
 EFFECTS = [workshop_impact]
 SOUNDS = [workshop_hit]
 MUSIC = [workshop_theme]

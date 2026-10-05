@@ -77,6 +77,15 @@ class SpriteActor:
             visual_time = state_visual_duration(self.sprites[sprite_id], state)
         return max(motion_time, visual_time)
 
+    def presentation_duration(self, sprite_id: str, state: str) -> float:
+        """Return the finite duration used to preview one presentation state."""
+
+        if state == "idle":
+            return 0.0
+        if state not in {"attack", "hurt", "faint"}:
+            raise ValueError(f"Unknown presentation state {state!r}")
+        return self._duration_for(sprite_id, state)
+
     def play_attack(self, sprite_id: str | None = None) -> None:
         self.attack_duration = self._duration_for(sprite_id, "attack")
         self.attack_timer = self.attack_duration

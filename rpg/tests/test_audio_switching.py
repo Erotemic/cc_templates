@@ -8,12 +8,12 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 import pygame
 
 from rpg_battle.battle.battle_scene import BattleScene
-from rpg_battle.content.audio import (
-    DEFAULT_BATTLE_TRACK,
-    DEFAULT_DEFEAT_TRACK,
-    DEFAULT_VICTORY_TRACK,
-)
-from rpg_battle.content.encounters import ENCOUNTERS
+from student_game import CONTENT
+
+DEFAULT_BATTLE_TRACK = CONTENT.default_battle_track
+DEFAULT_DEFEAT_TRACK = CONTENT.default_defeat_track
+DEFAULT_VICTORY_TRACK = CONTENT.default_victory_track
+ENCOUNTERS = CONTENT.encounters
 
 
 class StubAudio:

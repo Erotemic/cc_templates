@@ -1,4 +1,6 @@
-from rpg_battle.content.encounters import ENCOUNTERS
+from student_game import CONTENT
+
+ENCOUNTERS = CONTENT.encounters
 from rpg_battle.core.battle_state import new_battle
 
 

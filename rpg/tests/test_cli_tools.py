@@ -11,10 +11,13 @@ from rpg_battle.cli.render_battle_state import build_parser as build_state_parse
 from rpg_battle.cli.render_character import build_parser as build_character_parser
 from rpg_battle.cli.render_effect import build_parser as build_effect_parser
 from rpg_battle.__main__ import build_parser as build_game_parser, build_encounter_from_args
-from rpg_battle.content.teams import TEAMS
-from rpg_battle.content.audio import MUSIC_TRACKS, SOUND_EFFECTS
-from rpg_battle.content.characters import CHARACTERS
-from rpg_battle.content.encounters import ENCOUNTERS
+from student_game import CONTENT
+
+TEAMS = CONTENT.teams
+MUSIC_TRACKS = CONTENT.music_tracks
+SOUND_EFFECTS = CONTENT.sound_effects
+CHARACTERS = CONTENT.characters
+ENCOUNTERS = CONTENT.encounters
 
 
 def test_render_character_parser_accepts_known_id() -> None:

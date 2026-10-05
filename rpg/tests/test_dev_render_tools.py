@@ -8,7 +8,9 @@ os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
 from rpg_battle.cli.render_battle_state import build_parser as build_state_parser
 from rpg_battle.cli.render_character import build_parser as build_character_parser
-from rpg_battle.content.characters import CHARACTERS
+from student_game import CONTENT
+
+CHARACTERS = CONTENT.characters
 
 
 def test_render_character_parser_defaults() -> None:
@@ -20,6 +22,14 @@ def test_render_character_parser_defaults() -> None:
     assert args.output is None
     assert args.state == "idle"
     assert args.time == 0.0
+    assert args.animate is False
+
+
+def test_render_character_parser_accepts_live_animation() -> None:
+    parser = build_character_parser()
+    args = parser.parse_args(["knight", "--state", "attack", "--animate"])
+    assert args.state == "attack"
+    assert args.animate is True
 
 
 def test_render_state_parser_defaults() -> None:

@@ -49,6 +49,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Seconds into the selected state. Useful for inspecting animation frames.",
     )
     parser.add_argument(
+        "--animate",
+        action="store_true",
+        help="Play the selected state live instead of showing one frozen instant.",
+    )
+    parser.add_argument(
         "--transparent",
         action="store_true",
         help="Render on a transparent background instead of the battle backdrop",
@@ -82,6 +87,51 @@ def _render_character(
     actor.draw(surface, spec.sprite_id, center, scale=scale)
 
 
+def _draw_single_character_frame(
+    surface: pygame.Surface,
+    actor: SpriteActor,
+    character_id: str,
+    *,
+    side: str,
+    scale: float,
+    state: str,
+    elapsed: float,
+    transparent: bool,
+) -> None:
+    if transparent:
+        surface.fill((0, 0, 0, 0))
+    else:
+        draw_background(surface)
+
+    actor.set_preview_state(state, elapsed)
+    spec = CHARACTERS[character_id]
+    actor.draw(
+        surface,
+        spec.sprite_id,
+        (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50),
+        scale=scale,
+    )
+    pygame.draw.rect(surface, (255, 255, 255), surface.get_rect(), width=2)
+    font = pygame.font.Font(None, 36)
+    label = font.render(spec.name, True, (240, 240, 245))
+    surface.blit(label, label.get_rect(center=(SCREEN_WIDTH // 2, 38)))
+    state_label = font.render(
+        f"{state}  {elapsed:0.2f}s",
+        True,
+        (210, 214, 230),
+    )
+    surface.blit(state_label, state_label.get_rect(center=(SCREEN_WIDTH // 2, 72)))
+
+
+def _make_preview_actor(side: str) -> SpriteActor:
+    return SpriteActor(
+        side,
+        sprites=CONTENT.sprites,
+        palettes=CONTENT.palettes,
+        character_motion=CONTENT.presentation.character_motion,
+    )
+
+
 def _render_single_character(
     character_id: str,
     *,
@@ -95,28 +145,84 @@ def _render_single_character(
 ) -> None:
     console.print(f"[bold green]Rendering[/bold green] character [magenta]{character_id}[/magenta]")
     surface = init_surface(headless=no_show)
-    if transparent:
-        surface.fill((0, 0, 0, 0))
-    else:
-        draw_background(surface)
-    _render_character(
+    actor = _make_preview_actor(side)
+    _draw_single_character_frame(
         surface,
+        actor,
         character_id,
-        (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50),
         side=side,
         scale=scale,
         state=state,
         elapsed=elapsed,
+        transparent=transparent,
     )
-    pygame.draw.rect(surface, (255, 255, 255), surface.get_rect(), width=2)
-    font = pygame.font.Font(None, 36)
-    label = font.render(CHARACTERS[character_id].name, True, (240, 240, 245))
-    label_rect = label.get_rect(center=(SCREEN_WIDTH // 2, 44))
-    surface.blit(label, label_rect)
     save_surface(surface, Path(output))
     if not no_show:
         show_surface(surface, title=f"Character Preview - {CHARACTERS[character_id].name}")
 
+
+def _animate_single_character(
+    character_id: str,
+    *,
+    output: str,
+    side: str,
+    scale: float,
+    state: str,
+    start_time: float,
+    transparent: bool,
+) -> None:
+    """Play a character presentation state in a tiny student-facing preview loop."""
+
+    console.print(
+        f"[bold green]Animating[/bold green] character [magenta]{character_id}[/magenta] "
+        f"in state [cyan]{state}[/cyan]"
+    )
+    surface = init_surface(headless=False)
+    pygame.display.set_caption(f"Character Animation - {CHARACTERS[character_id].name}")
+    actor = _make_preview_actor(side)
+    sprite_id = CHARACTERS[character_id].sprite_id
+    state_duration = actor.presentation_duration(sprite_id, state)
+    clock = pygame.time.Clock()
+    elapsed = max(0.0, start_time)
+    running = True
+
+    while running:
+        dt = clock.tick(60) / 1000.0
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN and event.key in {
+                pygame.K_ESCAPE,
+                pygame.K_RETURN,
+                pygame.K_SPACE,
+            }:
+                running = False
+
+        if state == "idle" or state_duration <= 0:
+            sample_time = elapsed
+        else:
+            # Hold the finished pose briefly, then replay it. This makes short
+            # attack/hurt animations easy to study without extra controls.
+            cycle_duration = state_duration + 0.35
+            cycle_time = elapsed % cycle_duration
+            sample_time = min(cycle_time, state_duration)
+
+        actor.idle_clock += dt
+        _draw_single_character_frame(
+            surface,
+            actor,
+            character_id,
+            side=side,
+            scale=scale,
+            state=state,
+            elapsed=sample_time,
+            transparent=transparent,
+        )
+        pygame.display.flip()
+        elapsed += dt
+
+    # Preserve the familiar preview-file workflow as well as the live window.
+    save_surface(surface, Path(output))
 
 def _render_all_characters(*, output: str, side: str, transparent: bool, no_show: bool) -> None:
     character_ids = sorted(CHARACTERS)
@@ -168,6 +274,8 @@ def main() -> None:
     configure_logging()
     args = build_parser().parse_args()
     if args.all:
+        if args.animate:
+            raise SystemExit("--animate previews one character at a time; omit --all")
         output = args.output or str(default_output_path("all_characters_preview.png"))
         console.print("[bold green]Rendering[/bold green] [magenta]all characters[/magenta]")
         _render_all_characters(
@@ -190,16 +298,29 @@ def main() -> None:
         description="Pick a registered character to inspect.",
     )
     output = args.output or str(default_output_path(f"{character_id}_preview.png"))
-    _render_single_character(
-        character_id,
-        output=output,
-        side=args.side,
-        scale=args.scale,
-        state=args.state,
-        elapsed=args.time,
-        transparent=args.transparent,
-        no_show=args.no_show,
-    )
+    if args.animate:
+        if args.no_show:
+            raise SystemExit("--animate needs a preview window; remove --no-show")
+        _animate_single_character(
+            character_id,
+            output=output,
+            side=args.side,
+            scale=args.scale,
+            state=args.state,
+            start_time=args.time,
+            transparent=args.transparent,
+        )
+    else:
+        _render_single_character(
+            character_id,
+            output=output,
+            side=args.side,
+            scale=args.scale,
+            state=args.state,
+            elapsed=args.time,
+            transparent=args.transparent,
+            no_show=args.no_show,
+        )
     pygame.quit()
 
 

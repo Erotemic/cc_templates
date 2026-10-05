@@ -1,4 +1,6 @@
-from rpg_battle.content.effects import EFFECTS
+from student_game import CONTENT
+
+EFFECTS = CONTENT.effects
 from rpg_battle.render.effect_factory import make_effect
 
 

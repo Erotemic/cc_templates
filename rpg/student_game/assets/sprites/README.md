@@ -93,11 +93,17 @@ hero = CharacterArt(
 You do not have to draw special `hurt` or `faint` frames. Any missing state
 reuses the idle frame. The whole-character shake/fall motion still applies.
 
-You can inspect a particular animation time without starting a battle:
+You can play a presentation state live without starting a battle:
 
 ```bash
-python render_character.py moon_mage --state idle --time 0.0
-python render_character.py moon_mage --state attack --time 0.125
+python render_character.py moon_mage --state idle --animate
+python render_character.py knight --state attack --animate
+```
+
+For a deterministic snapshot at one exact animation time:
+
+```bash
+python render_character.py knight --state attack --time 0.125
 ```
 
 The important separation is:
