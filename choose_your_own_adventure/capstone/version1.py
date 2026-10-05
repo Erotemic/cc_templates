@@ -1,7 +1,12 @@
-"""Capstone version 1: the complete Star Crystal adventure."""
+"""Capstone version 1: the complete Star Crystal adventure.
 
-from engine.console import run_console
+Runs the full Textual interface when Textual is installed, with a console
+fallback for minimal school machines.  Use ``--ui console`` or ``--ui textual``
+to choose explicitly.
+"""
+
 from engine.game import AdventureGame
+from engine.launcher import run_game
 from worlds.star_crystal import WORLD_DATA
 
 
@@ -10,4 +15,4 @@ def make_game(player_name="Tav", *, seed=0):
 
 
 if __name__ == "__main__":
-    run_console(make_game())
+    run_game(make_game())

@@ -391,6 +391,7 @@ WORLD_DATA = {'source_version': 'version4.py',
                                      'once_flag': None,
                                      'first_effect': {'type': 'HealPlayerEffect',
                                                       'amount': 15,
+                                                      'full_heal': True,
                                                       'heal_text': 'You sit beside the fountain '
                                                                    'and catch your breath.',
                                                       'full_text': 'You already feel fully '

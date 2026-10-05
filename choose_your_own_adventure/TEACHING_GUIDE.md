@@ -133,7 +133,17 @@ versions rather than replacing them with demonstration-sized substitutes:
   multiple endings.
 
 The engine is separated into descriptively named modules under
-`capstone/engine/`; there is deliberately no module called `rich.py`.
+`capstone/engine/`; there is deliberately no module called `rich.py`. The
+capstone also restores the strongest presentation work from the original line:
+a direct Textual frontend, complete Star Crystal scene/character art, and a new
+full Dust Vault art pass. Unlike the original v5-v8 bridge, the UI does not
+need threads, patched `input()`, stdout capture, or queues because the cleaned
+engine already exposes choices and results directly.
+
+The UI progression is still pedagogically useful: `snapshot()` demonstrates a
+read-only presentation model, `OptionList` demonstrates event-driven input,
+and the art selector demonstrates that presentation can react to semantic state
+without causing game outcomes.
 
 ### Student extension zones
 
@@ -158,9 +168,41 @@ actually expose:
 3. Hearing Rafe's post-vault offer records that the offer was heard, making the
    authored landing-beacon corporate ending reachable.
 
-These repairs change reachability, not the preserved authored world records.
-Tests exercise the Star Crystal solution, Dust Vault clean/hot station branches,
-and all three authored Dust Vault endings.
+These repairs change reachability, not the preserved authored world fields.
+The capstone also preserves the original between-turn reaction model: bounty
+encounters can fire after leaving an NPC, closing inventory, looting, or using a
+feature instead of only after room-to-room movement. Dead NPCs expose only
+corpse/loot interactions, enemy surrender keeps the original Spare/Kill branch,
+and looting remains item-by-item. Sunmeadow's fountain is one deliberate polish
+change: resting there is now a full heal, represented by an explicit data flag.
+Tests exercise these contracts, the Star Crystal solution, Dust Vault clean/hot
+station branches, and all three authored Dust Vault endings.
+
+### Testing as a capstone topic
+
+Testing is intentionally visible inside `capstone/tests/` instead of being only
+in instructor infrastructure. This is a useful point to introduce several
+software-engineering ideas with concrete failures students can understand:
+
+- **boundary validation:** `engine/validation.py` catches broken world data at
+  construction time;
+- **state invariants:** combat, riddle, loot, surrender, inventory, and movement
+  modes each have facts that must remain true after every action;
+- **regression tests:** when a real bug is fixed, keep the smallest test that
+  would have caught it;
+- **scenario tests:** complete player journeys verify that individually correct
+  mechanics compose into a working story;
+- **simulation/fuzz testing:** `capstone/simulate.py` chooses only legal actions
+  but combines them in many orders humans would not manually try;
+- **dependency injection:** the console accepts input/output callables, so the
+  actual frontend can be tested without a terminal;
+- **optional dependencies:** core gameplay and all headless tests run without
+  Textual, while `--ui textual` produces a clear installation error if the
+  package is absent.
+
+An instructive exercise is to deliberately break one invariant—for example,
+leave `combat_npc_name` populated after combat—and observe that a state-machine
+test or simulation catches it even if an ordinary playthrough appears fine.
 
 ## Concepts intentionally deferred
 
@@ -193,8 +235,10 @@ or an automated player.
 
 ### UI / art
 
-Improve the console renderer, add ASCII scenes, modify the Textual layout, or
-create another frontend against the same game API.
+Improve an existing ASCII portrait/scene, add art for a student-created room,
+modify the full capstone Textual layout, or create another frontend against the
+same game API. Students can work entirely in `capstone/art/` without changing
+mechanics.
 
 ### Engine
 

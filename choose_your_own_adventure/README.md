@@ -23,10 +23,13 @@ choose_your_own_adventure/
         adventure/      small shared library for the advanced lessons
 
     capstone/
-        version1.py     complete Star Crystal adventure
-        version2.py     complete Dust Vault adventure
-        engine/         full reusable game mechanics
+        version1.py     complete Star Crystal adventure + full UI
+        version2.py     complete Dust Vault adventure + full UI
+        simulate.py     headless deterministic stress driver
+        engine/         full reusable mechanics + console/Textual frontends
+        art/            complete character/location/scenario ASCII art
         worlds/         faithfully ported full worlds + student extension zones
+        tests/          capstone-local validation/state/frontend tests
 
     tests/
     check.py
@@ -104,7 +107,9 @@ Capstone means **larger game**, not “you must understand harder Python.”
   final game.
 - `capstone/worlds/` preserves the authored rooms, exits, NPCs, dialogue,
   trades, riddles, features, encounters, item data, gates, and endings.
-- `capstone/engine/` contains the mechanics needed to run those worlds.
+- `capstone/engine/` contains the mechanics plus both console and Textual frontends.
+- `capstone/art/` restores the original Star Crystal scene/character catalog and
+  adds equivalent full coverage for Dust Vault.
 
 Each world file ends with `EXTRA_ROOMS` and `EXTRA_CHOICES`. A student can add a
 side room or branch there without reading or modifying the combat, dialogue,
@@ -133,25 +138,36 @@ python capstone/version1.py
 python capstone/version2.py
 ```
 
-`advanced/version2.py` uses the optional Textual package:
+`advanced/version2.py` uses the optional Textual package directly. The capstone
+launchers use the full Textual interface automatically when it is installed and
+fall back to the illustrated console UI otherwise:
 
 ```bash
-python advanced/version2.py
-```
+python -m pip install textual
+python capstone/version1.py
+python capstone/version2.py
 
-If Textual is unavailable, that example explains which package is missing.
-None of the other versions require it.
+# Force a frontend when comparing them:
+python capstone/version1.py --ui textual
+python capstone/version1.py --ui console
+```
 
 ## Run the checks
 
 ```bash
 python check.py
 python -m pytest -q
+python -m pytest capstone/tests -q
+python capstone/simulate.py --world both --runs 25 --steps 250
 ```
 
 The tests include complete scripted paths through the teaching games and the
-capstones. They also lock the preserved capstone world data with fingerprints
-so a future cleanup cannot silently discard authored rooms or branches.
+capstones. They lock the preserved capstone world data with fingerprints and
+also lock presentation coverage: the original 50 Star Crystal art states, every
+Dust Vault room/character, and the full Textual interaction surface. The
+capstone additionally validates world references at startup and stress-tests
+legal state transitions headlessly, so those checks work even on a machine
+without Textual installed.
 
 ## What should students build on?
 

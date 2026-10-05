@@ -57,7 +57,10 @@ def main():
     # the complete original worlds rather than the teaching-sized examples.
     sys.path.insert(0, str(CAPSTONE))
     try:
+        from art.dust_vault import DUST_VAULT_ART
+        from art.star_crystal import STAR_CRYSTAL_ART
         from engine.game import AdventureGame
+        from engine.validation import validate_state, validate_world
         from worlds.dust_vault import WORLD_DATA as DUST_VAULT
         from worlds.star_crystal import WORLD_DATA as STAR_CRYSTAL
 
@@ -65,8 +68,23 @@ def main():
         require(len(DUST_VAULT["rooms"]) >= 18, "full Dust Vault world should be present")
         require(len(STAR_CRYSTAL["items"]) >= 12, "full Star Crystal item set should be present")
         require(len(DUST_VAULT["items"]) >= 14, "full Dust Vault item set should be present")
-        require(AdventureGame(STAR_CRYSTAL).choices(), "capstone Star Crystal should be playable")
-        require(AdventureGame(DUST_VAULT).choices(), "capstone Dust Vault should be playable")
+        require(not validate_world(STAR_CRYSTAL), "capstone Star Crystal world data should validate")
+        require(not validate_world(DUST_VAULT), "capstone Dust Vault world data should validate")
+        star_game = AdventureGame(STAR_CRYSTAL)
+        dust_game = AdventureGame(DUST_VAULT)
+        require(star_game.choices(), "capstone Star Crystal should be playable")
+        require(dust_game.choices(), "capstone Dust Vault should be playable")
+        require(not validate_state(star_game), "capstone Star Crystal initial state should validate")
+        require(not validate_state(dust_game), "capstone Dust Vault initial state should validate")
+        require(len(STAR_CRYSTAL_ART) == 50, "all original Star Crystal art states should be present")
+        require("npc::elder_mira::alive" in STAR_CRYSTAL_ART, "Elder Mira art should be present")
+        require(
+            all(f"loc::{key}" in DUST_VAULT_ART for key in DUST_VAULT["rooms"]),
+            "every Dust Vault location should have art",
+        )
+        require((CAPSTONE / "engine" / "textual_app.py").is_file(), "capstone Textual UI should be present")
+        require((CAPSTONE / "tests" / "test_state_machine.py").is_file(), "capstone should teach state-machine testing")
+        require((CAPSTONE / "simulate.py").is_file(), "capstone should include a headless simulator")
     finally:
         sys.path.remove(str(CAPSTONE))
 
@@ -79,7 +97,7 @@ def main():
     print("  beginner examples: standalone")
     print("  intermediate examples: standalone and easy to extend with room choices")
     print("  advanced library: shared by multiple teaching-sized worlds")
-    print("  capstone: complete Star Crystal and Dust Vault worlds on the full engine")
+    print("  capstone: full worlds + presentation + validation/simulation testing")
 
 
 if __name__ == "__main__":

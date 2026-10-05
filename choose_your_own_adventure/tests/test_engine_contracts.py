@@ -47,3 +47,23 @@ def test_art_is_observation_only():
     )
     assert art
     assert after == before
+
+
+def test_ascii_art_covers_the_whole_teaching_world_and_fits_console():
+    from adventure.art import STAR_CRYSTAL_ART
+    from adventure.worlds.star_crystal import ENEMIES, ROOMS
+
+    assert set(ROOMS) <= set(STAR_CRYSTAL_ART)
+    assert set(ENEMIES) <= set(STAR_CRYSTAL_ART)
+    assert {
+        "elder_mira", "fisher_rowan", "moon_herb",
+        "tower_gate_locked", "star_crystal",
+    } <= set(STAR_CRYSTAL_ART)
+    assert "ELDER MIRA" in STAR_CRYSTAL_ART["elder_mira"]
+
+    for key, art in STAR_CRYSTAL_ART.items():
+        lines = art.splitlines()
+        assert len(lines) >= 10, f"{key} fell back to a placeholder-sized sketch"
+        assert max(map(len, lines)) <= 60, f"{key} is too wide for the console layout"
+        assert all("\t" not in line for line in lines)
+        assert all(line == line.rstrip() for line in lines)

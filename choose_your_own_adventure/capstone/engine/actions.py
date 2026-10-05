@@ -48,7 +48,12 @@ def apply_effect(game: "AdventureGame", effect: dict[str, Any] | None) -> list[s
         if game.player.health >= game.player_max_hp:
             return [effect["full_text"]]
         before = game.player.health
-        game.player.health = min(game.player_max_hp, game.player.health + effect["amount"])
+        if effect.get("full_heal", False):
+            game.player.health = game.player_max_hp
+        else:
+            game.player.health = min(
+                game.player_max_hp, game.player.health + effect["amount"]
+            )
         healed = game.player.health - before
         return [effect["heal_text"], f"Recovered {healed} health."]
 
@@ -75,7 +80,7 @@ def apply_effect(game: "AdventureGame", effect: dict[str, Any] | None) -> list[s
     if kind == "RemoveItemEffect":
         target = effect.get("target", "player")
         actor = game.player if target == "player" else game.find_npc(target)
-        if actor is not None and actor.remove_item(effect["item_id"]) and effect.get("text"):
+        if actor is not None and game.remove_actor_item(actor, effect["item_id"]) and effect.get("text"):
             return [effect["text"]]
         return []
 
@@ -98,9 +103,6 @@ def apply_effect(game: "AdventureGame", effect: dict[str, Any] | None) -> list[s
         game.player_location = effect["destination"]
         game.flags.add(f"visited:{game.player_location}")
         lines.extend(game.on_location_enter())
-        encounter = game.try_encounter()
-        if encounter is not None:
-            lines.extend(encounter)
         return lines
 
     if kind == "BlockPathEffect":
@@ -133,7 +135,7 @@ def apply_effect(game: "AdventureGame", effect: dict[str, Any] | None) -> list[s
         lines.extend(effect["lines"])
         game.flags.update(effect["flags"])
         game.sync_end_state()
-        if "game_won" in game.flags:
+        if "game_won" in game.flags or "game_lost" in game.flags:
             game.ending = " ".join(effect["lines"])
         return lines
 

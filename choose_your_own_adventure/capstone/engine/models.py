@@ -51,7 +51,10 @@ class Actor:
             return False
         self.inventory.remove(item_id)
         for slot, equipped in self.equipment.items():
-            if equipped == item_id:
+            # Equipment refers to an item *kind*, while inventory may contain
+            # several copies of that kind. Removing one copy should only
+            # unequip it when no copy remains to represent the equipped item.
+            if equipped == item_id and item_id not in self.inventory:
                 self.equipment[slot] = None
         return True
 

@@ -31,10 +31,22 @@ DUST_ROOMS = (
 def preserved_fingerprint(data, room_keys):
     clean = deepcopy(data)
     clean["rooms"] = {key: clean["rooms"][key] for key in room_keys}
-    for room in clean["rooms"].values():
-        # ``choices`` is the one intentional new authoring field. It was not
-        # present in the original world object.
-        room.pop("choices", None)
+
+    def strip_port_extensions(value):
+        if isinstance(value, dict):
+            value.pop("choices", None)
+            # The capstone makes the village fountain a full rest.  Keep the
+            # original serialized amount for provenance while excluding the
+            # explicit behavior extension from the source-data fingerprint.
+            if value.get("type") == "HealPlayerEffect":
+                value.pop("full_heal", None)
+            for child in value.values():
+                strip_port_extensions(child)
+        elif isinstance(value, list):
+            for child in value:
+                strip_port_extensions(child)
+
+    strip_port_extensions(clean)
     payload = json.dumps(clean, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(payload).hexdigest()
 
@@ -57,6 +69,14 @@ def act(game, action):
     return lines
 
 
+
+
+def act_and_clear_incidental(game, action):
+    lines = act(game, action)
+    while game.mode == "combat" and game.combat_temporary is not None:
+        lines += act(game, "combat:attack")
+    return lines
+
 def pick(game, text):
     matches = [choice for choice in game.choices() if text.lower() in choice.text.lower()]
     assert len(matches) == 1, (text, [(c.action, c.text) for c in game.choices()])
@@ -73,29 +93,30 @@ def move(game, destination):
 def test_star_crystal_full_story_has_a_nonviolent_guardian_solution():
     game = AdventureGame(STAR_CRYSTAL, seed=0)
     for action in ["npc:0", "talk:0", "npc:leave", "move:0", "move:1"]:
-        act(game, action)
+        act_and_clear_incidental(game, action)
     for item in ["moonleaf_herb", "rope", "iron_sword", "health_tonic"]:
-        act(game, f"take:{item}")
+        act_and_clear_incidental(game, f"take:{item}")
     for action in [
         "inventory", "equip:iron_sword", "inventory:back", "move:0", "move:2",
         "npc:0", "trade:0", "npc:leave", "move:0", "move:1", "move:2",
         "move:1", "npc:0", "npc:attack",
     ]:
-        act(game, action)
+        act_and_clear_incidental(game, action)
     while game.mode == "combat":
         act(game, "combat:attack")
     for action in [
-        "npc:loot", "npc:leave", "move:0", "move:0", "move:0", "move:3",
+        "npc:loot", "loot:item:silver_key", "npc:leave",
+        "move:0", "move:0", "move:0", "move:3",
         "move:1", "move:1", "npc:0", "riddle",
     ]:
-        act(game, action)
+        act_and_clear_incidental(game, action)
     game.submit_riddle_answer("river")
     assert game.player.has_item("star_crystal")
-    act(game, "npc:leave")
+    act_and_clear_incidental(game, "npc:leave")
     for action in ["move:0", "move:0", "move:0", "move:0", "npc:0"]:
-        act(game, action)
+        act_and_clear_incidental(game, action)
     return_choice = next(c for c in game.choices() if c.text == "Return the Star Crystal")
-    act(game, return_choice.action)
+    act_and_clear_incidental(game, return_choice.action)
     assert game.won
 
 
@@ -132,6 +153,8 @@ def dust_to_core(*, seed=0, learn_truth=False):
     act(game, "npc:attack")
     while game.mode == "combat":
         act(game, "combat:attack")
+    if game.mode == "surrender_decision":
+        act(game, "surrender:spare")
     act(game, "trade:1")
     act(game, "npc:leave")
     move(game, "ravine")
@@ -240,3 +263,111 @@ def test_capstone_game_rules_do_not_read_or_write_the_terminal():
     }
     assert "input" not in called_names
     assert "print" not in called_names
+
+
+def test_dead_npcs_do_not_talk_trade_riddle_or_attack():
+    game = AdventureGame(STAR_CRYSTAL, seed=0)
+    merchant = game.npcs["Merchant Sella"]
+    actor = game._npc_actor(merchant)
+    actor.health = 0
+    merchant["defeated"] = True
+
+    game.mode = "npc"
+    game.current_npc_name = merchant["name"]
+    actions = {choice.action for choice in game.choices()}
+    assert actions == {"npc:loot", "npc:leave"}
+
+    game.mode = "exploration"
+    game.current_npc_name = None
+    labels = {choice.text for choice in game.choices()}
+    assert "Approach Merchant Sella" not in labels
+    assert "Inspect the remains of Merchant Sella" in labels
+
+
+def test_killing_elder_mira_restores_guard_bounty_jail_reaction():
+    game = AdventureGame(STAR_CRYSTAL, seed=0)
+    act(game, "npc:0")
+    game.find_npc("Elder Mira").health = 1
+
+    act(game, "npc:attack")
+    assert game.bounty > 0
+    act(game, "combat:attack")
+    assert game.mode == "npc"
+    assert game.npcs["Elder Mira"]["defeated"]
+
+    lines = act(game, "npc:leave")
+    assert game.mode == "combat"
+    assert game.combat_npc_name == "Guard Halwen"
+    assert any("Stand down" in line for line in lines)
+
+    lines = act(game, "combat:surrender")
+    assert game.player_location == "jail"
+    assert "jailed" in game.flags
+    assert any("village jail" in line for line in lines)
+
+
+def test_village_fountain_is_a_full_heal():
+    game = AdventureGame(STAR_CRYSTAL, seed=0)
+    game.player.health = 1
+    lines = act(game, "feature:0")
+    assert game.player.health == game.player_max_hp
+    assert any(f"Recovered {game.player_max_hp - 1} health" in line for line in lines)
+
+
+def test_exploration_encounters_react_after_non_movement_actions():
+    game = AdventureGame(STAR_CRYSTAL, seed=0)
+    game.bounty = 10
+    act(game, "inventory")
+    lines = act(game, "inventory:back")
+    assert game.mode == "combat"
+    assert game.combat_npc_name == "Guard Halwen"
+    assert any("bounty of 10" in line for line in lines)
+
+
+def test_enemy_surrender_restores_spare_or_kill_choice_and_bounty():
+    game = AdventureGame(STAR_CRYSTAL, seed=0)
+    nox = game.npcs["Bandit Nox"]
+    game.player_location = game.npc_rooms["Bandit Nox"]
+    game.current_npc_name = "Bandit Nox"
+    game.mode = "npc"
+    actor = game._npc_actor(nox)
+    actor.health = 10
+
+    act(game, "npc:attack")
+    lines = act(game, "combat:attack")
+    assert game.mode == "surrender_decision"
+    assert {choice.action for choice in game.choices()} == {
+        "surrender:spare", "surrender:kill"
+    }
+    assert any("surrenders" in line for line in lines)
+
+    bounty_before = game.bounty
+    act(game, "surrender:kill")
+    assert nox["defeated"]
+    assert game.bounty == bounty_before + 100
+    assert "bandit_spared" not in game.flags
+
+
+def test_looting_a_body_preserves_the_original_item_by_item_choice():
+    game = AdventureGame(STAR_CRYSTAL, seed=0)
+    merchant = game.npcs["Merchant Sella"]
+    actor = game._npc_actor(merchant)
+    actor.health = 0
+    merchant["defeated"] = True
+    game.current_npc_name = merchant["name"]
+    game.mode = "npc"
+
+    starting_count = len(actor.inventory)
+    act(game, "npc:loot")
+    assert game.mode == "loot"
+    assert len(actor.inventory) == starting_count
+    choices = {choice.action for choice in game.choices()}
+    assert "loot:item:hunter_spear" in choices
+    assert "loot:item:health_tonic" in choices
+    assert "loot:done" in choices
+
+    act(game, "loot:item:hunter_spear")
+    assert game.player.has_item("hunter_spear")
+    assert len(actor.inventory) == starting_count - 1
+    act(game, "loot:done")
+    assert game.mode == "npc"
