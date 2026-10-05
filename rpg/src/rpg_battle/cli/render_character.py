@@ -10,13 +10,14 @@ import pygame
 
 from rpg_battle.cli.common import choose_from_registry, console, default_output_path
 from rpg_battle.cli.render_common import init_surface, save_surface, show_surface
-from student_game import CONTENT
-
-CHARACTERS = CONTENT.characters
 from rpg_battle.debug import configure_logging
 from rpg_battle.render.renderer import draw_background
 from rpg_battle.render.sprite_actor import SpriteActor
 from rpg_battle.settings import SCREEN_HEIGHT, SCREEN_WIDTH
+from student_game import CONTENT
+
+
+CHARACTERS = CONTENT.characters
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -92,7 +93,6 @@ def _draw_single_character_frame(
     actor: SpriteActor,
     character_id: str,
     *,
-    side: str,
     scale: float,
     state: str,
     elapsed: float,
@@ -150,7 +150,6 @@ def _render_single_character(
         surface,
         actor,
         character_id,
-        side=side,
         scale=scale,
         state=state,
         elapsed=elapsed,
@@ -207,12 +206,13 @@ def _animate_single_character(
             cycle_time = elapsed % cycle_duration
             sample_time = min(cycle_time, state_duration)
 
-        actor.idle_clock += dt
+        # Advance the same runtime actor API used by battles instead of
+        # reaching into its clocks directly from the preview tool.
+        actor.update(dt)
         _draw_single_character_frame(
             surface,
             actor,
             character_id,
-            side=side,
             scale=scale,
             state=state,
             elapsed=sample_time,
@@ -223,6 +223,7 @@ def _animate_single_character(
 
     # Preserve the familiar preview-file workflow as well as the live window.
     save_surface(surface, Path(output))
+
 
 def _render_all_characters(*, output: str, side: str, transparent: bool, no_show: bool) -> None:
     character_ids = sorted(CHARACTERS)

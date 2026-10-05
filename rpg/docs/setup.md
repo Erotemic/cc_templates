@@ -50,18 +50,29 @@ python lab.py scenario threshold_25
 python main.py --scenario threshold_25 --teach
 ```
 
+For the included VS Code tasks, open the **`rpg` folder** as your workspace,
+install the Python extension, and use **Python: Select Interpreter** to choose
+your `.venv`. Use **Terminal → Run Task** to select Check, Lab, Play, Preview,
+or Simulate. The tasks use that selected interpreter.
+
 ## Teacher reproducibility
 
 Before a course or workshop, establish one known-good Python version and
 machine image, run the complete test suite, and freeze that environment:
 
 ```bash
-python -m pip freeze --local > classroom-lock.txt
+python -m pip freeze --local --exclude rpg-battle > classroom-lock.txt
 ```
 
 Keep that lock file with the course deployment materials for the term. Rebuild
 and retest it when the Python version or operating-system image changes rather
 than silently upgrading packages during a class.
+
+The project itself is excluded because an editable install can record the
+teacher's local checkout path. To restore the dependencies in a fresh
+environment on the same machine image, run `python -m pip install -r
+classroom-lock.txt`, then `python -m pip install -e ".[classroom]"` from the
+new checkout's `rpg` directory.
 
 ## Full tests
 

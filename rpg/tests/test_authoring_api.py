@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import inspect
 import random
 
 import pytest
@@ -10,7 +11,9 @@ from student_game import art, characters, moves
 from student_game.catalog import GAME
 from rpg_battle.api import (
     Battle,
+    Character,
     CharacterArt,
+    Game,
     CodeSpriteFrame,
     FrameAnimation,
     Move,
@@ -97,6 +100,16 @@ def test_student_game_uses_direct_object_references() -> None:
 def test_game_uses_art_assets_as_the_student_facing_registry_name() -> None:
     assert art.knight_dawn_art in GAME.art_assets
     assert GAME.sprites is GAME.art_assets
+
+
+def test_core_authoring_fields_remain_required_python_arguments() -> None:
+    character_params = inspect.signature(Character).parameters
+    assert character_params["art"].default is inspect.Parameter.empty
+    assert character_params["moves"].default is inspect.Parameter.empty
+
+    game_params = inspect.signature(Game).parameters
+    for name in ("art_assets", "effects", "moves", "characters", "presentation"):
+        assert game_params[name].default is inspect.Parameter.empty
 
 
 def test_knight_is_the_runnable_frame_animation_reference() -> None:

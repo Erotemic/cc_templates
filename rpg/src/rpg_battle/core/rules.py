@@ -443,6 +443,8 @@ def _process_script_commands(
 
     try:
         result = move.script(context)
+        commands = normalize_commands(result)
+        problems = validate_script_commands(commands, context)
     except Exception as exc:
         location = script_source_label(move.script)
         raise StudentCodeError(
@@ -452,11 +454,9 @@ def _process_script_commands(
     record_trace(
         state,
         "script_return",
-        message=f"function returned {result!r}",
+        message=f"function returned {describe_script_result(result)}",
         result=describe_script_result(result),
     )
-    commands = normalize_commands(result)
-    problems = validate_script_commands(commands, context)
     if problems:
         location = script_source_label(move.script)
         raise StudentCodeError(
@@ -466,7 +466,7 @@ def _process_script_commands(
     record_trace(
         state,
         "normalized_commands",
-        message=f"normalized commands: {commands!r}",
+        message="normalized commands: " + "; ".join(describe_command(c) for c in commands),
         commands=tuple(describe_command(command) for command in commands),
     )
 
@@ -481,6 +481,8 @@ def _process_script_commands(
             command_index=command_index,
             command_type=type(command).__name__,
             command=describe_command(command),
+            move_name=move.name,
+            power=getattr(command, "power", None),
             target_ids=command_targets,
         )
         for target_id in command_targets:
@@ -540,6 +542,7 @@ def _process_script_commands(
                         move_name=move.name,
                         scripted=True,
                         command_power=command.power,
+                        hp_lost=before_hp - target.current_hp,
                         amount=amount,
                         text=f"{target.spec.name} takes {amount} damage.",
                     )
@@ -678,11 +681,11 @@ def _process_move(
         )
     )
 
-    if move.target_mode == "none":
-        return
-
     if move.script is not None:
         _process_script_commands(state, actor, move, target_ids, events, rng)
+        return
+
+    if move.target_mode == "none":
         return
 
     for target_id in target_ids:
@@ -767,6 +770,7 @@ def _process_move(
                     target_name=target.spec.name,
                     move_id=move.move_id,
                     move_name=move.name,
+                    hp_lost=before_hp - target.current_hp,
                     amount=damage,
                     text=f"{target.spec.name} takes {damage} damage.",
                 )

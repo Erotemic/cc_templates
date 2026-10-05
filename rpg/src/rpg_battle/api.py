@@ -803,13 +803,13 @@ class Move:
         )
 
 
-@dataclass(frozen=True, init=False)
+@dataclass(frozen=True)
 class Character:
     """A reusable battler described with direct object references.
 
-    ``art`` is the student-facing name: it can be one still sprite frame or a
-    :class:`CharacterArt` object with state-specific animation. ``sprite=`` is
-    accepted as a compatibility keyword for older classroom exercises.
+    ``art`` can be one still sprite frame or a :class:`CharacterArt` object
+    with state-specific animation. A single frame is enough for a complete
+    character; animation remains optional.
     """
 
     name: str
@@ -824,44 +824,9 @@ class Character:
     description: str = ""
     id: str | None = None
 
-    def __init__(
-        self,
-        name: str,
-        role: str,
-        hp: int,
-        attack: int,
-        defense: int,
-        magic: int,
-        speed: int,
-        art: ArtAsset | None = None,
-        moves: Sequence[Move] = (),
-        description: str = "",
-        id: str | None = None,
-        *,
-        sprite: ArtAsset | None = None,
-    ) -> None:
-        if art is None:
-            art = sprite
-        elif sprite is not None and sprite is not art:
-            raise ValueError("Character received both art= and sprite= with different objects")
-        if art is None:
-            raise ValueError("Character needs art= with a sprite frame or CharacterArt")
-
-        object.__setattr__(self, "name", name)
-        object.__setattr__(self, "role", role)
-        object.__setattr__(self, "hp", hp)
-        object.__setattr__(self, "attack", attack)
-        object.__setattr__(self, "defense", defense)
-        object.__setattr__(self, "magic", magic)
-        object.__setattr__(self, "speed", speed)
-        object.__setattr__(self, "art", art)
-        object.__setattr__(self, "moves", moves)
-        object.__setattr__(self, "description", description)
-        object.__setattr__(self, "id", id)
-
     @property
     def sprite(self) -> ArtAsset:
-        """Compatibility alias for older code; new student code should use ``art``."""
+        """Compatibility attribute; new student code should use ``art``."""
         return self.art
 
     @property
@@ -977,13 +942,13 @@ class GamePresentation:
         )
 
 
-@dataclass(frozen=True, init=False)
+@dataclass(frozen=True)
 class Game:
     """Student-authored game definition that compiles to :class:`GameContent`.
 
-    ``art_assets`` is the canonical student-facing collection. The compiled
-    engine still calls this registry ``sprites`` internally; ``sprites=`` is
-    accepted here as a compatibility keyword for older exercises.
+    ``art_assets`` is the student-facing collection. The compiled engine still
+    calls this registry ``sprites`` internally because that is a rendering
+    implementation detail.
     """
 
     title: str
@@ -1002,70 +967,9 @@ class Game:
     victory_music: Music
     defeat_music: Music
 
-    def __init__(
-        self,
-        title: str,
-        palettes: Sequence[Palette],
-        art_assets: Sequence[ArtAsset] | None = None,
-        effects: Sequence[VisualEffect] | None = None,
-        sounds: Sequence[Sound] | None = None,
-        music: Sequence[Music] | None = None,
-        moves: Sequence[Move] | None = None,
-        characters: Sequence[Character] | None = None,
-        teams: Sequence[Team] | None = None,
-        battles: Sequence[Battle] | None = None,
-        presentation: GamePresentation | None = None,
-        default_battle: Battle | None = None,
-        default_battle_music: Music | None = None,
-        victory_music: Music | None = None,
-        defeat_music: Music | None = None,
-        *,
-        sprites: Sequence[ArtAsset] | None = None,
-    ) -> None:
-        if art_assets is None:
-            art_assets = sprites
-        elif sprites is not None and sprites is not art_assets:
-            raise ValueError("Game received both art_assets= and sprites= with different objects")
-        if art_assets is None:
-            raise ValueError("Game needs art_assets=")
-
-        required = {
-            "effects": effects,
-            "sounds": sounds,
-            "music": music,
-            "moves": moves,
-            "characters": characters,
-            "teams": teams,
-            "battles": battles,
-            "presentation": presentation,
-            "default_battle": default_battle,
-            "default_battle_music": default_battle_music,
-            "victory_music": victory_music,
-            "defeat_music": defeat_music,
-        }
-        missing = [name for name, value in required.items() if value is None]
-        if missing:
-            raise ValueError(f"Game is missing required fields: {', '.join(missing)}")
-
-        object.__setattr__(self, "title", title)
-        object.__setattr__(self, "palettes", palettes)
-        object.__setattr__(self, "art_assets", art_assets)
-        object.__setattr__(self, "effects", effects)
-        object.__setattr__(self, "sounds", sounds)
-        object.__setattr__(self, "music", music)
-        object.__setattr__(self, "moves", moves)
-        object.__setattr__(self, "characters", characters)
-        object.__setattr__(self, "teams", teams)
-        object.__setattr__(self, "battles", battles)
-        object.__setattr__(self, "presentation", presentation)
-        object.__setattr__(self, "default_battle", default_battle)
-        object.__setattr__(self, "default_battle_music", default_battle_music)
-        object.__setattr__(self, "victory_music", victory_music)
-        object.__setattr__(self, "defeat_music", defeat_music)
-
     @property
     def sprites(self) -> Sequence[ArtAsset]:
-        """Compatibility alias; new student code should use ``art_assets``."""
+        """Compatibility attribute; new student code should use ``art_assets``."""
         return self.art_assets
 
     @staticmethod

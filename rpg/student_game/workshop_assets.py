@@ -17,7 +17,7 @@ workshop_palette = Palette(
 )
 
 workshop_frame = CodeSpriteFrame(
-    "Workshop Hero Sprite",
+    "Workshop Hero Frame",
     id="workshop_hero_frame",
     palette=workshop_palette,
 )

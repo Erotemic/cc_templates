@@ -33,8 +33,10 @@ farther can combine several still frames with `FrameAnimation` and
 attack uses three code-drawn frames while missing states fall back to idle.
 
 The student-facing vocabulary is `frame` / `art` / `animation` / `motion`.
-Characters therefore use `art=...`, and the game registers `ART_ASSETS`. Older
-`sprite=` and `SPRITE_ASSETS` names remain only as compatibility aliases.
+Characters therefore use `art=...`, and the game registers `ART_ASSETS`. Small
+read-only compatibility names such as `character.sprite`, `GAME.sprites`,
+`workshop_sprite`, and `SPRITE_ASSETS` remain for older code, but new object
+construction uses the canonical `art=` / `art_assets=` names.
 
 Useful commands from the `rpg` directory:
 

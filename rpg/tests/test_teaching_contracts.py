@@ -193,7 +193,7 @@ def test_restart_reuses_original_seed() -> None:
 
 def test_workshop_registers_every_content_kind_it_defines() -> None:
     assert workshop_assets.workshop_palette.palette_id in CONTENT.palettes
-    assert workshop_assets.workshop_sprite.sprite_id in CONTENT.sprites
+    assert workshop_assets.workshop_frame.frame_id in CONTENT.sprites
     assert workshop_assets.workshop_impact.effect_id in CONTENT.effects
     assert workshop_assets.workshop_hit.sound_id in CONTENT.sound_effects
     assert workshop_assets.workshop_theme.music_id in CONTENT.music_tracks
