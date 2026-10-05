@@ -84,3 +84,35 @@ def test_console_can_submit_free_text_riddle_without_textual():
     assert game.npcs["Tower Guardian"]["riddle_solved"]
     assert game.player.has_item("star_crystal")
     assert "Wisdom and patience" in "\n".join(output)
+
+
+def test_console_riddle_question_and_intro_are_not_duplicated():
+    game = AdventureGame(STAR_CRYSTAL)
+    game.player_location = game.npc_rooms["Tower Guardian"]
+    game.current_npc_name = "Tower Guardian"
+    game.mode = "npc"
+
+    answers = iter(["river", "quit"])
+    output: list[str] = []
+
+    def input_func(prompt: str) -> str:
+        if prompt == "> ":
+            choices = game.choices()
+            for index, choice in enumerate(choices, 1):
+                if choice.action == "riddle":
+                    return str(index)
+            return "quit"
+        return next(answers)
+
+    run_console(
+        game,
+        show_art=False,
+        input_func=input_func,
+        output_func=output.append,
+    )
+
+    question = game.npcs["Tower Guardian"]["riddle"]["question"]
+    joined = "\n".join(output)
+    assert joined.count(question) == 1
+    assert joined.count("Answer my riddle, and the crystal may be yours.") == 1
+    assert "Wisdom and patience" in joined

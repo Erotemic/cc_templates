@@ -20,6 +20,7 @@ from typing import Any
 
 from .actions import apply_effect
 from .models import Actor, Choice
+from .river_crossing import PASSENGERS, Passenger, RiverCrossingState
 from .validation import assert_valid_world
 
 
@@ -52,6 +53,7 @@ class AdventureGame:
         self.won = False
         self.lost = False
         self.ending = ""
+        self.river_crossing: RiverCrossingState | None = None
         self._index_npcs()
         self.on_location_enter()
 
@@ -131,6 +133,9 @@ class AdventureGame:
         """Return the current player-facing objective for any frontend."""
         if "jailed" in self.flags:
             return "Serve your time and get back on your feet."
+
+        if self.river_delivery_active:
+            return "Deliver the wolf, goat, and cabbage safely across Willow River."
 
         source = self.world.get("source_version")
         if source == "version4.py":
@@ -216,6 +221,11 @@ class AdventureGame:
             "focus_npc_name": focus_name,
             "focus_npc_state": focus_state,
             "focus_npc_mood": focus_mood,
+            "river_crossing": (
+                self.river_state.as_dict()
+                if self.river_delivery_active
+                else None
+            ),
             "over": self.over,
             "won": self.won,
             "ending": self.ending,
@@ -286,6 +296,17 @@ class AdventureGame:
             lines.append("People / creatures here: " + ", ".join(active_npcs))
         if self.room.get("features"):
             lines.append("Notable features: " + ", ".join(f["name"] for f in self.room["features"]))
+        if self.river_delivery_active:
+            state = self.river_state
+            if self.player_location in self.river_rooms:
+                labels = self.river_config.get("passenger_labels", {})
+                parts = [
+                    f"{labels.get(name, name.title())}={state.passenger_side(name)}"
+                    for name in PASSENGERS
+                ]
+                lines.append("River delivery: " + ", ".join(parts))
+            else:
+                lines.append("Traveling with you: Wolf, Goat, and Cabbage.")
         return lines
 
     def choices(self) -> list[Choice]:
@@ -339,6 +360,10 @@ class AdventureGame:
         if self.mode == "npc" and self.current_npc_name:
             return self.npc_choices(self.npcs[self.current_npc_name])
 
+        river_choices = self.river_crossing_choices()
+        if river_choices is not None:
+            return river_choices
+
         result: list[Choice] = []
         jailed = "jailed" in self.flags and self.player_location == "jail"
         if not jailed:
@@ -367,9 +392,17 @@ class AdventureGame:
         return result
 
     def apply(self, action: str) -> list[str]:
-        legal = {choice.action for choice in self.choices()}
-        if action not in legal:
+        available = {choice.action: choice for choice in self.choices()}
+        selected = available.get(action)
+        if selected is None:
             raise ValueError(f"Action is not legal right now: {action!r}")
+
+        # A UI action is a transaction: once the player selects it, the engine
+        # must return an immediate human-readable outcome.  Frontends should
+        # never have to infer whether something happened from the *next* state.
+        before_location = self.player_location
+        before_mode = self.mode
+        before_npc = self.current_npc_name
 
         if self.mode == "confirm_move":
             if action == "move:cancel":
@@ -391,9 +424,11 @@ class AdventureGame:
             lines = self.apply_inventory(action)
         elif self.mode == "npc" and self.current_npc_name:
             lines = self.apply_npc(action)
+        elif action.startswith("river:"):
+            lines = self.apply_river_crossing(action)
         elif action == "inventory":
             self.mode = "inventory"
-            lines = []
+            lines = ["You open your inventory and equipment."]
         elif action.startswith("move:"):
             lines = self.begin_move(int(action.split(":", 1)[1]))
         elif action.startswith("take:"):
@@ -406,7 +441,10 @@ class AdventureGame:
                 lines = [f"{npc['name']} attacks!"]
             else:
                 self.mode = "npc"
-                lines = []
+                if self.npc_is_alive(npc):
+                    lines = [f"You approach {npc['name']}."]
+                else:
+                    lines = [f"You examine the remains of {npc['name']}."]
         elif action.startswith("feature:"):
             lines = self.use_feature(int(action.split(":", 1)[1]))
         elif action.startswith("roomchoice:"):
@@ -416,7 +454,44 @@ class AdventureGame:
         else:
             raise AssertionError(action)
 
-        return self._finish_player_action(lines)
+        lines = self._finish_player_action(lines)
+        # World authors may set terminal flags from simple choices, pickups, or
+        # defeat rewards.  Synchronize once at the transaction boundary so
+        # every action path observes those flags consistently.
+        self.sync_end_state()
+        return self._ensure_action_feedback(
+            selected.text,
+            lines,
+            before_location=before_location,
+            before_mode=before_mode,
+            before_npc=before_npc,
+        )
+
+    def _ensure_action_feedback(
+        self,
+        choice_text: str,
+        lines: list[str],
+        *,
+        before_location: str,
+        before_mode: str,
+        before_npc: str | None,
+    ) -> list[str]:
+        """Guarantee that every selected menu action has immediate feedback.
+
+        Most actions provide specific prose themselves.  This final guard is a
+        software-engineering contract for new authored content: a flag-only or
+        movement-only action must not silently mutate the game and force the UI
+        to reveal the change one click later.
+        """
+        if any(str(line).strip() for line in lines):
+            return lines
+        if self.player_location != before_location:
+            return [f"You arrive at {self.room['name']}."]
+        if self.mode != before_mode:
+            return [f"{choice_text}."]
+        if self.current_npc_name != before_npc and self.current_npc_name:
+            return [f"You turn your attention to {self.current_npc_name}."]
+        return [f"You choose: {choice_text}."]
 
     def _finish_player_action(self, lines: list[str]) -> list[str]:
         """Run reactions that the original games checked between turns.
@@ -458,9 +533,10 @@ class AdventureGame:
         npc = self.npcs[self.current_npc_name]
         actor = self._npc_actor(npc)
         if action == "npc:leave":
+            name = npc["name"]
             self.mode = "exploration"
             self.current_npc_name = None
-            return []
+            return [f"You step away from {name}."]
         if action == "npc:attack":
             lines: list[str] = []
             if not npc.get("hostile") and not npc.get("defeated"):
@@ -474,6 +550,7 @@ class AdventureGame:
             npc["hostile"] = True
             npc["aggression"] = max(70, npc.get("aggression", 0))
             self.start_combat(npc["name"])
+            lines.insert(0, f"You attack {npc['name']}. Combat begins.")
             return lines
         if action == "npc:loot":
             lines = []
@@ -483,11 +560,14 @@ class AdventureGame:
                 actor.gold = 0
             if actor.inventory:
                 self.mode = "loot"
+                if not lines:
+                    lines.append(f"You search {npc['name']}'s remains.")
                 return lines
             return lines or ["Nothing remains."]
         if action == "riddle":
             self.mode = "riddle"
-            return list(npc["riddle"].get("intro_lines", [])) + [npc["riddle"]["question"]]
+            intro = list(npc["riddle"].get("intro_lines", []))
+            return intro or [f"{npc['name']} poses a challenge."]
         if action.startswith("talk:"):
             topic = npc["dialogue_topics"][int(action.split(":", 1)[1])]
             lines = [f"{npc['name']}: {line}" for line in topic["lines"]]
@@ -505,7 +585,7 @@ class AdventureGame:
         actor = self._npc_actor(npc)
         if action == "loot:done":
             self.mode = "npc"
-            return []
+            return [f"You finish searching {npc['name']}'s remains."]
         if not action.startswith("loot:item:"):
             raise AssertionError(action)
         item_id = action.split(":", 2)[2]
@@ -529,7 +609,8 @@ class AdventureGame:
         if action == "surrender:kill":
             actor = self._npc_actor(npc)
             actor.health = 0
-            lines = self.defeat_npc(name)
+            lines = [f"You kill {name} after the surrender."]
+            lines.extend(self.defeat_npc(name))
             if npc.get("persistent", True):
                 self.mode = "npc"
             else:
@@ -570,6 +651,9 @@ class AdventureGame:
                     self.lost = True
                     self.ending = "You collapse from your injuries. The adventure ends here."
         self.mode = "npc"
+        self.sync_end_state()
+        if not lines:
+            lines.append(f"{npc['name']} considers your answer.")
         return lines
 
     def topic_available(self, npc: dict[str, Any], topic: dict[str, Any]) -> bool:
@@ -648,7 +732,8 @@ class AdventureGame:
         exit_spec = self.world["rooms"][room_key]["exits"][index]
         self.player_location = exit_spec["destination"]
         self.flags.add(f"visited:{self.player_location}")
-        lines = apply_effect(self, exit_spec.get("on_success_effect"))
+        lines = [f"You arrive at {self.room['name']}."]
+        lines.extend(apply_effect(self, exit_spec.get("on_success_effect")))
         if not self.over:
             lines.extend(self.on_location_enter())
         return lines
@@ -721,6 +806,109 @@ class AdventureGame:
             self.flags.add(once_flag)
         elif feature.get("repeat_effect") and not self.over:
             lines.extend(apply_effect(self, feature["repeat_effect"]))
+        if not lines:
+            verb = feature.get("verb", "Inspect").strip().lower()
+            lines.append(f"You {verb} {feature['name']}.")
+        return lines
+
+    @property
+    def river_config(self) -> dict[str, Any]:
+        return self.world.get("river_crossing", {})
+
+    @property
+    def river_rooms(self) -> set[str]:
+        config = self.river_config
+        return {
+            room
+            for room in (config.get("west_room"), config.get("east_room"))
+            if room is not None
+        }
+
+    @property
+    def river_delivery_active(self) -> bool:
+        config = self.river_config
+        if not config:
+            return False
+        active_flag = config.get("active_flag")
+        complete_flag = config.get("complete_flag")
+        return bool(
+            active_flag
+            and active_flag in self.flags
+            and (not complete_flag or complete_flag not in self.flags)
+        )
+
+    @property
+    def river_state(self) -> RiverCrossingState:
+        """Current puzzle state without mutating the game during observation."""
+        return self.river_crossing or RiverCrossingState()
+
+    def river_crossing_choices(self) -> list[Choice] | None:
+        """Expose puzzle transitions only while an active delivery is at the river."""
+        if not self.river_delivery_active or self.player_location not in self.river_rooms:
+            return None
+        state = self.river_state
+        expected_room = self.river_config[f"{state.player}_room"]
+        if self.player_location != expected_room:
+            raise AssertionError(
+                "river crossing state disagrees with the player's current bank"
+            )
+
+        destination = "east" if state.player == "west" else "west"
+        choices = [Choice("river:alone", f"Row to the {destination} bank alone")]
+        labels = self.river_config.get("passenger_labels", {})
+        for passenger in state.passengers_with_player():
+            label = labels.get(passenger, passenger.title())
+            choices.append(
+                Choice(f"river:{passenger}", f"Take the {label.lower()} to the {destination} bank")
+            )
+        choices.append(Choice("inventory", "Open inventory / equipment"))
+        return choices
+
+    def apply_river_crossing(self, action: str) -> list[str]:
+        if not self.river_delivery_active or self.player_location not in self.river_rooms:
+            raise ValueError("No river delivery is active here.")
+
+        passenger: Passenger | None
+        suffix = action.split(":", 1)[1]
+        passenger = None if suffix == "alone" else suffix  # type: ignore[assignment]
+        if passenger is not None and passenger not in PASSENGERS:
+            raise ValueError(f"Unknown river passenger: {passenger!r}")
+
+        state = self.river_state
+        candidate, reason = state.try_cross(passenger)
+        labels = self.river_config.get("passenger_labels", {})
+        if reason is not None:
+            return [
+                "You study the boat and the two banks before pushing off.",
+                reason,
+                "That crossing would break the delivery puzzle's safety rule, so you stay put.",
+            ]
+
+        self.river_crossing = candidate
+        self.player_location = self.river_config[f"{candidate.player}_room"]
+        self.flags.add(f"visited:{self.player_location}")
+        carried = (
+            "alone"
+            if passenger is None
+            else f"with the {labels.get(passenger, passenger.title()).lower()}"
+        )
+        lines = [f"You row {carried} to the {candidate.player} bank."]
+
+        if candidate.solved:
+            active_flag = self.river_config.get("active_flag")
+            complete_flag = self.river_config.get("complete_flag")
+            if active_flag:
+                self.flags.discard(active_flag)
+            if complete_flag:
+                self.flags.add(complete_flag)
+            reward_gold = int(self.river_config.get("reward_gold", 0))
+            if reward_gold:
+                self.player.gold += reward_gold
+            lines.extend(self.river_config.get("completion_lines", []))
+            if reward_gold:
+                lines.append(f"You receive {reward_gold} gold for the delivery.")
+        else:
+            lines.extend(self.on_location_enter())
         return lines
 
     def simple_choice_available(self, spec: dict[str, Any]) -> bool:
@@ -750,13 +938,17 @@ class AdventureGame:
         if spec.get("go"):
             self.player_location = spec["go"]
             self.flags.add(f"visited:{self.player_location}")
+            if not lines:
+                lines.append(f"You arrive at {self.room['name']}.")
             lines.extend(self.on_location_enter())
+        if not lines:
+            lines.append(f"You choose: {spec['text']}.")
         return lines
 
     def apply_inventory(self, action: str) -> list[str]:
         if action == "inventory:back":
             self.mode = "exploration"
-            return []
+            return ["You close your inventory and return to the adventure."]
         if action.startswith("equip:"):
             item_id = action.split(":", 1)[1]
             item = self.items[item_id]

@@ -87,6 +87,11 @@ def drive_random_game(
 
         after = game.mode
         transitions[(before, after)] += 1
+        if not any(str(line).strip() for line in lines):
+            raise AssertionError(
+                f"player action produced no feedback: action={action_label!r}, "
+                f"mode={before!r}, room={game.player_location!r}"
+            )
         assert_valid_state(game)
         # Presentation must also be able to observe every state without
         # mutating it or throwing an exception.

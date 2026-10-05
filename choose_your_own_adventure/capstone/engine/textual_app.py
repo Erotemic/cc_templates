@@ -401,11 +401,16 @@ def run_textual(game: AdventureGame) -> None:
                 self.render_current_event()
                 self.refresh_view()
                 return
-            self.current_event_text = ""
+            # Paint the first chunk synchronously in the selection handler so
+            # feedback is visible immediately, even before the first timer tick.
+            self.current_event_text = chunks.pop(0)
             self.stream_queue = chunks
-            self.stream_active = True
-            self.query_one("#prompt", Static).update("Resolving action...")
+            self.stream_active = bool(chunks)
             self.render_current_event()
+            if self.stream_active:
+                self.query_one("#prompt", Static).update("Resolving action...")
+            else:
+                self.refresh_view()
 
         def drain_stream(self) -> None:
             if not self.stream_active:

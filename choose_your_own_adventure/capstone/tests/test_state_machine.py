@@ -155,3 +155,37 @@ def test_illegal_action_does_not_mutate_state():
     else:
         raise AssertionError("illegal action was accepted")
     assert game.snapshot() == before
+
+
+def test_common_ui_transitions_return_immediate_feedback():
+    """Menu selections must explain themselves in the same transaction."""
+    game = AdventureGame(STAR_CRYSTAL)
+
+    lines = game.apply("inventory")
+    assert lines == ["You open your inventory and equipment."]
+    lines = game.apply("inventory:back")
+    assert lines == ["You close your inventory and return to the adventure."]
+
+    elder_index = next(
+        i for i, npc in enumerate(game.room["npcs"])
+        if npc["name"] == "Elder Mira"
+    )
+    lines = game.apply(f"npc:{elder_index}")
+    assert lines == ["You approach Elder Mira."]
+    lines = game.apply("npc:leave")
+    assert lines == ["You step away from Elder Mira."]
+
+    destination = game.world["rooms"][game.room["exits"][0]["destination"]]["name"]
+    lines = game.apply("move:0")
+    assert any(destination in line for line in lines)
+
+
+def test_every_randomly_selected_action_has_same_turn_feedback():
+    """Regression for actions that appeared to resolve one click late."""
+    for label, world in [
+        ("Star Crystal", STAR_CRYSTAL),
+        ("Dust Vault", DUST_VAULT),
+    ]:
+        # drive_random_game itself asserts that every action result is nonblank.
+        result = simulate_world(label, world, runs=8, steps=180, seed=700)
+        assert result.actions > 500

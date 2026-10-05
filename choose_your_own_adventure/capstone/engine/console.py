@@ -70,9 +70,14 @@ def run_console(
         if game.mode == "riddle":
             for line in lines:
                 output_func(line)
-            answer = input_func(game.text_prompt() or "Your answer: ")
+            question = game.text_prompt() or "Answer the challenge."
+            output_func(question)
+            answer = input_func("Your answer: ")
             riddle_lines = game.submit_riddle_answer(answer)
-            lines = [*lines, *riddle_lines]
+            for line in riddle_lines:
+                output_func(line)
+            latest_event = "\n".join([*lines, question, *riddle_lines])
+            continue
         for line in lines:
             output_func(line)
         latest_event = "\n".join(lines)

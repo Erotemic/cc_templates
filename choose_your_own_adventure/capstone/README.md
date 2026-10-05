@@ -37,16 +37,36 @@ The Textual frontend includes:
 - `M` for inventory, `L` for history, `C` to clear history, `A` to hide/show
   artwork, `Esc` to return focus, and `Q` to quit.
 
-Star Crystal retains all **50** original v7 art keys, including Elder Mira and
-every other named character in alive/defeated states plus the scenario pieces.
-The major portraits and locations have been redrawn at a larger scale and all
-pieces are normalized into a consistent terminal card. Dust Vault now has art
+Star Crystal retains all **50** original v7 scene keys, including Elder Mira and
+every other named character in alive/defeated states, and adds new art for the
+Hearthfield Farm / Willow River side quest. Only the current polished drawings
+are kept; the old duplicate legacy-art table has been removed. Dust Vault has art
 for all 18 locations, every named NPC, Patrol Drone, Glass Maw, and major story
 beats/endings. Student-added rooms/NPCs receive presentation fallbacks even if
 they do not add art yet.
 
 Presentation never decides gameplay. Art selection reads state and the latest
 outcome only.
+
+## Wolf, goat, and cabbage side quest
+
+Star Crystal now includes an optional delivery quest at **Hearthfield Farm**,
+reached from the Old Crossroads. Farmer Elowen asks the player to deliver a
+wolf, goat, and cabbage to the far side of Willow River.
+
+Without the quest, Willow River is ordinary travel: take the boat east or west.
+With all three passengers in your care, the same boat becomes a small explicit
+state machine. The boat can carry the player plus one passenger, and a proposed
+transition is rejected if it would leave either unsafe pair unattended:
+
+- wolf + goat;
+- goat + cabbage.
+
+The pure transition rules live in `engine/river_crossing.py`; world/story data
+still lives in `worlds/star_crystal.py`. This makes the puzzle useful as a
+capstone programming example: students can inspect a compact state machine,
+its invariant, and its tests without having to understand the rest of combat or
+dialogue machinery.
 
 ## Easiest way to add content
 
@@ -144,6 +164,20 @@ The game rules expose `snapshot()`, `describe()`, `choices()`, and `apply()`.
 Neither frontend owns gameplay state. The console path also shows the same ASCII
 art, so the complete presentation remains usable on a machine without Textual.
 
+
+### Same-turn feedback contract
+
+`AdventureGame.apply()` treats a player selection as a transaction: every legal
+menu action returns at least one nonblank result line in the same call. Movement,
+inventory transitions, NPC approach/leave, combat initiation, looting, and
+data-only room choices therefore cannot silently mutate state and rely on the
+next click to reveal what happened. The simulator asserts this contract after
+every generated action.
+
+The Textual frontend also paints the first result chunk synchronously before its
+optional typewriter stream continues, while the console frontend prints riddle
+intro/question/answer feedback exactly once.
+
 ## Testing is part of the capstone
 
 The capstone deliberately shows more than unit tests for individual helper
@@ -154,11 +188,13 @@ projects:
    is constructed. A misspelled destination or unknown item fails near the
    authored data instead of much later during play.
 2. **State-transition tests** encode invariants such as `0 <= HP <= max HP`,
-   combat context existing only during combat, and pending exits existing only
-   during move confirmation.
+   combat context existing only during combat, pending exits existing only
+   during move confirmation, and every committed wolf/goat/cabbage river state
+   satisfying the puzzle's safety rule.
 3. **Regression tests** lock bugs that have actually occurred: false tonic
    shatter art, stale combat context after death, equipment/HP drift, dead-NPC
-   interactions, bounty/jail reactions, surrender choices, and selective loot.
+   interactions, bounty/jail reactions, surrender choices, selective loot, and
+   same-turn feedback so a menu action cannot appear to resolve one click late.
 4. **Story tests** drive full Star Crystal and Dust Vault paths, including all
    three Dust Vault endings.
 5. **Frontend tests** exercise the console without a terminal and verify that

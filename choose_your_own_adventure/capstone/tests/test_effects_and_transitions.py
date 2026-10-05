@@ -214,3 +214,24 @@ def test_fatal_on_attempt_effect_does_not_continue_into_move_confirmation():
     assert game.mode == "exploration"
     assert not any("Continue?" in line for line in lines)
     assert_valid_state(game)
+
+
+def test_simple_authored_choice_can_end_game_at_action_boundary():
+    world = deepcopy(STAR_CRYSTAL)
+    world["rooms"]["village"]["choices"].append(
+        {
+            "text": "Ring the ceremonial victory bell",
+            "result": ["The bell rings across the valley."],
+            "set_flags": ["game_won"],
+        }
+    )
+    game = AdventureGame(world)
+    action = next(
+        choice.action for choice in game.choices()
+        if choice.text == "Ring the ceremonial victory bell"
+    )
+    lines = game.apply(action)
+    assert lines == ["The bell rings across the valley."]
+    assert game.won
+    assert game.over
+    assert game.choices() == []
