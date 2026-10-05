@@ -24,10 +24,17 @@ class Choice:
 
 
 @dataclass(frozen=True)
+class RoomChoice:
+    text: str
+    result: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Room:
     key: str
     description: str
     exits: dict[str, str]
+    choices: tuple[RoomChoice, ...] = ()
 
 
 @dataclass
@@ -81,6 +88,13 @@ class Game:
             Choice(action=f"go:{destination}", text=f"Go {label}")
             for label, destination in room.exits.items()
         ]
+        # Room-owned choices are the easy extension point: copy a Room block,
+        # add RoomChoice objects, then add handlers only when those choices need
+        # new mechanics.
+        choices.extend(
+            Choice(action=f"room:{index}", text=spec.text)
+            for index, spec in enumerate(room.choices)
+        )
 
         if self.player.location == "village":
             choices.append(Choice("talk_villager", "Talk to the villager"))
@@ -96,6 +110,10 @@ class Game:
         legal_actions = {choice.action for choice in self.choices()}
         if action not in legal_actions:
             raise ValueError(f"Action is not legal right now: {action!r}")
+
+        if action.startswith("room:"):
+            spec = ROOMS[self.player.location].choices[int(action.removeprefix("room:"))]
+            return list(spec.result)
 
         if action.startswith("go:"):
             self.player.location = action.removeprefix("go:")

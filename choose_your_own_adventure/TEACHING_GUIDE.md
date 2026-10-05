@@ -2,45 +2,52 @@
 
 ## Teaching objective
 
-The repository shows a path from ordinary Python control flow to a small,
-transferable game architecture. The directory structure is part of the lesson:
-students should not have to look past a reusable package before they have a
-reason to learn what a package is.
-
-The progression is therefore grouped by conceptual level:
+The repository shows a path from ordinary Python control flow to a reusable game
+architecture **without making world-building progressively harder**. The
+filesystem is part of the lesson:
 
 1. **Beginner:** ordinary control flow and functions, no custom classes.
 2. **Intermediate:** structured data, objects, state ownership, and a larger
    self-contained program.
 3. **Advanced:** modules, a reusable library, multiple frontends, presentation,
    and multiple worlds.
+4. **Capstone:** full-size authored games on a more capable engine, while adding
+   an ordinary room or story choice remains a data-editing task.
 
-The numbering restarts inside each level. This avoids implying that every
-student must climb through nine files before starting a project.
+The numbering restarts inside each level. A student can also stop at any level
+and build a substantial project there.
+
+## A curriculum-wide authoring rule
+
+From intermediate onward, **rooms should own ordinary story choices**.
+
+A student adding:
+
+- another room;
+- another exit;
+- a descriptive interaction;
+- a branch that prints text;
+
+should not have to modify engine dispatch code. New engine code is justified
+when the student intentionally invents a new reusable mechanic.
+
+This is both pedagogically useful and representative of real data-driven game
+architecture.
 
 ## Beginner
 
 ### Version 1 — trace one loop
 
-Ask students to identify:
+Ask students to identify persistent state, changing state, choice construction,
+and where a selected choice changes the game.
 
-- state that persists between turns;
-- state that changes;
-- where choices are built;
-- where the selected choice changes state.
-
-A useful bug exercise is to ask why menu validation checks `1 <= number` instead
-of only `number <= len(choices)`. Python's `list[-1]` makes the answer concrete.
+A useful bug exercise is why menu validation checks `1 <= number`: Python's
+`list[-1]` makes the reason concrete.
 
 ### Version 2 — extract functions
 
-Diff against beginner version 1. The story did not change.
-
-Good questions:
-
-- Which repeated jobs became named functions?
-- What information must a function receive as parameters?
-- When should a function return a result instead of changing outer state?
+Diff against version 1. The story did not change. Discuss parameters, return
+values, repeated jobs, and when a function should mutate state.
 
 Do not introduce classes yet.
 
@@ -48,19 +55,13 @@ Do not introduce classes yet.
 
 ### Version 1 — separate data and behavior
 
-Focus on:
-
-- `Player` as a record of related state;
-- `ROOMS` as data;
-- action functions;
-- functions as dictionary values in `ACTION_HANDLERS`.
-
-This is an opportunity to teach that functions are values in Python without
-requiring a framework.
+Focus on `Player`, `ROOMS`, action functions, and functions stored in
+`ACTION_HANDLERS`. A room may also contain a simple data-only choice with
+`text` and `result`; a handler is only needed for a real mechanic.
 
 ### Version 2 — one object owns runtime state
 
-The key API is:
+The core API is:
 
 ```python
 Game.describe()
@@ -68,40 +69,36 @@ Game.choices()
 Game.apply(action)
 ```
 
-The console loop stays outside `Game`.
+The console loop stays outside `Game`. `RoomChoice` gives students a direct
+place to add story content without extending `Game.apply()`.
 
-A strong exercise is to write a tiny robot player or test that wins without
-calling `input()`. This motivates backend/frontend separation before students
-see a second UI.
+A useful exercise is to write a tiny robot player or test that wins without
+calling `input()`.
 
 ### Version 3 — scale the same ideas
 
-This is the first substantial game. It adds:
-
-- quest flags;
-- inventory;
-- conditional choices;
-- combat state;
-- a locked path;
-- win/loss state.
+This adds quest flags, inventory, conditional choices, combat, a locked path,
+and win/loss state, while staying in one file. `RoomChoice` still handles simple
+story interactions.
 
 The architecture remains intentionally direct. Combat is not a hierarchy of
-engine-state classes. Story actions are not `Effect` objects. World-specific
-branches are allowed to be world-specific branches.
+mode classes, and story actions are not a class hierarchy of effects.
 
 ## Advanced
 
 ### Version 1 — modules are justified by reuse
 
-The advanced level begins precisely where a library becomes useful. Compare
-`intermediate/version3.py` with:
+Compare `intermediate/version3.py` with:
 
 - `advanced/adventure/core.py`;
 - `advanced/adventure/worlds/star_crystal.py`;
 - `advanced/adventure/ui/console.py`.
 
-The lesson is not "more files are better." The lesson is that multiple programs
-will now reuse these responsibilities.
+The lesson is not “more files are better.” The lesson is that multiple programs
+now reuse these responsibilities.
+
+`RoomChoice` remains available after the split, so modularization does not make
+ordinary content harder to author.
 
 ### Version 2 — second frontend
 
@@ -113,61 +110,93 @@ queues as if they were inherent to GUI architecture.
 
 ### Version 3 — presentation observes state
 
-ASCII art may inspect the room or current enemy, but it does not control
-outcomes. Rendering is not the authority for gameplay rules.
+ASCII art may inspect the room or current enemy, but it does not control game
+outcomes.
 
 ### Version 4 — prove the reuse
 
 Dust Vault uses the same engine and console UI while supplying different rooms,
 quest conditions, item logic, and combat content.
 
-This is where students should feel the payoff of the package introduced in
-advanced version 1.
+## Capstone
+
+Capstone exists because a teaching example and a game children actually want to
+explore do not have to be the same size.
+
+The two capstone worlds preserve the authored content from the original deep
+versions rather than replacing them with demonstration-sized substitutes:
+
+- Star Crystal: the full location graph, items, NPCs, dialogue topics, trades,
+  riddles, features, gates, encounters, and story branches.
+- Dust Vault: the full station and planetary maps, items, NPCs, dialogue,
+  criminal/bounty paths, encounters, equipment, trades, expedition gates, and
+  multiple endings.
+
+The engine is separated into descriptively named modules under
+`capstone/engine/`; there is deliberately no module called `rich.py`.
+
+### Student extension zones
+
+Each capstone world ends with `EXTRA_ROOMS` and `EXTRA_CHOICES`. Start students
+there. A minimal room needs only a name, description, exits, and optional simple
+choices. Missing item/NPC/feature collections normalize to empty collections.
+
+This means a student can meaningfully expand a serious game before understanding
+combat, dialogue, trading, encounters, or the effect interpreter.
+
+### Fidelity and three reachability repairs
+
+The original authored world records are preserved and regression-tested by a
+canonical fingerprint. The port intentionally makes three narrow repairs where
+the original prose described a path that the old interaction engine did not
+actually expose:
+
+1. Solving the Tower Guardian's riddle now lets the player take the Star
+   Crystal nonviolently, as the guardian's success text says.
+2. Solving Custodian Echo's riddle now lets the player take the Grave Core
+   nonviolently, as its success text says.
+3. Hearing Rafe's post-vault offer records that the offer was heard, making the
+   authored landing-beacon corporate ending reachable.
+
+These repairs change reachability, not the preserved authored world records.
+Tests exercise the Star Crystal solution, Dust Vault clean/hot station branches,
+and all three authored Dust Vault endings.
 
 ## Concepts intentionally deferred
 
 Do not add these merely to make the architecture look sophisticated:
 
-- an `Effect` class hierarchy for every state mutation;
-- one `Engine` subclass per game mode;
+- a class hierarchy for every state mutation;
+- one engine subclass per game mode;
 - one NPC subclass per personality;
-- a custom story scripting language;
+- a second custom story language when ordinary data/functions are enough;
 - event buses for local calls that are already clear;
 - dependency-injection frameworks;
 - async/threading solely to connect UI and game;
 - inheritance where a function or data value is enough.
 
-These can become legitimate later if a concrete requirement makes them useful.
+The capstone engine does interpret the original games' scripted effect records
+because that is needed to preserve their existing content. Students do not need
+to use that machinery for ordinary new rooms and choices.
 
 ## Student project tracks
 
-After intermediate version 2, students do not all need the same destination.
+### Story / writing
 
-### Story / writing track
+Add rooms, descriptive interactions, conversations, secrets, and branching
+endings without changing mechanics.
 
-- add rooms and branching endings;
-- write conversations;
-- create conditional choices based on flags.
+### Programming
 
-### Programming track
+Add puzzles, status effects, reusable inventory behavior, procedural encounters,
+or an automated player.
 
-- add a puzzle mechanic;
-- create a reusable inventory helper;
-- add status effects to combat;
-- write an automated player or solver.
+### UI / art
 
-### UI / art track
+Improve the console renderer, add ASCII scenes, modify the Textual layout, or
+create another frontend against the same game API.
 
-- improve the console renderer;
-- add ASCII scenes;
-- modify the Textual layout;
-- create another frontend against the same Game API.
+### Engine
 
-### Engine track
-
-- add a save/load representation;
-- add deterministic randomness behind an injected RNG;
-- generalize something only after two worlds genuinely repeat it.
-
-The engine track should justify abstractions with concrete repetition rather
-than design-pattern vocabulary alone.
+Add save/load, deterministic replay, or generalize a mechanic only after
+multiple worlds demonstrate real repetition.

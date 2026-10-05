@@ -28,6 +28,7 @@ ROOMS = {
     "village": {
         "description": "You are in a small village. A path leads north into the forest.",
         "exits": [("Go north to the forest", "forest")],
+        "choices": [{"text": "Talk to the villager", "action": "talk_villager"}],
     },
     "forest": {
         "description": "You are in a quiet forest. A cave lies east of an old stump.",
@@ -35,10 +36,12 @@ ROOMS = {
             ("Go south to the village", "village"),
             ("Go east to the cave", "cave"),
         ],
+        "choices": [{"text": "Look inside the old stump", "action": "search_stump"}],
     },
     "cave": {
         "description": "You are inside a dark cave. A locked treasure chest waits here.",
         "exits": [("Go west to the forest", "forest")],
+        "choices": [{"text": "Open the treasure chest", "action": "open_chest"}],
     },
 }
 
@@ -72,12 +75,11 @@ def build_choices(player, state):
     for text, destination in ROOMS[player.location]["exits"]:
         choices.append((text, f"go:{destination}"))
 
-    if player.location == "village":
-        choices.append(("Talk to the villager", "talk_villager"))
-    elif player.location == "forest" and not state["key_taken"]:
-        choices.append(("Look inside the old stump", "search_stump"))
-    elif player.location == "cave":
-        choices.append(("Open the treasure chest", "open_chest"))
+    # A normal story choice lives with the room that owns it.  Students can
+    # add rooms and choices by copying data blocks before learning dispatch.
+    for index, spec in enumerate(ROOMS[player.location].get("choices", [])):
+        action = spec.get("action", f"room:{index}")
+        choices.append((spec["text"], action))
 
     return choices
 
@@ -87,6 +89,8 @@ def talk_villager(player, state):
 
 
 def search_stump(player, state):
+    if state["key_taken"]:
+        return ["You already searched the stump."]
     player.inventory.append("brass key")
     state["key_taken"] = True
     return ["Inside the stump you find a little brass key!"]
@@ -109,6 +113,11 @@ ACTION_HANDLERS = {
 
 
 def handle_action(action, player, state):
+    if action.startswith("room:"):
+        index = int(action.removeprefix("room:"))
+        spec = ROOMS[player.location]["choices"][index]
+        return list(spec.get("result", []))
+
     if action.startswith("go:"):
         destination = action.removeprefix("go:")
         player.location = destination

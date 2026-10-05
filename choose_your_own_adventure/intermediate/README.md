@@ -4,20 +4,19 @@ These versions organize the program without introducing a reusable package.
 Every example is still one self-contained Python file that students can copy
 and modify directly.
 
+A rule shared by all three versions: **adding an ordinary room or story-only
+choice should be a data edit, not an engine edit.** Add a handler only when the
+choice deliberately introduces a new mechanic.
+
 ## Version 1 — data-driven game
 
 ```bash
 python intermediate/version1.py
 ```
 
-New ideas:
-
-- a `Player` dataclass;
-- room data separated from action logic;
-- one small function per action;
-- functions stored in a dictionary.
-
-The story is still the same tiny treasure adventure from the beginner folder.
+New ideas include a `Player` dataclass, room data, small action functions, and
+functions stored in a dictionary. Room `choices` may contain either an existing
+`action` or a simple `result` list that needs no handler.
 
 ## Version 2 — game object
 
@@ -25,15 +24,20 @@ The story is still the same tiny treasure adventure from the beginner folder.
 python intermediate/version2.py
 ```
 
-New ideas:
+New ideas include `Room`, `RoomChoice`, and `Choice`, one `Game` object that owns
+changing state, and a console UI outside the rules.
 
-- `Room` and `Choice` objects;
-- one `Game` object owns changing state;
-- `Game.describe()`, `Game.choices()`, and `Game.apply()`;
-- the console UI is separate from game rules.
+A simple interaction is just:
 
-A useful exercise is to write code that wins the game without calling
-`input()`. That demonstrates why the boundary is useful.
+```python
+RoomChoice(
+    "Read the faded sign",
+    ("The sign says: KEEP OUT OF THE CAVE.",),
+)
+```
+
+Put that in a room's `choices=(...)` tuple. `Game.apply()` already knows how to
+run it.
 
 ## Version 3 — larger single-file game
 
@@ -41,12 +45,10 @@ A useful exercise is to write code that wins the game without calling
 python intermediate/version3.py
 ```
 
-This is the Star Crystal game with inventory, quest flags, combat, conditional
-choices, and a locked destination. The architecture stays deliberately direct.
+This Star Crystal teaching game adds inventory, quest flags, combat, conditional
+choices, and a locked destination while keeping the same `RoomChoice` extension
+point.
 
 This is a good starting point for a substantial student project that should
-remain understandable in one file.
-
-Move to `../advanced/` when the single-file version makes sense and the project
-has become large enough that splitting reusable pieces into modules would
-actually help.
+remain understandable in one file. Move to `../advanced/` when splitting
+reusable pieces into modules would actually help.

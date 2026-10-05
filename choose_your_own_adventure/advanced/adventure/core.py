@@ -20,11 +20,18 @@ class Choice:
 
 
 @dataclass(frozen=True)
+class RoomChoice:
+    text: str
+    result: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Room:
     key: str
     name: str
     description: str
     exits: dict[str, str]
+    choices: tuple[RoomChoice, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -124,11 +131,16 @@ class AdventureGame:
         return lines
 
     def exit_choices(self) -> list[Choice]:
-        """Build normal movement choices from the current Room's exit data."""
-        return [
+        """Build movement plus simple room-owned choices from room data."""
+        choices = [
             Choice(action=f"go:{destination}", text=f"Go {label}")
             for label, destination in self.room.exits.items()
         ]
+        choices.extend(
+            Choice(action=f"room:{index}", text=spec.text)
+            for index, spec in enumerate(self.room.choices)
+        )
+        return choices
 
     def choices(self) -> list[Choice]:
         if self.over:
@@ -145,6 +157,10 @@ class AdventureGame:
         legal_actions = {choice.action for choice in self.choices()}
         if action not in legal_actions:
             raise ValueError(f"Action is not legal right now: {action!r}")
+
+        if action.startswith("room:"):
+            spec = self.room.choices[int(action.removeprefix("room:"))]
+            return list(spec.result)
 
         if action.startswith("go:"):
             destination = action.removeprefix("go:")

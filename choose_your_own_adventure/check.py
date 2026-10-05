@@ -9,6 +9,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parent
 ADVANCED = ROOT / "advanced"
+CAPSTONE = ROOT / "capstone"
 
 
 def load_module(relative_path: str, module_name: str):
@@ -28,18 +29,18 @@ def require(condition, message):
 
 
 def main():
-    # The first object-oriented example is still a standalone file.
+    # Intermediate remains self-contained even after it gains objects.
     tiny_module = load_module("intermediate/version2.py", "cya_intermediate_v2")
     tiny = tiny_module.Game()
     require(tiny.player.location == "village", "intermediate version2 should start in the village")
     require(tiny.choices(), "intermediate version2 should offer choices")
 
-    richer_module = load_module("intermediate/version3.py", "cya_intermediate_v3")
-    richer = richer_module.Game()
-    require(richer.choices(), "intermediate version3 should offer choices")
+    larger_module = load_module("intermediate/version3.py", "cya_intermediate_v3")
+    larger = larger_module.Game()
+    require(larger.choices(), "intermediate version3 should offer choices")
 
-    # The advanced package intentionally lives inside advanced/. Add that level
-    # to the import path only for this repository-level check.
+    # The advanced teaching package lives inside advanced/ and is reused by two
+    # intentionally small worlds.
     sys.path.insert(0, str(ADVANCED))
     try:
         from adventure.worlds.dust_vault import make_dust_vault_game
@@ -52,13 +53,33 @@ def main():
     finally:
         sys.path.remove(str(ADVANCED))
 
-    require(not (ROOT / "adventure").exists(), "the shared library belongs under advanced/")
+    # Capstone has a separate, descriptively named engine because it supports
+    # the complete original worlds rather than the teaching-sized examples.
+    sys.path.insert(0, str(CAPSTONE))
+    try:
+        from engine.game import AdventureGame
+        from worlds.dust_vault import WORLD_DATA as DUST_VAULT
+        from worlds.star_crystal import WORLD_DATA as STAR_CRYSTAL
+
+        require(len(STAR_CRYSTAL["rooms"]) >= 11, "full Star Crystal world should be present")
+        require(len(DUST_VAULT["rooms"]) >= 18, "full Dust Vault world should be present")
+        require(len(STAR_CRYSTAL["items"]) >= 12, "full Star Crystal item set should be present")
+        require(len(DUST_VAULT["items"]) >= 14, "full Dust Vault item set should be present")
+        require(AdventureGame(STAR_CRYSTAL).choices(), "capstone Star Crystal should be playable")
+        require(AdventureGame(DUST_VAULT).choices(), "capstone Dust Vault should be playable")
+    finally:
+        sys.path.remove(str(CAPSTONE))
+
+    require(not (ROOT / "adventure").exists(), "shared libraries belong inside their teaching level")
     require(not list(ROOT.glob("version*.py")), "numbered examples belong inside level folders")
+    require(not (CAPSTONE / "rich.py").exists(), "capstone modules should be named by responsibility")
+    require(not (CAPSTONE / "engine" / "rich.py").exists(), "capstone modules should be named by responsibility")
 
     print("choose_your_own_adventure check: OK")
     print("  beginner examples: standalone")
-    print("  intermediate examples: standalone")
-    print("  advanced library: shared by multiple examples/worlds")
+    print("  intermediate examples: standalone and easy to extend with room choices")
+    print("  advanced library: shared by multiple teaching-sized worlds")
+    print("  capstone: complete Star Crystal and Dust Vault worlds on the full engine")
 
 
 if __name__ == "__main__":

@@ -31,11 +31,18 @@ class Choice:
 
 
 @dataclass(frozen=True)
+class RoomChoice:
+    text: str
+    result: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Room:
     key: str
     name: str
     description: str
     exits: dict[str, str]
+    choices: tuple[RoomChoice, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -170,6 +177,9 @@ class Game:
         room = ROOMS[self.player.location]
         choices = []
 
+        for index, room_choice in enumerate(room.choices):
+            choices.append(Choice(f"room:{index}", room_choice.text))
+
         for label, destination in room.exits.items():
             # The tower gate is ordinary game logic, not a special Exit class.
             if destination == "tower":
@@ -207,6 +217,10 @@ class Game:
         legal = {choice.action for choice in self.choices()}
         if action not in legal:
             raise ValueError(f"Action is not legal right now: {action!r}")
+
+        if action.startswith("room:"):
+            room_choice = ROOMS[self.player.location].choices[int(action.removeprefix("room:"))]
+            return list(room_choice.result)
 
         if action.startswith("go:"):
             self.player.location = action.removeprefix("go:")
