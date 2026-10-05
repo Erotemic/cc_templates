@@ -33,3 +33,20 @@ Stress the state machine outside pytest:
 ```bash
 python capstone/simulate.py --world both --runs 25 --steps 250
 ```
+
+## Architecture regression tests
+
+`test_architecture_contracts.py` protects the boundaries that make the larger
+engine robust. In particular it checks that:
+
+- only `__init__` and `_transition_mode()` assign the game mode;
+- terminal flags are synchronized before automatic encounter reactions;
+- duplicate loose items still produce one unambiguous menu action;
+- malformed world records fail validation instead of crashing when reached;
+- the validator itself reports bad collection shapes rather than raising a
+  `TypeError`;
+- corrupt runtime context fails at the next public action boundary;
+- story behavior is not coupled to the old source filename or hard-coded NPC
+  names in the core engine.
+
+These are examples of tests for *architecture*, not just individual outputs.

@@ -31,6 +31,7 @@ DUST_ROOMS = (
 def preserved_fingerprint(data, room_keys):
     clean = deepcopy(data)
     clean.pop("river_crossing", None)
+    clean.pop("story_rules", None)
     clean["rooms"] = {key: clean["rooms"][key] for key in room_keys}
 
     def strip_port_extensions(value):

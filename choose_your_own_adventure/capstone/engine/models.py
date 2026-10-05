@@ -11,6 +11,9 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 
+EQUIPMENT_SLOTS = ("weapon", "armor", "charm")
+
+
 @dataclass(frozen=True)
 class Choice:
     action: str
@@ -28,7 +31,7 @@ class Actor:
     gold: int = 0
     inventory: list[str] = field(default_factory=list)
     equipment: dict[str, str | None] = field(
-        default_factory=lambda: {"weapon": None, "armor": None, "charm": None}
+        default_factory=lambda: {slot: None for slot in EQUIPMENT_SLOTS}
     )
 
     def __post_init__(self) -> None:

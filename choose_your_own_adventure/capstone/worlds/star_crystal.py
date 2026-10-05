@@ -1358,6 +1358,36 @@ WORLD_DATA["river_crossing"] = {
     ],
 }
 
+# Story-specific reactions live with the story rather than being hard-coded in
+# the reusable engine.  The engine interprets these small, declarative hooks.
+WORLD_DATA["story_rules"] = {
+    "goals": [
+        {"text": "Talk to Elder Mira.", "blocked_flags": ["quest_started"]},
+        {
+            "text": "Return the Star Crystal to Elder Mira.",
+            "required_flags": ["has_star_crystal"],
+            "blocked_flags": ["game_won"],
+        },
+        {"text": "The valley has been saved.", "required_flags": ["game_won"]},
+        {"text": "Explore the valley and recover the Star Crystal."},
+    ],
+    "spare_flags": {"Bandit Nox": ["bandit_spared"]},
+    "riddle_reward_items": {"Tower Guardian": ["star_crystal"]},
+    "npc_defeat_lines": {
+        "Crystal Spider": [
+            "The crystal web tears apart, revealing a safer route through the cave."
+        ]
+    },
+    "location_enter_once": {
+        "tower_top": {
+            "flag": "first_tower_visit",
+            "lines": [
+                "The air grows brighter and heavier at the same time. Something ancient is waiting here."
+            ],
+        }
+    },
+}
+
 # ---------------------------------------------------------------------------
 # STUDENT EXTENSION ZONE
 # ---------------------------------------------------------------------------

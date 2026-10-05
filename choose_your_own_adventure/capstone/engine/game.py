@@ -21,7 +21,7 @@ from typing import Any
 from .actions import apply_effect
 from .models import Actor, Choice
 from .river_crossing import PASSENGERS, Passenger, RiverCrossingState
-from .validation import assert_valid_world
+from .validation import VALID_MODES, assert_valid_state, assert_valid_world
 
 
 class AdventureGame:
@@ -56,6 +56,7 @@ class AdventureGame:
         self.river_crossing: RiverCrossingState | None = None
         self._index_npcs()
         self.on_location_enter()
+        assert_valid_state(self)
 
     def _index_npcs(self) -> None:
         self.npcs: dict[str, dict[str, Any]] = {}
@@ -64,6 +65,54 @@ class AdventureGame:
             for npc in room.get("npcs", []):
                 self.npcs[npc["name"]] = npc
                 self.npc_rooms[npc["name"]] = room_key
+
+    def _transition_mode(
+        self,
+        mode: str,
+        *,
+        npc_name: str | None = None,
+        pending_exit: tuple[str, int] | None = None,
+        combat_npc_name: str | None = None,
+        combat_temporary: dict[str, Any] | None = None,
+    ) -> None:
+        """Enter one runtime mode and atomically establish its context.
+
+        Mode-specific fields used to be assigned independently throughout the
+        engine.  That made stale NPC/combat/confirmation context easy to leak
+        across transitions.  This is the single authority for those fields.
+        """
+        if mode not in VALID_MODES:
+            raise ValueError(f"Unknown game mode: {mode!r}")
+
+        npc_modes = {"npc", "riddle", "surrender_decision", "loot"}
+        if mode in npc_modes and npc_name is None:
+            raise ValueError(f"Mode {mode!r} requires npc_name")
+        if mode == "confirm_move" and pending_exit is None:
+            raise ValueError("confirm_move requires pending_exit")
+        if mode == "combat" and combat_npc_name is None:
+            raise ValueError("combat requires combat_npc_name")
+
+        self.mode = mode
+        self.pending_exit = pending_exit if mode == "confirm_move" else None
+
+        if mode == "combat":
+            self.combat_npc_name = combat_npc_name
+            self.combat_temporary = combat_temporary
+            # Persistent NPC combat may still be useful presentation context;
+            # temporary encounter actors are not entries in ``self.npcs``.
+            self.current_npc_name = (
+                combat_npc_name if combat_temporary is None else None
+            )
+            self.player_defending = False
+            self.enemy_defending = False
+        else:
+            self.combat_npc_name = None
+            self.combat_temporary = None
+            self.player_defending = False
+            self.enemy_defending = False
+            self.current_npc_name = npc_name if mode in npc_modes else None
+
+        assert_valid_state(self)
 
     @property
     def over(self) -> bool:
@@ -130,45 +179,23 @@ class AdventureGame:
         return bool(npc.get("defeated")) and (bool(actor.inventory) or actor.gold > 0)
 
     def goal_text(self) -> str:
-        """Return the current player-facing objective for any frontend."""
+        """Return the first story-owned objective whose conditions are active."""
         if "jailed" in self.flags:
             return "Serve your time and get back on your feet."
-
         if self.river_delivery_active:
             return "Deliver the wolf, goat, and cabbage safely across Willow River."
 
-        source = self.world.get("source_version")
-        if source == "version4.py":
-            if "quest_started" not in self.flags:
-                return "Talk to Elder Mira."
-            if "has_star_crystal" in self.flags and "game_won" not in self.flags:
-                return "Return the Star Crystal to Elder Mira."
-            if "game_won" in self.flags:
-                return "The valley has been saved."
-            return "Explore the valley and recover the Star Crystal."
-
-        if source == "version8.py":
-            if "act1_started" not in self.flags:
-                return "Talk to Rafe Mercer and get briefed on the lift."
-            if "act2_started" not in self.flags and "has_payroll_shard" not in self.flags:
-                return "Break into the Black Archive and steal the payroll shard."
-            if "act2_started" not in self.flags:
-                return "Reach the extraction skiff and see how the job shakes out."
-            if "found_locator" not in self.flags:
-                return "Search Relay Ridge for a locator chart to the buried site."
-            if not self.player.has_item("vault_cipher"):
-                return "Reach Drill Site Theta and secure the vault cipher."
-            if "has_grave_core" not in self.flags:
-                return "Descend through Burial Crater and reach the vault heart."
-            if "game_won" in self.flags:
-                if "ending_corporate" in self.flags:
-                    return "You sold the vault and bought yourself a future."
-                if "ending_broadcast" in self.flags:
-                    return "The truth is out, and the scramble has begun."
-                if "ending_bury" in self.flags:
-                    return "The vault is buried again."
-            return "Decide what to do with the grave core before the cutters close in."
-
+        rules = self.world.get("story_rules", {}).get("goals", [])
+        for rule in rules:
+            if not set(rule.get("required_flags", [])) <= self.flags:
+                continue
+            if set(rule.get("blocked_flags", [])) & self.flags:
+                continue
+            if not self.player.has_items(rule.get("required_items", [])):
+                continue
+            if any(self.player.has_item(item_id) for item_id in rule.get("blocked_items", [])):
+                continue
+            return rule["text"]
         return "Explore."
 
     def snapshot(self) -> dict[str, Any]:
@@ -310,6 +337,20 @@ class AdventureGame:
         return lines
 
     def choices(self) -> list[Choice]:
+        """Return legal actions and enforce an unambiguous UI/action contract."""
+        result = self._choices()
+        seen: set[str] = set()
+        for choice in result:
+            if not choice.action or not choice.text.strip():
+                raise AssertionError(f"Invalid blank choice: {choice!r}")
+            if choice.action in seen:
+                raise AssertionError(
+                    f"Duplicate legal action id {choice.action!r} in mode {self.mode!r}"
+                )
+            seen.add(choice.action)
+        return result
+
+    def _choices(self) -> list[Choice]:
         if self.over:
             return []
         if self.mode == "riddle":
@@ -375,8 +416,16 @@ class AdventureGame:
                 elif exit_spec.get("warning_text"):
                     text += " [risky]"
                 result.append(Choice(f"move:{index}", text))
+            seen_items: set[str] = set()
             for item_id in self.room.get("items", []):
-                result.append(Choice(f"take:{item_id}", f"Take {self.item_name(item_id)}"))
+                if item_id in seen_items:
+                    continue
+                seen_items.add(item_id)
+                count = self.room.get("items", []).count(item_id)
+                suffix = f" x{count}" if count > 1 else ""
+                result.append(
+                    Choice(f"take:{item_id}", f"Take {self.item_name(item_id)}{suffix}")
+                )
             for index, npc in enumerate(self.room.get("npcs", [])):
                 if self.npc_is_alive(npc):
                     result.append(Choice(f"npc:{index}", f"Approach {npc['name']}"))
@@ -392,6 +441,7 @@ class AdventureGame:
         return result
 
     def apply(self, action: str) -> list[str]:
+        assert_valid_state(self)
         available = {choice.action: choice for choice in self.choices()}
         selected = available.get(action)
         if selected is None:
@@ -406,13 +456,11 @@ class AdventureGame:
 
         if self.mode == "confirm_move":
             if action == "move:cancel":
-                self.mode = "exploration"
-                self.pending_exit = None
+                self._transition_mode("exploration")
                 lines = ["You decide not to risk it."]
             else:
                 room_key, index = self.pending_exit
-                self.mode = "exploration"
-                self.pending_exit = None
+                self._transition_mode("exploration")
                 lines = self.finish_move(room_key, index)
         elif self.mode == "surrender_decision":
             lines = self.apply_surrender_decision(action)
@@ -427,7 +475,7 @@ class AdventureGame:
         elif action.startswith("river:"):
             lines = self.apply_river_crossing(action)
         elif action == "inventory":
-            self.mode = "inventory"
+            self._transition_mode("inventory")
             lines = ["You open your inventory and equipment."]
         elif action.startswith("move:"):
             lines = self.begin_move(int(action.split(":", 1)[1]))
@@ -435,12 +483,11 @@ class AdventureGame:
             lines = self.take_item(action.split(":", 1)[1])
         elif action.startswith("npc:"):
             npc = self.room["npcs"][int(action.split(":", 1)[1])]
-            self.current_npc_name = npc["name"]
             if self.npc_is_alive(npc) and npc.get("hostile"):
                 self.start_combat(npc["name"])
                 lines = [f"{npc['name']} attacks!"]
             else:
-                self.mode = "npc"
+                self._transition_mode("npc", npc_name=npc["name"])
                 if self.npc_is_alive(npc):
                     lines = [f"You approach {npc['name']}."]
                 else:
@@ -454,13 +501,40 @@ class AdventureGame:
         else:
             raise AssertionError(action)
 
-        lines = self._finish_player_action(lines)
-        # World authors may set terminal flags from simple choices, pickups, or
-        # defeat rewards.  Synchronize once at the transaction boundary so
-        # every action path observes those flags consistently.
-        self.sync_end_state()
-        return self._ensure_action_feedback(
+        return self._complete_player_action(
             selected.text,
+            lines,
+            before_location=before_location,
+            before_mode=before_mode,
+            before_npc=before_npc,
+        )
+
+    def _complete_player_action(
+        self,
+        choice_text: str,
+        lines: list[str],
+        *,
+        before_location: str,
+        before_mode: str,
+        before_npc: str | None,
+    ) -> list[str]:
+        """Commit one externally selected action at a single transaction boundary."""
+        # Terminal flags must take effect *before* automatic encounters.  The
+        # old ordering allowed a data-only victory choice to win the game and
+        # then immediately start a random combat before ``game_won`` synced.
+        self.sync_end_state()
+        if not self.over:
+            lines = self._finish_player_action(lines)
+            self.sync_end_state()
+
+        # A terminal game has no active interaction/combat context.  Clearing
+        # it here prevents UI snapshots from exposing half-finished modes.
+        if self.over and self.mode != "exploration":
+            self._transition_mode("exploration")
+
+        assert_valid_state(self)
+        return self._ensure_action_feedback(
+            choice_text,
             lines,
             before_location=before_location,
             before_mode=before_mode,
@@ -534,8 +608,7 @@ class AdventureGame:
         actor = self._npc_actor(npc)
         if action == "npc:leave":
             name = npc["name"]
-            self.mode = "exploration"
-            self.current_npc_name = None
+            self._transition_mode("exploration")
             return [f"You step away from {name}."]
         if action == "npc:attack":
             lines: list[str] = []
@@ -559,13 +632,13 @@ class AdventureGame:
                 self.player.gold += actor.gold
                 actor.gold = 0
             if actor.inventory:
-                self.mode = "loot"
+                self._transition_mode("loot", npc_name=npc["name"])
                 if not lines:
                     lines.append(f"You search {npc['name']}'s remains.")
                 return lines
             return lines or ["Nothing remains."]
         if action == "riddle":
-            self.mode = "riddle"
+            self._transition_mode("riddle", npc_name=npc["name"])
             intro = list(npc["riddle"].get("intro_lines", []))
             return intro or [f"{npc['name']} poses a challenge."]
         if action.startswith("talk:"):
@@ -584,7 +657,7 @@ class AdventureGame:
         npc = self.npcs[self.current_npc_name]
         actor = self._npc_actor(npc)
         if action == "loot:done":
-            self.mode = "npc"
+            self._transition_mode("npc", npc_name=npc["name"])
             return [f"You finish searching {npc['name']}'s remains."]
         if not action.startswith("loot:item:"):
             raise AssertionError(action)
@@ -593,18 +666,22 @@ class AdventureGame:
             return ["That item is no longer there."]
         lines = self.give_player_item(item_id)
         if not actor.inventory:
-            self.mode = "npc"
+            self._transition_mode("npc", npc_name=npc["name"])
         return lines
 
     def apply_surrender_decision(self, action: str) -> list[str]:
         npc = self.npcs[self.current_npc_name]
         name = npc["name"]
         if action == "surrender:spare":
-            if name == "Bandit Nox":
-                self.flags.add("bandit_spared")
-            self.mode = "npc" if npc.get("persistent", True) else "exploration"
-            if self.mode == "exploration":
-                self.current_npc_name = None
+            self.flags.update(
+                self.world.get("story_rules", {})
+                .get("spare_flags", {})
+                .get(name, [])
+            )
+            if npc.get("persistent", True):
+                self._transition_mode("npc", npc_name=name)
+            else:
+                self._transition_mode("exploration")
             return [f"You spare {name}."]
         if action == "surrender:kill":
             actor = self._npc_actor(npc)
@@ -612,16 +689,19 @@ class AdventureGame:
             lines = [f"You kill {name} after the surrender."]
             lines.extend(self.defeat_npc(name))
             if npc.get("persistent", True):
-                self.mode = "npc"
+                self._transition_mode("npc", npc_name=name)
             else:
-                self.mode = "exploration"
-                self.current_npc_name = None
+                self._transition_mode("exploration")
             return lines
         raise AssertionError(action)
 
     def submit_riddle_answer(self, answer: str) -> list[str]:
+        assert_valid_state(self)
         if self.mode != "riddle" or not self.current_npc_name:
             raise ValueError("No riddle is waiting for an answer.")
+        before_location = self.player_location
+        before_mode = self.mode
+        before_npc = self.current_npc_name
         npc = self.npcs[self.current_npc_name]
         riddle = npc["riddle"]
         lines: list[str] = []
@@ -629,19 +709,18 @@ class AdventureGame:
             lines.extend(f"{npc['name']}: {line}" for line in riddle["success_lines"])
             npc["riddle_solved"] = True
             self.flags.update(riddle["set_flags_on_success"])
-            # The original authored data stores these rewards on the guardian,
-            # but the old interaction engine never exposed a nonviolent way to
-            # take them after passing the riddle.  Preserve the intended story
-            # path rather than forcing students to murder a guardian who just
-            # said the prize may be taken.
-            intended_reward = {
-                "Tower Guardian": "star_crystal",
-                "Custodian Echo": "grave_core",
-            }.get(npc["name"])
+            # Some story riddles intentionally grant an NPC-held item on
+            # success.  The mapping belongs to the world, not to engine names.
             actor = self._npc_actor(npc)
-            if intended_reward and actor.has_item(intended_reward):
-                self.remove_actor_item(actor, intended_reward)
-                lines.extend(self.give_player_item(intended_reward))
+            reward_items = (
+                self.world.get("story_rules", {})
+                .get("riddle_reward_items", {})
+                .get(npc["name"], [])
+            )
+            for item_id in reward_items:
+                if actor.has_item(item_id):
+                    self.remove_actor_item(actor, item_id)
+                    lines.extend(self.give_player_item(item_id))
         else:
             lines.extend(f"{npc['name']}: {line}" for line in riddle["failure_lines"])
             if riddle["damage_on_failure"]:
@@ -650,11 +729,16 @@ class AdventureGame:
                 if self.player.health <= 0:
                     self.lost = True
                     self.ending = "You collapse from your injuries. The adventure ends here."
-        self.mode = "npc"
-        self.sync_end_state()
+        self._transition_mode("npc", npc_name=npc["name"])
         if not lines:
             lines.append(f"{npc['name']} considers your answer.")
-        return lines
+        return self._complete_player_action(
+            "Answer the riddle",
+            lines,
+            before_location=before_location,
+            before_mode=before_mode,
+            before_npc=before_npc,
+        )
 
     def topic_available(self, npc: dict[str, Any], topic: dict[str, Any]) -> bool:
         if not self.npc_is_alive(npc):
@@ -722,8 +806,9 @@ class AdventureGame:
             return lines
         if exit_spec.get("warning_text"):
             lines.append(exit_spec["warning_text"])
-            self.pending_exit = (self.player_location, index)
-            self.mode = "confirm_move"
+            self._transition_mode(
+                "confirm_move", pending_exit=(self.player_location, index)
+            )
             return lines
         lines.extend(self.finish_move(self.player_location, index))
         return lines
@@ -935,19 +1020,21 @@ class AdventureGame:
         self.flags.update(spec.get("set_flags", []))
         if spec.get("once_flag"):
             self.flags.add(spec["once_flag"])
+        self.sync_end_state()
         if spec.get("go"):
             self.player_location = spec["go"]
             self.flags.add(f"visited:{self.player_location}")
             if not lines:
                 lines.append(f"You arrive at {self.room['name']}.")
-            lines.extend(self.on_location_enter())
+            if not self.over:
+                lines.extend(self.on_location_enter())
         if not lines:
             lines.append(f"You choose: {spec['text']}.")
         return lines
 
     def apply_inventory(self, action: str) -> list[str]:
         if action == "inventory:back":
-            self.mode = "exploration"
+            self._transition_mode("exploration")
             return ["You close your inventory and return to the adventure."]
         if action.startswith("equip:"):
             item_id = action.split(":", 1)[1]
@@ -1019,12 +1106,11 @@ class AdventureGame:
         return actual
 
     def start_combat(self, npc_name: str, *, temporary: dict[str, Any] | None = None) -> None:
-        self.current_npc_name = npc_name if temporary is None else None
-        self.combat_npc_name = npc_name
-        self.combat_temporary = temporary
-        self.mode = "combat"
-        self.player_defending = False
-        self.enemy_defending = False
+        self._transition_mode(
+            "combat",
+            combat_npc_name=npc_name,
+            combat_temporary=temporary,
+        )
 
     def current_combat_spec(self) -> dict[str, Any]:
         return self.combat_temporary if self.combat_temporary is not None else self.npcs[self.combat_npc_name]
@@ -1103,12 +1189,7 @@ class AdventureGame:
             npc["hostile"] = False
         npc["willingness_to_trade"] = max(npc.get("willingness_to_trade", 0), 80)
         npc["trade_offers"].extend(deepcopy(npc.get("surrender_trade_offers", [])))
-        self.combat_npc_name = None
-        self.combat_temporary = None
-        self.player_defending = False
-        self.enemy_defending = False
-        self.mode = "surrender_decision"
-        self.current_npc_name = npc["name"]
+        self._transition_mode("surrender_decision", npc_name=npc["name"])
         return [f"{npc['name']}: {line}" for line in npc.get("surrender_lines", [])] + [f"{npc['name']} surrenders."]
 
     def player_surrender(self, npc: dict[str, Any]) -> tuple[bool, list[str]]:
@@ -1181,16 +1262,10 @@ class AdventureGame:
         return lines
 
     def end_combat(self, *, to_npc: bool = False, npc_name: str | None = None) -> None:
-        self.combat_npc_name = None
-        self.combat_temporary = None
-        self.player_defending = False
-        self.enemy_defending = False
         if to_npc and npc_name:
-            self.mode = "npc"
-            self.current_npc_name = npc_name
+            self._transition_mode("npc", npc_name=npc_name)
         else:
-            self.mode = "exploration"
-            self.current_npc_name = None
+            self._transition_mode("exploration")
 
     def npc_mood(self, npc: dict[str, Any]) -> str:
         if npc.get("defeated"):
@@ -1218,38 +1293,33 @@ class AdventureGame:
                 self.ending = "The adventure ends here."
 
     def on_item_picked_up(self, item_id: str) -> None:
-        source = self.world.get("source_version")
-        if source == "version4.py" and item_id == "star_crystal":
-            self.flags.add("has_star_crystal")
-        if source == "version8.py":
-            if item_id == "grave_core":
-                self.flags.add("act3_started")
-            if item_id == "payroll_shard":
-                self.flags.add("has_payroll_shard")
+        extra_flags = (
+            self.world.get("story_rules", {})
+            .get("item_pickup_flags", {})
+            .get(item_id, [])
+        )
+        self.flags.update(extra_flags)
 
     def on_npc_defeated(self, npc: dict[str, Any]) -> list[str]:
-        if self.world.get("source_version") == "version4.py" and npc["name"] == "Crystal Spider":
-            return ["The crystal web tears apart, revealing a safer route through the cave."]
-        return []
+        return list(
+            self.world.get("story_rules", {})
+            .get("npc_defeat_lines", {})
+            .get(npc["name"], [])
+        )
 
     def on_location_enter(self) -> list[str]:
-        source = self.world.get("source_version")
-        lines: list[str] = []
-        if source == "version4.py" and self.player_location == "tower_top" and "first_tower_visit" not in self.flags:
-            self.flags.add("first_tower_visit")
-            lines.append("The air grows brighter and heavier at the same time. Something ancient is waiting here.")
-        if source == "version8.py":
-            messages = {
-                "survey_pad": ("survey_pad_intro", "The survey world is all hard light and harder silence. If there is an artifact here, the company buried it where only desperate people would keep digging."),
-                "crash_gully": ("crash_gully_intro", "Your crew is gone. The planet is not. Somewhere out under all this dust is the same buried thing they were willing to strand you over."),
-                "vault": ("vault_intro", "The buried chamber is too large to have been built for one drill team or one claim. Whatever this place was, frontier companies only found its grave, not its beginning."),
-            }
-            if self.player_location in messages:
-                flag, text = messages[self.player_location]
-                if flag not in self.flags:
-                    self.flags.add(flag)
-                    lines.append(text)
-        return lines
+        rule = (
+            self.world.get("story_rules", {})
+            .get("location_enter_once", {})
+            .get(self.player_location)
+        )
+        if not rule:
+            return []
+        flag = rule["flag"]
+        if flag in self.flags:
+            return []
+        self.flags.add(flag)
+        return list(rule.get("lines", []))
 
     def try_encounter(self) -> list[str] | None:
         if self.mode != "exploration":

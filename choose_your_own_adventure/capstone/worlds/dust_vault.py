@@ -1715,6 +1715,80 @@ WORLD_DATA = {'source_version': 'version8.py',
                  'handler': 'handle_rafe_offer',
                  'predicate': None}]}
 
+# Story-specific reactions live with the story rather than being hard-coded in
+# the reusable engine.
+WORLD_DATA["story_rules"] = {
+    "goals": [
+        {
+            "text": "Talk to Rafe Mercer and get briefed on the lift.",
+            "blocked_flags": ["act1_started"],
+        },
+        {
+            "text": "Break into the Black Archive and steal the payroll shard.",
+            "required_flags": ["act1_started"],
+            "blocked_flags": ["act2_started", "has_payroll_shard"],
+        },
+        {
+            "text": "Reach the extraction skiff and see how the job shakes out.",
+            "required_flags": ["has_payroll_shard"],
+            "blocked_flags": ["act2_started"],
+        },
+        {
+            "text": "Search Relay Ridge for a locator chart to the buried site.",
+            "required_flags": ["act2_started"],
+            "blocked_flags": ["found_locator"],
+        },
+        {
+            "text": "Reach Drill Site Theta and secure the vault cipher.",
+            "required_flags": ["found_locator"],
+            "blocked_items": ["vault_cipher"],
+        },
+        {
+            "text": "Descend through Burial Crater and reach the vault heart.",
+            "required_items": ["vault_cipher"],
+            "blocked_flags": ["has_grave_core"],
+        },
+        {
+            "text": "You sold the vault and bought yourself a future.",
+            "required_flags": ["game_won", "ending_corporate"],
+        },
+        {
+            "text": "The truth is out, and the scramble has begun.",
+            "required_flags": ["game_won", "ending_broadcast"],
+        },
+        {
+            "text": "The vault is buried again.",
+            "required_flags": ["game_won", "ending_bury"],
+        },
+        {
+            "text": "Decide what to do with the grave core before the cutters close in.",
+            "required_flags": ["has_grave_core"],
+        },
+    ],
+    "item_pickup_flags": {"grave_core": ["act3_started"]},
+    "riddle_reward_items": {"Custodian Echo": ["grave_core"]},
+    "location_enter_once": {
+        "survey_pad": {
+            "flag": "survey_pad_intro",
+            "lines": [
+                "The survey world is all hard light and harder silence. If there is an artifact here, the company buried it where only desperate people would keep digging."
+            ],
+        },
+        "crash_gully": {
+            "flag": "crash_gully_intro",
+            "lines": [
+                "Your crew is gone. The planet is not. Somewhere out under all this dust is the same buried thing they were willing to strand you over."
+            ],
+        },
+        "vault": {
+            "flag": "vault_intro",
+            "lines": [
+                "The buried chamber is too large to have been built for one drill team or one claim. Whatever this place was, frontier companies only found its grave, not its beginning."
+            ],
+        },
+    },
+}
+
 # ---------------------------------------------------------------------------
 # STUDENT EXTENSION ZONE
 # ---------------------------------------------------------------------------

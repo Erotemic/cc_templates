@@ -237,3 +237,35 @@ coverage report -m
 The simulator and tests call the same `choices()` / `apply()` API as the
 frontends. This is why the game remains fully testable when Textual is not
 installed.
+
+## Architecture contracts that prevent bug classes
+
+The capstone deliberately encodes a few architectural rules as tests instead of
+relying on maintainers to remember them:
+
+- **One mode-transition authority.** `_transition_mode()` is the only runtime
+  code that changes `mode`. It also establishes/clears NPC, combat, and pending
+  movement context atomically. This prevents stale combat/NPC state from leaking
+  into later turns.
+- **One action transaction boundary.** A menu action synchronizes win/loss state
+  before automatic encounters, then checks invariants and guarantees same-turn
+  feedback. A winning room choice therefore cannot accidentally start a random
+  fight after the game is already over.
+- **Fail fast on corrupt runtime state.** Public action boundaries validate the
+  state machine before and after transitions. Internal corruption becomes a
+  local assertion instead of turning into a mysterious later UI bug.
+- **Validate authored data up front.** Missing exit directions, feature names,
+  choice text, NPC stats, malformed trades/riddles, invalid equipment slots,
+  unknown story-rule references, and bad collection shapes are rejected when
+  the game is constructed.
+- **Unambiguous choices.** Legal action IDs must be unique. Repeated loose items
+  are presented as one counted action (`Health Tonic x2`) rather than two menu
+  entries with the same action ID.
+- **Story rules belong to the world.** Goals, riddle rewards, spare flags,
+  first-visit prose, pickup hooks, and defeat prose are declarative
+  `story_rules` in the world files. The reusable engine does not key those
+  behaviors to `version4.py`, `version8.py`, Bandit Nox, Tower Guardian, etc.
+
+These rules are intentionally small enough for students to inspect. The point
+is not framework machinery; it is to show how a few good boundaries remove
+whole families of bugs.
