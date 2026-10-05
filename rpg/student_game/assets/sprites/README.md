@@ -23,9 +23,11 @@ A good editing loop is:
    python render_character.py moon_mage
    ```
 
-The SVG uses a `1024 x 1024` `viewBox` and named groups such as `head`,
-`helmet`, `torso`, `jetpack`, `plasma-cutlass`, and `pistol-arm`. Keeping those
-names is not required by the engine, but it makes the file easier to teach.
+`space_pirate.svg` uses a `1024 x 1024` `viewBox` and named groups such as
+`head`, `helmet`, `torso`, `jetpack`, `plasma-cutlass`, and `pistol-arm`.
+`moon_mage.svg` keeps the `512 x 768` coordinate system of its original Python
+art. Group names are not required by the engine, but they make the files easier
+to teach.
 
 ## Path-first SVG workflow
 
@@ -43,7 +45,64 @@ Useful ideas to experiment with:
 - `<g id="...">` for organizing related pieces
 - `transform` for moving or reusing a small design
 
-Keep the root `viewBox="0 0 1024 1024"` unless you also intend to retune the
-sprite's `scale=` value in `student_game/art.py`.
+Keep each SVG's root `viewBox` stable while editing unless you also intend to
+retune that frame's `scale=` value in `student_game/art.py`.
 
-`moon_mage.svg` uses the same `1024 x 1024` viewBox and readable group names such as `staff`, `back-cloak`, `legs`, `front-cloak`, and `hood-and-face`.
+`moon_mage.svg` uses readable group names such as `staff`, `cape`, `legs`,
+`face`, `hair`, `hood`, `front-cloak`, and `spell`.
+
+## Still frames and animation
+
+The game treats one drawing as one **sprite frame**:
+
+```python
+from rpg_battle.api import SvgSpriteFrame
+
+hero = SvgSpriteFrame(
+    "My Hero",
+    "assets/sprites/my_hero.svg",
+)
+```
+
+That frame does not need to contain animation. The default battle presentation
+in `student_game/catalog.py` moves the whole frame for you: characters bob while
+idle, lunge when they attack, shake when hurt, and fall when knocked out.
+
+If you later want true frame-by-frame animation, draw several SVG files and put
+them in a `FrameAnimation`:
+
+```python
+from rpg_battle.api import CharacterArt, FrameAnimation, SvgSpriteFrame
+
+idle = SvgSpriteFrame("Hero Idle", "assets/sprites/hero_idle.svg")
+attack_1 = SvgSpriteFrame("Hero Attack 1", "assets/sprites/hero_attack_1.svg")
+attack_2 = SvgSpriteFrame("Hero Attack 2", "assets/sprites/hero_attack_2.svg")
+attack_3 = SvgSpriteFrame("Hero Attack 3", "assets/sprites/hero_attack_3.svg")
+
+hero = CharacterArt(
+    "Hero",
+    idle=idle,
+    attack=FrameAnimation(
+        [attack_1, attack_2, attack_3],
+        fps=8,
+        loop=False,
+    ),
+)
+```
+
+You do not have to draw special `hurt` or `faint` frames. Any missing state
+reuses the idle frame. The whole-character shake/fall motion still applies.
+
+You can inspect a particular animation time without starting a battle:
+
+```bash
+python render_character.py moon_mage --state idle --time 0.0
+python render_character.py moon_mage --state attack --time 0.125
+```
+
+The important separation is:
+
+- a **frame** is one picture;
+- a **frame animation** chooses pictures over time;
+- a **motion** moves the whole picture;
+- battle code chooses semantic states such as `attack` or `hurt`.

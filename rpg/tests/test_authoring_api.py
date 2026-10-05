@@ -8,7 +8,16 @@ import pytest
 from student_game import CONTENT
 from student_game import characters, moves
 from student_game.catalog import GAME
-from rpg_battle.api import Battle, Move, Palette, Sprite, SvgSprite, Team
+from rpg_battle.api import (
+    Battle,
+    CharacterArt,
+    CodeSpriteFrame,
+    FrameAnimation,
+    Move,
+    Palette,
+    SvgSpriteFrame,
+    Team,
+)
 from rpg_battle.catalog import ContentValidationError, format_validation_report
 from rpg_battle.core.actions import attack_action, skill_action
 from rpg_battle.core.battle_state import new_battle
@@ -85,14 +94,14 @@ def test_student_game_uses_direct_object_references() -> None:
 
 def test_sprite_authored_scale_compiles_for_layout_fitting() -> None:
     palette = Palette("Test", body=(1, 2, 3), accent=(4, 5, 6))
-    sprite = Sprite("Large Drawing", palette, scale=0.5).circle((0, 0), 20)
+    sprite = CodeSpriteFrame("Large Drawing", palette, scale=0.5).circle((0, 0), 20)
     compiled = sprite.compile()
     assert compiled["scale"] == 0.5
     assert compiled["shapes"][0]["radius"] == 20
 
 
 def test_svg_sprite_compiles_as_packaged_vector_art() -> None:
-    sprite = SvgSprite(
+    sprite = SvgSpriteFrame(
         "Vector Hero",
         "assets/sprites/space_pirate.svg",
         scale=0.16,
@@ -104,6 +113,20 @@ def test_svg_sprite_compiles_as_packaged_vector_art() -> None:
     assert compiled["path"] == "assets/sprites/space_pirate.svg"
     assert compiled["scale"] == 0.16
     assert compiled["flash_color"] == (1, 2, 3)
+
+
+def test_frame_animation_and_character_art_compile_cleanly() -> None:
+    palette = Palette("Anim", body=(1, 2, 3), accent=(4, 5, 6))
+    first = CodeSpriteFrame("First", palette).circle((0, 0), 10)
+    second = CodeSpriteFrame("Second", palette).rect((0, 0), (20, 20))
+    attack = FrameAnimation([first, second], fps=5, loop=False)
+    art = CharacterArt("Animated Hero", idle=first, attack=attack, scale=0.75)
+    compiled = art.compile()
+    assert compiled["kind"] == "character_art"
+    assert compiled["scale"] == 0.75
+    assert compiled["states"]["idle"]["kind"] == "procedural"
+    assert compiled["states"]["attack"]["kind"] == "frame_animation"
+    assert len(compiled["states"]["attack"]["frames"]) == 2
 
 
 def test_space_pirate_uses_svg_art_resource() -> None:

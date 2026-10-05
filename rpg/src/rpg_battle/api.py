@@ -125,11 +125,15 @@ class Palette:
 
 
 @dataclass
-class Sprite:
-    """Procedural character drawing built from readable shape calls.
+class CodeSpriteFrame:
+    """One still sprite frame drawn with readable Python shape calls.
 
-    ``scale`` fits an elaborate drawing into the standard battle layout without
-    forcing every authored coordinate to be rewritten.
+    A frame is deliberately just a picture. Whole-character motion and frame
+    animation are separate concepts, so students can start with a completely
+    static drawing and let the battle presentation move it around.
+
+    ``scale`` is kept for compatibility with existing authored art. New animated
+    characters can instead put their shared scale on :class:`CharacterArt`.
     """
 
     name: str
@@ -139,8 +143,13 @@ class Sprite:
     scale: float = 1.0
 
     @property
-    def sprite_id(self) -> str:
+    def frame_id(self) -> str:
         return _id(self.id, self.name)
+
+    @property
+    def sprite_id(self) -> str:
+        """Compatibility name used by the current compiled game catalog."""
+        return self.frame_id
 
     def circle(
         self,
@@ -150,7 +159,7 @@ class Sprite:
         fill: str = "body",
         outline: str = "detail",
         width: int = 2,
-    ) -> "Sprite":
+    ) -> "CodeSpriteFrame":
         self.shapes.append(
             {
                 "kind": "circle",
@@ -171,7 +180,7 @@ class Sprite:
         fill: str = "body",
         outline: str = "detail",
         width: int = 2,
-    ) -> "Sprite":
+    ) -> "CodeSpriteFrame":
         self.shapes.append(
             {
                 "kind": "ellipse",
@@ -193,7 +202,7 @@ class Sprite:
         outline: str = "detail",
         width: int = 2,
         border_radius: int = 10,
-    ) -> "Sprite":
+    ) -> "CodeSpriteFrame":
         self.shapes.append(
             {
                 "kind": "rect",
@@ -214,7 +223,7 @@ class Sprite:
         fill: str = "accent",
         outline: str = "detail",
         width: int = 2,
-    ) -> "Sprite":
+    ) -> "CodeSpriteFrame":
         self.shapes.append(
             {
                 "kind": "polygon",
@@ -232,7 +241,7 @@ class Sprite:
         *,
         color: str = "detail",
         width: int = 3,
-    ) -> "Sprite":
+    ) -> "CodeSpriteFrame":
         self.shapes.append({"kind": "line", "points": list(points), "color": color, "width": width})
         return self
 
@@ -242,13 +251,13 @@ class Sprite:
         *,
         color: str = "accent",
         width: int = 3,
-    ) -> "Sprite":
+    ) -> "CodeSpriteFrame":
         self.shapes.append(
             {"kind": "polyline", "points": list(points), "color": color, "width": width}
         )
         return self
 
-    def face(self, y: int = -6) -> "Sprite":
+    def face(self, y: int = -6) -> "CodeSpriteFrame":
         """Add the project's friendly default face."""
 
         return (
@@ -261,7 +270,7 @@ class Sprite:
 
     def compile(self) -> dict[str, object]:
         if self.scale <= 0:
-            raise ValueError(f"Sprite scale must be positive, got {self.scale!r}")
+            raise ValueError(f"Sprite frame scale must be positive, got {self.scale!r}")
         return {
             "kind": "procedural",
             "palette": self.palette.palette_id,
@@ -271,13 +280,12 @@ class Sprite:
 
 
 @dataclass(frozen=True)
-class SvgSprite:
-    """Vector character art loaded directly by pygame from an SVG resource.
+class SvgSpriteFrame:
+    """One still sprite frame loaded from an SVG resource.
 
     ``path`` is relative to ``package`` so student artwork remains portable when
-    the game is installed as a package.  SVGs are especially useful for students
-    who want to work in tools such as Inkscape instead of authoring every shape
-    from Python.
+    the game is installed as a package. SVG frames are useful for students who
+    want to edit vector paths in tools such as Inkscape.
     """
 
     name: str
@@ -288,19 +296,24 @@ class SvgSprite:
     flash_color: Color = (210, 235, 255)
 
     @property
-    def sprite_id(self) -> str:
+    def frame_id(self) -> str:
         return _id(self.id, self.name)
+
+    @property
+    def sprite_id(self) -> str:
+        """Compatibility name used by the current compiled game catalog."""
+        return self.frame_id
 
     def compile(self) -> dict[str, object]:
         if self.scale <= 0:
-            raise ValueError(f"Sprite scale must be positive, got {self.scale!r}")
+            raise ValueError(f"Sprite frame scale must be positive, got {self.scale!r}")
         resource_path = Path(self.path)
         if resource_path.is_absolute() or ".." in resource_path.parts:
             raise ValueError(
-                f"SVG sprite path must stay inside its package, got {self.path!r}"
+                f"SVG frame path must stay inside its package, got {self.path!r}"
             )
         if not self.path.lower().endswith(".svg"):
-            raise ValueError(f"SVG sprite path must end in .svg, got {self.path!r}")
+            raise ValueError(f"SVG frame path must end in .svg, got {self.path!r}")
         return {
             "kind": "svg",
             "package": self.package,
@@ -310,7 +323,187 @@ class SvgSprite:
         }
 
 
-SpriteAsset = Sprite | SvgSprite
+
+
+# Old names remain as compatibility aliases for existing classroom exercises.
+# New examples use the *Frame names so one frame is not confused with a whole
+# animated character presentation.
+Sprite = CodeSpriteFrame
+SvgSprite = SvgSpriteFrame
+
+SpriteFrame = CodeSpriteFrame | SvgSpriteFrame
+
+
+@dataclass(frozen=True)
+class FrameAnimation:
+    """Play several still sprite frames in order.
+
+    This is intentionally small enough to understand from the formula:
+    ``frame_index = int(time * fps)``.
+    """
+
+    frames: Sequence[SpriteFrame]
+    fps: float = 8.0
+    loop: bool = False
+
+    def compile(self) -> dict[str, object]:
+        if not self.frames:
+            raise ValueError("FrameAnimation needs at least one frame")
+        if self.fps <= 0:
+            raise ValueError(f"FrameAnimation fps must be positive, got {self.fps!r}")
+        return {
+            "kind": "frame_animation",
+            "fps": float(self.fps),
+            "loop": bool(self.loop),
+            "frames": [frame.compile() for frame in self.frames],
+        }
+
+
+SpriteVisual = SpriteFrame | FrameAnimation
+
+
+@dataclass(frozen=True)
+class CharacterArt:
+    """Optional state-specific art for a character.
+
+    ``idle`` is required. Missing action states automatically reuse ``idle``.
+    That means a student can start with one still frame and add frame-by-frame
+    animation only when they want it.
+    """
+
+    name: str
+    idle: SpriteVisual
+    attack: SpriteVisual | None = None
+    hurt: SpriteVisual | None = None
+    faint: SpriteVisual | None = None
+    id: str | None = None
+    scale: float = 1.0
+    flash_color: Color | None = None
+
+    @property
+    def sprite_id(self) -> str:
+        return _id(self.id, self.name)
+
+    def compile(self) -> dict[str, object]:
+        if self.scale <= 0:
+            raise ValueError(f"CharacterArt scale must be positive, got {self.scale!r}")
+        states: dict[str, object] = {"idle": self.idle.compile()}
+        for state_name in ("attack", "hurt", "faint"):
+            visual = getattr(self, state_name)
+            if visual is not None:
+                states[state_name] = visual.compile()
+        result: dict[str, object] = {
+            "kind": "character_art",
+            "scale": float(self.scale),
+            "states": states,
+        }
+        if self.flash_color is not None:
+            result["flash_color"] = tuple(self.flash_color)
+        return result
+
+
+SpriteAsset = SpriteFrame | CharacterArt
+
+
+@dataclass(frozen=True)
+class BobMotion:
+    """Gently move a still character up and down."""
+
+    height: float = 3.0
+    period: float = 2.85
+
+    def compile(self) -> dict[str, object]:
+        if self.period <= 0:
+            raise ValueError("BobMotion period must be positive")
+        return {"kind": "bob", "height": float(self.height), "period": float(self.period)}
+
+
+@dataclass(frozen=True)
+class LungeMotion:
+    """Move the whole character toward its opponent and back."""
+
+    distance: float = 18.0
+    duration: float = 0.25
+
+    def compile(self) -> dict[str, object]:
+        if self.duration <= 0:
+            raise ValueError("LungeMotion duration must be positive")
+        return {
+            "kind": "lunge",
+            "distance": float(self.distance),
+            "duration": float(self.duration),
+        }
+
+
+@dataclass(frozen=True)
+class ShakeMotion:
+    """Shake the whole character when it takes a hit."""
+
+    distance: float = 6.0
+    duration: float = 0.30
+    cycles: float = 2.0
+
+    def compile(self) -> dict[str, object]:
+        if self.duration <= 0:
+            raise ValueError("ShakeMotion duration must be positive")
+        if self.cycles <= 0:
+            raise ValueError("ShakeMotion cycles must be positive")
+        return {
+            "kind": "shake",
+            "distance": float(self.distance),
+            "duration": float(self.duration),
+            "cycles": float(self.cycles),
+        }
+
+
+@dataclass(frozen=True)
+class FallMotion:
+    """Whole-character knockout motion used by the default battle presentation."""
+
+    distance: float = 110.0
+    duration: float = 0.90
+    rotation: float = 180.0
+    rotation_duration: float = 0.24
+    show_x_eyes: bool = True
+
+    def compile(self) -> dict[str, object]:
+        if self.duration <= 0:
+            raise ValueError("FallMotion duration must be positive")
+        if self.rotation_duration <= 0:
+            raise ValueError("FallMotion rotation_duration must be positive")
+        return {
+            "kind": "fall",
+            "distance": float(self.distance),
+            "duration": float(self.duration),
+            "rotation": float(self.rotation),
+            "rotation_duration": float(self.rotation_duration),
+            "show_x_eyes": bool(self.show_x_eyes),
+        }
+
+
+SpriteMotion = BobMotion | LungeMotion | ShakeMotion | FallMotion
+
+
+@dataclass(frozen=True)
+class CharacterMotionSet:
+    """Default whole-character motion for the four battle presentation states.
+
+    These motions work even when the character art is one completely static
+    frame. Attack and hurt motion are layered on top of the idle bob.
+    """
+
+    idle: BobMotion = field(default_factory=BobMotion)
+    attack: LungeMotion = field(default_factory=LungeMotion)
+    hurt: ShakeMotion = field(default_factory=ShakeMotion)
+    faint: FallMotion = field(default_factory=FallMotion)
+
+    def compile(self) -> dict[str, dict[str, object]]:
+        return {
+            "idle": self.idle.compile(),
+            "attack": self.attack.compile(),
+            "hurt": self.hurt.compile(),
+            "faint": self.faint.compile(),
+        }
 
 
 @dataclass(frozen=True)
@@ -718,6 +911,7 @@ class GamePresentation:
     switch_sound: Sound
     defend_sound: Sound
     heal_effect: VisualEffect
+    character_motion: CharacterMotionSet = field(default_factory=CharacterMotionSet)
 
     def compile(self) -> PresentationSpec:
         return PresentationSpec(
@@ -731,6 +925,7 @@ class GamePresentation:
             switch_sound_id=self.switch_sound.sound_id,
             defend_sound_id=self.defend_sound.sound_id,
             heal_effect_id=self.heal_effect.effect_id,
+            character_motion=self.character_motion.compile(),
         )
 
 

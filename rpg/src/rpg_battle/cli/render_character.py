@@ -37,6 +37,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--scale", type=float, default=1.6, help="Preview scale for the sprite")
     parser.add_argument(
+        "--state",
+        choices=("idle", "attack", "hurt", "faint"),
+        default="idle",
+        help="Presentation state to preview.",
+    )
+    parser.add_argument(
+        "--time",
+        type=float,
+        default=0.0,
+        help="Seconds into the selected state. Useful for inspecting animation frames.",
+    )
+    parser.add_argument(
         "--transparent",
         action="store_true",
         help="Render on a transparent background instead of the battle backdrop",
@@ -50,15 +62,36 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _render_character(
-    surface: pygame.Surface, character_id: str, center: tuple[int, int], *, side: str, scale: float
+    surface: pygame.Surface,
+    character_id: str,
+    center: tuple[int, int],
+    *,
+    side: str,
+    scale: float,
+    state: str = "idle",
+    elapsed: float = 0.0,
 ) -> None:
-    actor = SpriteActor(side, sprites=CONTENT.sprites, palettes=CONTENT.palettes)
+    actor = SpriteActor(
+        side,
+        sprites=CONTENT.sprites,
+        palettes=CONTENT.palettes,
+        character_motion=CONTENT.presentation.character_motion,
+    )
+    actor.set_preview_state(state, elapsed)
     spec = CHARACTERS[character_id]
     actor.draw(surface, spec.sprite_id, center, scale=scale)
 
 
 def _render_single_character(
-    character_id: str, *, output: str, side: str, scale: float, transparent: bool, no_show: bool
+    character_id: str,
+    *,
+    output: str,
+    side: str,
+    scale: float,
+    state: str,
+    elapsed: float,
+    transparent: bool,
+    no_show: bool,
 ) -> None:
     console.print(f"[bold green]Rendering[/bold green] character [magenta]{character_id}[/magenta]")
     surface = init_surface(headless=no_show)
@@ -67,7 +100,13 @@ def _render_single_character(
     else:
         draw_background(surface)
     _render_character(
-        surface, character_id, (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50), side=side, scale=scale
+        surface,
+        character_id,
+        (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50),
+        side=side,
+        scale=scale,
+        state=state,
+        elapsed=elapsed,
     )
     pygame.draw.rect(surface, (255, 255, 255), surface.get_rect(), width=2)
     font = pygame.font.Font(None, 36)
@@ -156,6 +195,8 @@ def main() -> None:
         output=output,
         side=args.side,
         scale=args.scale,
+        state=args.state,
+        elapsed=args.time,
         transparent=args.transparent,
         no_show=args.no_show,
     )

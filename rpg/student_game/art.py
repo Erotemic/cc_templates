@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-"""Characters are drawn from simple shapes. Change these and preview immediately."""
+"""Still character frames. Change one frame and preview it immediately."""
 
-from rpg_battle.api import Palette, Sprite, SvgSprite
+from rpg_battle.api import CodeSpriteFrame, Palette, SvgSpriteFrame
 
 dawn = Palette(
     'Dawn',
@@ -266,7 +266,7 @@ PALETTES = [
     cryptid,
 ]
 
-knight_dawn = Sprite('Knight Dawn', dawn, id='knight_dawn')
+knight_dawn = CodeSpriteFrame('Knight Dawn', dawn, id='knight_dawn')
 knight_dawn.polygon([(-28, 14), (0, -52), (28, 14)], fill='accent', outline='detail', width=2)
 knight_dawn.rect((0, 14), (68, 78), fill='body', outline='detail', width=2, border_radius=10)
 knight_dawn.rect((0, -8), (46, 52), fill='accent', outline='detail', width=2, border_radius=10)
@@ -278,7 +278,7 @@ knight_dawn.line([(-12, -14), (-12, -12)], color='detail', width=2)
 knight_dawn.line([(12, -14), (12, -12)], color='detail', width=2)
 knight_dawn.polyline([(-12, 2), (0, 8), (12, 2)], color='detail', width=2)
 
-verdant_druid = Sprite('Verdant Druid', verdant, id='verdant_druid', scale=0.50)
+verdant_druid = CodeSpriteFrame('Verdant Druid', verdant, id='verdant_druid', scale=0.50)
 
 # Verdant Druid is a walking seed-shrine: part masked wanderer, part young
 # tree.  The character is intentionally not a conventional green-robed wizard.
@@ -378,7 +378,7 @@ verdant_druid.circle((85, 44), 2, fill='flower', outline='leaf_dark', width=1)
 verdant_druid.circle((-93, 61), 3, fill='flower', outline='leaf_dark', width=1)
 
 
-storm_ranger = Sprite('Storm Ranger', storm, id='storm_ranger')
+storm_ranger = CodeSpriteFrame('Storm Ranger', storm, id='storm_ranger')
 storm_ranger.ellipse((0, 8), (70, 88), fill='body', outline='detail', width=2)
 storm_ranger.polygon([(-36, -10), (-8, -58), (18, -16)], fill='accent', outline='detail', width=2)
 storm_ranger.line([(34, -32), (52, 28)], color='detail', width=5)
@@ -392,7 +392,7 @@ storm_ranger.polyline([(-12, 2), (0, 8), (12, 2)], color='detail', width=2)
 # The face is intentionally a separate component.  Keeping the face geometry
 # together makes it easy to preserve two eyes, nose, mouth, ears, and skin tone
 # even as the hood, hair, or cloak are redesigned around it.
-def _draw_moon_mage_face(sprite: Sprite) -> None:
+def _draw_moon_mage_face(sprite: CodeSpriteFrame) -> None:
     sprite.polygon(
         [(-32, -193), (-12, -205), (14, -203), (33, -187), (35, -146),
          (24, -114), (0, -96), (-22, -110), (-36, -143)],
@@ -424,7 +424,7 @@ def _draw_moon_mage_face(sprite: Sprite) -> None:
 # Moon Mage is the SVG port of the original classroom PIL design.
 # Keeping the art in one vector file makes it approachable for students who
 # want to work visually rather than edit Python drawing coordinates.
-moon_mage = SvgSprite(
+moon_mage = SvgSpriteFrame(
     'Moon Mage',
     'assets/sprites/moon_mage.svg',
     id='moon_mage',
@@ -432,7 +432,7 @@ moon_mage = SvgSprite(
     flash_color=(180, 232, 255),
 )
 
-crystal_guardian = Sprite('Crystal Guardian', crystal, id='crystal_guardian')
+crystal_guardian = CodeSpriteFrame('Crystal Guardian', crystal, id='crystal_guardian')
 crystal_guardian.polygon([(-40, 10), (-14, -44), (14, -44), (40, 10), (20, 52), (-20, 52)], fill='body', outline='detail', width=2)
 crystal_guardian.polygon([(-12, -52), (0, -74), (12, -52)], fill='accent', outline='detail', width=2)
 crystal_guardian.polygon([(-54, 4), (-34, -20), (-26, 22)], fill='accent', outline='detail', width=2)
@@ -443,7 +443,7 @@ crystal_guardian.line([(-12, -10), (-12, -8)], color='detail', width=2)
 crystal_guardian.line([(12, -10), (12, -8)], color='detail', width=2)
 crystal_guardian.polyline([(-12, 6), (0, 12), (12, 6)], color='detail', width=2)
 
-mist_spirit = Sprite('Mist Spirit', mist_spirit_palette, id='mist_spirit', scale=0.46)
+mist_spirit = CodeSpriteFrame('Mist Spirit', mist_spirit_palette, id='mist_spirit', scale=0.46)
 
 # Mist Spirit is an empty presence held together by drifting veils.  It has no
 # ordinary face or torso: a cracked mask hangs inside a dark aperture while long
@@ -539,7 +539,7 @@ mist_spirit.polyline([(31, 1), (23, 10), (17, 20)], color='accent', width=2)
 mist_spirit.polyline([(-25, 55), (-13, 62), (-9, 74)], color='fog_light', width=2)
 mist_spirit.polyline([(23, 55), (16, 65), (17, 76)], color='fog_shadow', width=2)
 
-runesage = Sprite('Runesage', rune_sage, id='runesage', scale=0.52)
+runesage = CodeSpriteFrame('Runesage', rune_sage, id='runesage', scale=0.52)
 
 # Rune Sage is a floating geometer rather than a conventional robed person.
 # The design is assembled from the same primitives students can use: polygons
@@ -684,7 +684,7 @@ runesage.polygon([(79, 48), (86, 42), (93, 49), (86, 56)], fill='robe_shadow', o
 runesage.line([(0, -25), (0, 7)], color='gold_light', width=2)
 runesage.line([(-25, 95), (0, 82), (25, 95)], color='accent', width=3)
 
-ai_slop = Sprite('Ai Slop', slop, id='ai_slop')
+ai_slop = CodeSpriteFrame('Ai Slop', slop, id='ai_slop')
 ai_slop.ellipse((0, 8), (82, 88), fill='body', outline='detail', width=2)
 ai_slop.polygon([(-18, -52), (18, -46), (32, -10), (-26, -18)], fill='accent', outline='detail', width=2)
 ai_slop.rect((-48, 12), (16, 42), fill='accent', outline='detail', width=2, border_radius=5)
@@ -699,10 +699,10 @@ ai_slop.rect((-12, -34), (10, 10), fill='accent', outline='detail', width=2, bor
 ai_slop.rect((32, 24), (12, 12), fill='accent', outline='detail', width=2, border_radius=2)
 
 # AI Slop Prime is the same synthetic-ooze idea pushed into a boss silhouette.
-# It intentionally uses only the same readable Sprite primitives students use:
+# It intentionally uses only the same readable CodeSpriteFrame primitives students use:
 # overlapping ellipses for volume, polygons for panels/shards, circles for eyes,
 # and doubled lines for the angular glitch limbs.
-ai_slop_prime = Sprite('Ai Slop Prime', slop_prime, id='ai_slop_prime')
+ai_slop_prime = CodeSpriteFrame('Ai Slop Prime', slop_prime, id='ai_slop_prime')
 
 # Ground contact and lower shadow.  The wide puddle makes Prime feel heavy and
 # keeps the irregular upper silhouette readable instead of looking like a ball.
@@ -836,7 +836,7 @@ ai_slop_prime.rect((83, 82), (7, 7), fill='accent', outline='detail', width=1, b
 ai_slop_prime.circle((-124, 39), 4, fill='body', outline='detail', width=1)
 ai_slop_prime.circle((125, 30), 3, fill='body_light', outline='body', width=1)
 
-null_hydra = Sprite('Null Hydra', rune, id='null_hydra')
+null_hydra = CodeSpriteFrame('Null Hydra', rune, id='null_hydra')
 null_hydra.ellipse((0, 8), (108, 96), fill='body', outline='detail', width=2)
 null_hydra.polygon([(-58, -8), (-30, -54), (-8, -6)], fill='accent', outline='detail', width=2)
 null_hydra.polygon([(0, -18), (18, -70), (32, -10)], fill='accent', outline='detail', width=2)
@@ -851,7 +851,7 @@ null_hydra.polyline([(-34, 30), (-12, 40), (8, 24), (28, 42), (48, 28)], color='
 null_hydra.circle((-60, 36), 8, fill='accent', outline='detail', width=2)
 null_hydra.circle((62, 42), 10, fill='accent', outline='detail', width=2)
 
-star_corsair = Sprite('Star Corsair', corsair, id='star_corsair')
+star_corsair = CodeSpriteFrame('Star Corsair', corsair, id='star_corsair')
 star_corsair.ellipse((0, 10), (78, 88), fill='body', outline='detail', width=2)
 star_corsair.polyline([(-52, -34), (-14, -54), (24, -48), (52, -30)], color='accent', width=5)
 star_corsair.polygon([(-8, -60), (0, -82), (12, -56)], fill='accent', outline='detail', width=2)
@@ -866,7 +866,7 @@ star_corsair.polyline([(-12, 2), (0, 8), (12, 2)], color='detail', width=2)
 
 # Velvet Hexer is a courtly silhouette: high collar, fitted bodice, layered
 # velvet skirts, and moth-ritual ornaments instead of a faceless cape mass.
-velvet_hexer = Sprite('Velvet Hexer', velvet, id='velvet_hexer', scale=0.48)
+velvet_hexer = CodeSpriteFrame('Velvet Hexer', velvet, id='velvet_hexer', scale=0.48)
 
 # Back train and outer skirts.
 velvet_hexer.polygon([(-19, -8), (-56, 12), (-76, 52), (-64, 93), (-20, 108), (-9, 70)], fill='velvet_dark', outline='detail', width=3)
@@ -919,7 +919,7 @@ velvet_hexer.circle((-35, 70), 4, fill='thorn_light', outline='detail', width=1)
 velvet_hexer.circle((34, 73), 4, fill='thorn', outline='detail', width=1)
 
 
-siren_engine = Sprite('Siren Engine', siren, id='siren_engine')
+siren_engine = CodeSpriteFrame('Siren Engine', siren, id='siren_engine')
 siren_engine.ellipse((0, 6), (74, 94), fill='body', outline='detail', width=2)
 siren_engine.circle((0, -40), 20, fill='accent', outline='detail', width=2)
 siren_engine.polyline([(-34, -22), (-20, -48), (-8, -22)], color='detail', width=3)
@@ -939,7 +939,7 @@ siren_engine.polyline([(-12, 4), (0, 10), (12, 4)], color='detail', width=2)
 # This gives art-focused students a second authoring path: edit the vector file
 # directly in a text editor or a tool such as Inkscape, then rerun the same
 # character preview command used for procedural sprites.
-space_pirate = SvgSprite(
+space_pirate = SvgSpriteFrame(
     'Space Pirate',
     'assets/sprites/space_pirate.svg',
     id='space_pirate',
@@ -949,7 +949,7 @@ space_pirate = SvgSprite(
 
 # Tiny Ancient Menace is now a compact scarab-idol: half relic, half scuttling
 # machine, with a tiny body trying very hard to project monumental authority.
-tiny_ancient_menace = Sprite('Tiny Ancient Menace', menace, id='tiny_ancient_menace', scale=0.52)
+tiny_ancient_menace = CodeSpriteFrame('Tiny Ancient Menace', menace, id='tiny_ancient_menace', scale=0.52)
 
 # Crown-shrine shell.
 tiny_ancient_menace.polygon([(-34, -38), (-11, -76), (17, -76), (38, -38), (46, -4), (40, 46), (16, 71), (-16, 71), (-39, 48), (-47, -6)], fill='stone_dark', outline='detail', width=4)
@@ -994,7 +994,7 @@ tiny_ancient_menace.ellipse((0, 91), (86, 10), fill='void', outline='void', widt
 
 # Cryptid Friend is a plush midnight creature with enormous ears, a lantern belly,
 # and long arms that make her read as odd but gentle instead of ominous.
-cryptid_friend = Sprite('Cryptid Friend', cryptid, id='cryptid_friend', scale=0.47)
+cryptid_friend = CodeSpriteFrame('Cryptid Friend', cryptid, id='cryptid_friend', scale=0.47)
 
 # Oversized ear-fins define the silhouette.
 cryptid_friend.polygon([(-24, -39), (-71, -103), (-108, -86), (-95, -35), (-50, -6)], fill='accent', outline='detail', width=4)
@@ -1047,7 +1047,7 @@ cryptid_friend.circle((-95, -8), 4, fill='mist', outline='detail', width=1)
 cryptid_friend.circle((98, -11), 4, fill='mist_light', outline='detail', width=1)
 
 
-SPRITES = [
+SPRITE_ASSETS = [
     knight_dawn,
     verdant_druid,
     storm_ranger,
@@ -1065,3 +1065,6 @@ SPRITES = [
     tiny_ancient_menace,
     cryptid_friend,
 ]
+
+# Compatibility name used by older exercises.
+SPRITES = SPRITE_ASSETS

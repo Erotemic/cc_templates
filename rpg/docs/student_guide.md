@@ -166,7 +166,7 @@ The first file stays small on purpose:
 
 - `student_game/workshop.py` contains the move functions, character, and simple
   strategy used in the common lessons;
-- `workshop_assets.py` contains the workshop's palette, sprite, effect, sound,
+- `workshop_assets.py` contains the workshop's palette, sprite frame, effect, sound,
   and music;
 - `workshop_battles.py` contains teams and battles.
 

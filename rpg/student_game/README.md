@@ -8,7 +8,7 @@ ideas: move functions, a character, and a simple enemy strategy.
 
 When you want to see more of the same game:
 
-- `workshop_assets.py` contains its palette, procedural sprite, effect, sound,
+- `workshop_assets.py` contains its palette, procedural sprite frame, effect, sound,
   and music;
 - `workshop_battles.py` contains its teams and battle setup;
 - `scenarios.py` contains deliberate lesson starting conditions;
@@ -19,12 +19,16 @@ When you want to see more of the same game:
 runs through the complete RPG engine.
 
 For students who are more interested in visual design, `assets/sprites/` also
-contains SVG character art. `space_pirate.svg` is loaded directly by pygame, so
-students can modify it in Inkscape or as readable XML and immediately preview
-the result with `python render_character.py space_pirate`. The intended
-classroom workflow is path-first SVG editing: students can mostly work with
-`<path>` elements without needing an extra Cairo-based dependency on school
-machines.
+contains SVG character art. `space_pirate.svg` and `moon_mage.svg` are loaded
+directly by pygame, so students can modify them in Inkscape or as readable XML.
+The intended classroom workflow is path-first SVG editing: students can mostly
+work with `<path>` elements without needing an extra Cairo-based dependency on
+school machines.
+
+A still `CodeSpriteFrame` or `SvgSpriteFrame` already gets the default battle
+motion defined explicitly in `catalog.py`: idle bob, attack lunge, hurt shake,
+and knockout fall. Students who want to go farther can combine several still
+frames with `FrameAnimation` and `CharacterArt`. See `assets/sprites/README.md`.
 
 Useful commands from the `rpg` directory:
 

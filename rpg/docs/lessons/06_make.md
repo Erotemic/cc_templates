@@ -16,7 +16,7 @@ for art/effects and the lab for move behavior.
 
 Create an original playable character with:
 
-- original procedural art;
+- original art using a `CodeSpriteFrame` or `SvgSpriteFrame`;
 - at least two original moves;
 - one move containing student-written Python behavior;
 - a sound or visual effect you changed intentionally;
@@ -39,5 +39,6 @@ Demonstrate one behavior to another student. Explain:
 
 ## Choose a project direction
 
-Continue with mechanics/boss design, procedural art, mathematical effects,
-sound/music, experiments and balance, or engine/software-engineering work.
+Continue with mechanics/boss design, procedural or SVG art, frame-by-frame
+animation, mathematical effects, sound/music, experiments and balance, or
+engine/software-engineering work.

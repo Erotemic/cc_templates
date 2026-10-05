@@ -18,6 +18,8 @@ def test_render_character_parser_defaults() -> None:
     # The CLI computes the default filename after parsing so an explicit
     # --output remains distinguishable from the generated default.
     assert args.output is None
+    assert args.state == "idle"
+    assert args.time == 0.0
 
 
 def test_render_state_parser_defaults() -> None:

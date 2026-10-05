@@ -54,3 +54,22 @@ Follow a question into the engine. Examples:
 
 Change one engine rule, write or update a test, and explain the path from
 student API to engine implementation.
+
+## Character animation
+
+Start with a still frame. The default whole-character motions are written out in
+`student_game/catalog.py`, so students can see that a static drawing becomes
+animated because the renderer changes its position and rotation over time.
+
+The progression is intentionally incremental:
+
+1. `CodeSpriteFrame` or `SvgSpriteFrame`: draw one picture.
+2. Edit `BobMotion`, `LungeMotion`, or `ShakeMotion`: animate the whole picture
+   with simple arithmetic and time.
+3. `FrameAnimation`: draw multiple still frames and select them with
+   `int(time * fps)`.
+4. `CharacterArt`: choose optional frame animations for `idle`, `attack`,
+   `hurt`, or `faint`. Missing states reuse `idle`.
+
+This keeps gameplay authority separate from presentation. The battle engine says
+that a character is attacking; the presentation decides how that state looks.

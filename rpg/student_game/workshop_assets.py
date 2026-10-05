@@ -6,7 +6,7 @@ Students can ignore this module while learning control flow. When they want to
 customize presentation, this is the next place to explore.
 """
 
-from rpg_battle.api import Music, Palette, Sound, Sprite, VisualEffect
+from rpg_battle.api import CodeSpriteFrame, Music, Palette, Sound, VisualEffect
 
 workshop_palette = Palette(
     "Workshop Colors",
@@ -16,7 +16,7 @@ workshop_palette = Palette(
     detail=(28, 40, 70),
 )
 
-workshop_sprite = Sprite(
+workshop_sprite = CodeSpriteFrame(
     "Workshop Hero Sprite",
     id="workshop_hero_sprite",
     palette=workshop_palette,
@@ -50,7 +50,8 @@ workshop_theme = Music.generated(
 )
 
 PALETTES = [workshop_palette]
-SPRITES = [workshop_sprite]
+SPRITE_ASSETS = [workshop_sprite]
+SPRITES = SPRITE_ASSETS
 EFFECTS = [workshop_impact]
 SOUNDS = [workshop_hit]
 MUSIC = [workshop_theme]

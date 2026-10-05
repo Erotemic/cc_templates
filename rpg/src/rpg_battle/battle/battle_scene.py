@@ -160,7 +160,10 @@ class BattleScene:
             if combatant_id not in self.sprite_actors:
                 side = "left" if combatant.team_index == 0 else "right"
                 self.sprite_actors[combatant_id] = SpriteActor(
-                    side, sprites=self.content.sprites, palettes=self.content.palettes
+                    side,
+                    sprites=self.content.sprites,
+                    palettes=self.content.palettes,
+                    character_motion=self.content.presentation.character_motion,
                 )
             if combatant_id not in self.hp_bars:
                 self.hp_bars[combatant_id] = HPBar(combatant.hp_ratio())
@@ -552,7 +555,7 @@ class BattleScene:
             self.current_event_timer = 0.65 if event_type != "move" else 0.95
         if event_type == "move":
             actor_id = event["actor_id"]
-            self.sprite_actors[actor_id].play_attack()
+            self.sprite_actors[actor_id].play_attack(get_combatant(self.controller.state, actor_id).spec.sprite_id)
             actor_x, actor_y, _ = self._position_for(actor_id)
             target_x, target_y = self._make_effect_target(event)
             self.effects.append(
@@ -568,7 +571,7 @@ class BattleScene:
                 self.audio.play_sfx(sound_id)
         elif event_type in {"damage", "status_tick"}:
             target_id = event["target_id"]
-            self.sprite_actors[target_id].play_hurt()
+            self.sprite_actors[target_id].play_hurt(get_combatant(self.controller.state, target_id).spec.sprite_id)
             x, y, _ = self._position_for(target_id)
             self.floating_texts.append(
                 FloatingText(f"-{event['amount']}", [x, y - 80], DAMAGE_COLOR)
@@ -600,19 +603,19 @@ class BattleScene:
             frozen_slot = self.last_known_positions.get(target_id)
             if frozen_slot is not None:
                 self.lingering_faints[target_id] = frozen_slot
-            self.sprite_actors[target_id].set_faint(True)
+            self.sprite_actors[target_id].set_faint(True, target.spec.sprite_id)
             self._set_display_hp_target(target_id, 0)
             self.audio.play_sfx(self.content.presentation.ko_sound_id)
         elif event_type == "switch":
             incoming_id = event["new_combatant_id"]
             self.lingering_faints.pop(incoming_id, None)
-            self.sprite_actors[incoming_id].set_faint(False)
+            self.sprite_actors[incoming_id].set_faint(False, get_combatant(self.controller.state, incoming_id).spec.sprite_id)
             self._sync_display_to_current(incoming_id)
             self.audio.play_sfx(self.content.presentation.switch_sound_id)
         elif event_type == "replacement_joined":
             combatant_id = event["combatant_id"]
             self.lingering_faints.pop(combatant_id, None)
-            self.sprite_actors[combatant_id].set_faint(False)
+            self.sprite_actors[combatant_id].set_faint(False, get_combatant(self.controller.state, combatant_id).spec.sprite_id)
             self._sync_display_to_current(combatant_id)
             self.audio.play_sfx(self.content.presentation.switch_sound_id)
         elif event_type == "defend":

@@ -26,6 +26,8 @@ from rpg_battle.render.effect_builder import EffectSpec
 Color = tuple[int, int, int]
 PaletteSpec = Mapping[str, Color]
 SpriteRecipe = Mapping[str, object]
+MotionRecipe = Mapping[str, object]
+CharacterMotionSpec = Mapping[str, MotionRecipe]
 MusicSpec = GeneratedTrackSpec | FileTrackSpec
 
 
@@ -43,6 +45,7 @@ class PresentationSpec:
     switch_sound_id: str
     defend_sound_id: str
     heal_effect_id: str
+    character_motion: CharacterMotionSpec
 
 
 @dataclass(frozen=True)
@@ -263,22 +266,21 @@ class GameContent:
                 )
             )
 
-        for sprite_id, recipe in self.sprites.items():
-            where = f'sprite "{sprite_id}"'
-            sprite_kind = recipe.get("kind", "procedural")
+        def validate_frame_recipe(recipe: Mapping[str, object], where: str) -> None:
+            frame_kind = recipe.get("kind", "procedural")
             scale = recipe.get("scale", 1.0)
             if not isinstance(scale, (int, float)) or scale <= 0:
                 issues.append(ContentIssue(where, "scale must be a positive number"))
 
-            if sprite_kind == "svg":
+            if frame_kind == "svg":
                 package = recipe.get("package")
                 svg_path = recipe.get("path")
                 if not isinstance(package, str) or not package:
-                    issues.append(ContentIssue(where, "SVG sprite needs a package name"))
-                    continue
+                    issues.append(ContentIssue(where, "SVG frame needs a package name"))
+                    return
                 if not isinstance(svg_path, str) or not svg_path.lower().endswith(".svg"):
-                    issues.append(ContentIssue(where, "SVG sprite path must end in .svg"))
-                    continue
+                    issues.append(ContentIssue(where, "SVG frame path must end in .svg"))
+                    return
                 try:
                     asset = resources.files(package).joinpath(*PurePosixPath(svg_path).parts)
                     svg_bytes = asset.read_bytes()
@@ -286,31 +288,87 @@ class GameContent:
                     issues.append(
                         ContentIssue(where, f'cannot read SVG resource "{svg_path}": {ex}')
                     )
-                    continue
+                    return
                 try:
                     root = ET.fromstring(svg_bytes)
                 except ET.ParseError as ex:
                     issues.append(ContentIssue(where, f'has invalid SVG/XML: {ex}'))
-                    continue
+                    return
                 if root.tag.rsplit("}", 1)[-1] != "svg":
                     issues.append(ContentIssue(where, "resource root element is not <svg>"))
-                continue
+                return
 
-            if sprite_kind != "procedural":
-                issues.append(ContentIssue(where, f'uses unknown sprite kind "{sprite_kind}"'))
-                continue
+            if frame_kind != "procedural":
+                issues.append(ContentIssue(where, f'uses unknown frame kind "{frame_kind}"'))
+                return
 
             palette_id = recipe.get("palette")
             if palette_id not in self.palettes:
-                issues.append(
-                    ContentIssue(
-                        where,
-                        f'uses unknown palette "{palette_id}"',
-                    )
-                )
+                issues.append(ContentIssue(where, f'uses unknown palette "{palette_id}"'))
             shapes = recipe.get("shapes")
             if not isinstance(shapes, list) or not shapes:
                 issues.append(ContentIssue(where, "add at least one shape"))
+
+        def validate_visual_recipe(recipe: Mapping[str, object], where: str) -> None:
+            if recipe.get("kind") != "frame_animation":
+                validate_frame_recipe(recipe, where)
+                return
+            fps = recipe.get("fps")
+            frames = recipe.get("frames")
+            if not isinstance(fps, (int, float)) or fps <= 0:
+                issues.append(ContentIssue(where, "animation fps must be a positive number"))
+            if not isinstance(frames, list) or not frames:
+                issues.append(ContentIssue(where, "animation needs at least one frame"))
+                return
+            for frame_index, frame in enumerate(frames):
+                if not isinstance(frame, Mapping):
+                    issues.append(ContentIssue(where, f"frame {frame_index} is not a frame recipe"))
+                    continue
+                validate_frame_recipe(frame, f"{where} frame {frame_index + 1}")
+
+        for sprite_id, recipe in self.sprites.items():
+            where = f'sprite "{sprite_id}"'
+            if recipe.get("kind") != "character_art":
+                validate_frame_recipe(recipe, where)
+                continue
+
+            scale = recipe.get("scale", 1.0)
+            if not isinstance(scale, (int, float)) or scale <= 0:
+                issues.append(ContentIssue(where, "scale must be a positive number"))
+            states = recipe.get("states")
+            if not isinstance(states, Mapping):
+                issues.append(ContentIssue(where, "character art needs state visuals"))
+                continue
+            if "idle" not in states:
+                issues.append(ContentIssue(where, "character art needs an idle visual"))
+            for state_name, visual in states.items():
+                if state_name not in {"idle", "attack", "hurt", "faint"}:
+                    issues.append(ContentIssue(where, f'unknown character art state "{state_name}"'))
+                    continue
+                if not isinstance(visual, Mapping):
+                    issues.append(ContentIssue(where, f'{state_name} visual is not a recipe'))
+                    continue
+                validate_visual_recipe(visual, f"{where} {state_name}")
+
+        motion_set = self.presentation.character_motion
+        for state_name in ("idle", "attack", "hurt", "faint"):
+            motion = motion_set.get(state_name)
+            where = f'game presentation {state_name} motion'
+            if not isinstance(motion, Mapping):
+                issues.append(ContentIssue(where, "motion is missing"))
+                continue
+            kind = motion.get("kind")
+            expected = {"idle": "bob", "attack": "lunge", "hurt": "shake", "faint": "fall"}[state_name]
+            if kind != expected:
+                issues.append(ContentIssue(where, f'expected {expected!r}, got {kind!r}'))
+            if state_name == "idle":
+                period = motion.get("period")
+                if not isinstance(period, (int, float)) or period <= 0:
+                    issues.append(ContentIssue(where, "period must be positive"))
+            else:
+                duration = motion.get("duration")
+                if not isinstance(duration, (int, float)) or duration <= 0:
+                    issues.append(ContentIssue(where, "duration must be positive"))
 
         if self.default_encounter_id not in self.encounters:
             issues.append(
