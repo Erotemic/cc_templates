@@ -120,6 +120,26 @@ trade, encounter, inventory, or effect machinery.
 This is an important design goal: **a student can build a bigger game by writing
 more game, not by first becoming an engine programmer.**
 
+## Build features in a 30–60 minute workshop
+
+[The build-a-feature assignments](assignments/README.md) are short, independent
+student projects for beginner and intermediate Python. **Every assignment adds
+a new playable feature to a copy of one template**: a room, reward, item-gated
+path, journal, trade, combat option, or alternate quest solution.
+
+From `choose_your_own_adventure/`:
+
+```bash
+python assignments/start.py B01
+python assignments/work/B01.py
+python assignments/check.py B01
+```
+
+The starter command never overwrites student work. Beginner worksheets include
+manual game-play acceptance steps; intermediate exercises also include
+behavioral checks against their games' APIs. The unmodified numbered examples
+remain useful for comparison.
+
 ## Run the examples
 
 From `choose_your_own_adventure/`:

@@ -38,3 +38,17 @@ Good changes:
 
 Move to `../intermediate/` when functions feel comfortable and you are ready to
 organize related data and runtime state.
+
+## Build new features in one class session
+
+The [beginner worksheets](../assignments/README.md) add an orchard, collectible
+coins, a rope-gated bridge, contextual hints, or a travel journal to **a copy**
+of these games. Each takes roughly 30–60 minutes. Start with:
+
+```bash
+python assignments/start.py B01
+python assignments/work/B01.py
+```
+
+Run these commands from `choose_your_own_adventure/`. Check each feature with
+the worksheet's playtest steps. No new packages or custom classes are needed.

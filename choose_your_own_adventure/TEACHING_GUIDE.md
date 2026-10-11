@@ -204,6 +204,23 @@ An instructive exercise is to deliberately break one invariant—for example,
 leave `combat_npc_name` populated after combat—and observe that a state-machine
 test or simulation catches it even if an ordinary playthrough appears fine.
 
+## Feature-first 30–60 minute workshops
+
+The [student assignments](assignments/README.md) turn the beginner and
+intermediate progression into 13 independent, time-boxed feature projects.
+Each requires students to play a modified game and observe a new capability.
+This is the primary outcome; identifying a syntax concept or reorganizing code
+without a new playable behavior is not enough.
+
+Students copy a starting template with `python assignments/start.py B01` and
+work only in `assignments/work/B01.py`. This keeps numbered examples intact
+and prevents an early unfinished exercise from blocking later lessons.
+Intermediate projects have runnable behavior checks that exercise their new
+rules through existing functions or `Game.apply()`, while beginner projects
+use manual playtests so the single-loop versions remain free of artificial
+APIs added solely for grading. The instructor guide for these exercises is at
+[assignments/INSTRUCTOR.md](assignments/INSTRUCTOR.md).
+
 ## Concepts intentionally deferred
 
 Do not add these merely to make the architecture look sophisticated:

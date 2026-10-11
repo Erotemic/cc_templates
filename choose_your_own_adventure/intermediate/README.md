@@ -52,3 +52,20 @@ point.
 This is a good starting point for a substantial student project that should
 remain understandable in one file. Move to `../advanced/` when splitting
 reusable pieces into modules would actually help.
+
+## Build a feature in 30–60 minutes
+
+The [intermediate assignments](../assignments/README.md) let students build
+lookout rooms, trades, journals, hidden paths, healing items, combat defenses,
+a peaceful spider solution, and a second enemy. Work on an isolated copy of
+the chosen file and run the behavior check when finished:
+
+```bash
+python assignments/start.py I01
+python assignments/work/I01.py
+python assignments/check.py I01
+```
+
+Run these commands from `choose_your_own_adventure/`. Each assignment starts
+from an unmodified template; no previous assignment is required. The checks
+exercise game state and actions, not the wording of the new story.
