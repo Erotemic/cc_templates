@@ -3,6 +3,7 @@ from __future__ import annotations
 """Battle rules for the general active+reserve combat model."""
 
 import random
+from dataclasses import replace
 
 from loguru import logger
 
@@ -256,12 +257,6 @@ def _collect_faints(state: BattleState, events: list[dict]) -> None:
                 )
             )
     _update_winner(state, events)
-
-
-def _default_target_ids(state: BattleState, actor_id: str, move_id: str) -> tuple[str, ...]:
-    move = state.content.moves[move_id]
-    groups = get_valid_target_groups(state, actor_id, move.target_mode)
-    return tuple(groups[0]) if groups else ()
 
 
 def build_round_turn_queue(state: BattleState, rng: random.Random | None = None) -> list[str]:
@@ -642,6 +637,73 @@ def _process_script_commands(
                         effective_value=effective_stat(target, command.stat),
                     )
 
+def validate_action(state: BattleState, action: BattleAction) -> BattleAction:
+    """Check one declaration and select canonical legal targets before effects.
+
+    Called by the central resolver and by the student AI entrypoint so invalid
+    submissions fail with a helpful error before any combat state is changed.
+    An empty target tuple means select the first legal target automatically.
+    """
+    if state.content is None:
+        raise RuntimeError("BattleState is missing its GameContent bundle")
+    if action.actor_id not in state.combatants:
+        raise ValueError(f"Unknown acting fighter {action.actor_id!r}")
+    actor = get_combatant(state, action.actor_id)
+    if action.kind == "defend":
+        if (action.move_id is not None or action.target_ids
+                or action.switch_in_id is not None or action.item_id is not None):
+            raise ValueError("Defend does not use a skill, target, or replacement")
+        return action
+    if action.kind == "switch":
+        if action.move_id is not None or action.target_ids or action.item_id is not None:
+            raise ValueError("Switch cannot also select a skill, target, or item")
+        if action.switch_in_id not in legal_switch_targets(state, action.actor_id):
+            raise ValueError(f"{actor.spec.name} cannot switch to {action.switch_in_id!r}")
+        return action
+    if action.kind == "item":
+        raise NotImplementedError("Item actions are scaffolded but not implemented yet.")
+    if action.switch_in_id is not None or action.item_id is not None:
+        raise ValueError("Attack and Skill cannot also switch fighters or use an item")
+    if action.kind == "attack":
+        move_id = state.content.basic_attack_move_id
+        if action.move_id is not None and action.move_id != move_id:
+            raise ValueError("Attack does not select a skill; use Skill for learned moves")
+    elif action.kind == "skill":
+        move_id = action.move_id
+        if move_id not in actor.spec.move_ids:
+            raise ValueError(f"{actor.spec.name} does not know skill {move_id!r}")
+        if move_id == state.content.basic_attack_move_id:
+            raise ValueError("Basic Attack is not a learned skill; choose Attack")
+    else:
+        raise ValueError(f"Unknown action kind {action.kind!r}")
+    move = state.content.moves.get(move_id)
+    if move is None:
+        raise ValueError(f"Unknown move {move_id!r}")
+    groups = get_valid_target_groups(state, action.actor_id, move.target_mode)
+    if not groups:
+        raise ValueError(f"No legal targets for {actor.spec.name}'s {move.name}")
+    if not action.target_ids:
+        if move.target_mode == "none":
+            return action
+        return replace(action, target_ids=tuple(groups[0]))
+    chosen = tuple(action.target_ids)
+    canonical = next(
+        (tuple(group) for group in groups
+         if len(group) == len(chosen) and set(group) == set(chosen)),
+        None,
+    )
+    if canonical is None:
+        readable = [
+            [get_combatant(state, target_id).spec.name for target_id in group]
+            for group in groups
+        ]
+        raise ValueError(
+            f"{actor.spec.name} chose an invalid target for {move.name}; "
+            f"legal targets are {readable}"
+        )
+    return replace(action, target_ids=canonical)
+
+
 def _process_move(
     state: BattleState,
     action: BattleAction,
@@ -652,9 +714,10 @@ def _process_move(
     logger.info("Resolving action kind={} actor={}", action.kind, actor.spec.name)
     if state.content is None:
         raise RuntimeError("BattleState is missing its GameContent bundle")
-    move_id = action.move_id or state.content.presentation.basic_attack_move_id
+    move_id = (state.content.basic_attack_move_id
+               if action.kind == "attack" else action.move_id)
     move = state.content.moves[move_id]
-    target_ids = tuple(action.target_ids) or _default_target_ids(state, actor.combatant_id, move_id)
+    target_ids = tuple(action.target_ids)
     emit_trace(
         state,
         f"{actor.spec.name} chose {move.name}; target ids={list(target_ids)}",
@@ -672,12 +735,15 @@ def _process_move(
             actor_id=actor.combatant_id,
             actor_name=actor.spec.name,
             move_id=move.move_id,
-            move_name=move.name,
+            move_name="Attack" if action.kind == "attack" else move.name,
             move_kind=move.kind,
             animation=move.animation,
             sound_id=move.sound_id,
             target_ids=list(target_ids),
-            text=f"{actor.spec.name} uses {move.name} on {_target_display_name(state, list(target_ids))}!",
+            text=(f"{actor.spec.name} attacks {_target_display_name(state, list(target_ids))}!"
+                  if action.kind == "attack" else
+                  f"{actor.spec.name} uses {move.name} on "
+                  f"{_target_display_name(state, list(target_ids))}!"),
         )
     )
 
@@ -848,6 +914,8 @@ def resolve_action(
     logger.info("Resolving action kind={} actor={}", action.kind, actor.spec.name)
     if not actor.alive or not actor.active:
         return events
+    # Validate before the stun roll or any mutation, even for human / raw AI actions.
+    action = validate_action(state, action)
     if _maybe_skip_for_stun(actor, events, rng):
         return events
     if action.kind == "switch":

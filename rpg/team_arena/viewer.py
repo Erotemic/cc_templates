@@ -9,6 +9,7 @@ rules, using saved RNG states for identical results and attack animations.
 
 from collections import deque
 import re
+from typing import Callable
 
 import pygame
 
@@ -45,6 +46,10 @@ class ArenaBattleScene(BattleScene):
         self.console: deque[tuple[str, tuple[int, int, int]]] = deque(maxlen=180)
         self.speed = 1.0
         self.paused = False
+        self.stepping = False
+        self.step_origin = 0
+        self.current_choice = "Waiting for a decision..."
+        self.current_prints: list[str] = []
         self.debug_font: pygame.font.Font | None = None
         content = content_for_match(recording["left"], None, recording["right"], None)
         super().__init__(rect, audio=audio, content=content,
@@ -60,6 +65,19 @@ class ArenaBattleScene(BattleScene):
         self.last_source = ""
         self.console.clear()
         self.console.append(("Replaying the same recorded decisions.", DIM_COLOR))
+        self.current_choice = "Waiting for a decision..."
+        self.current_prints = []
+        self.stepping = False
+
+    def step_one_decision(self) -> None:
+        """Finish exactly one new recorded action, then pause its animations."""
+        self.paused = True
+        if (self.controller.state.winner is not None
+                or self.step_index >= len(self.recording["steps"])):
+            self.stepping = False
+            return
+        self.stepping = True
+        self.step_origin = self.step_index
 
     def _layout(self):
         # The ordinary menu region becomes a taller, readable controller console.
@@ -93,6 +111,10 @@ class ArenaBattleScene(BattleScene):
             if step["type"] == "action":
                 self._announce_decision(step)
         super().update(dt)
+        if (self.stepping and self.step_index > self.step_origin
+                and not self.event_queue and self.event_timer <= 0
+                and self.current_event_timer <= 0):
+            self.stepping = False
 
     def _announce_decision(self, step: dict) -> None:
         side = step["team"]
@@ -102,6 +124,8 @@ class ArenaBattleScene(BattleScene):
         self.last_source = self.recording["sources"][side]
         headline = f"{name} / {step['actor_name']}: {step['description']}"
         self.console.append((headline, color))
+        self.current_choice = headline
+        self.current_prints = [clean_line(line) for line in step["prints"]]
         print(f"[{name} | {self.last_source} | round {step['round']} | {step['actor_name']}]", flush=True)
         for line in step["prints"]:
             visible = clean_line(line)
@@ -127,26 +151,36 @@ class ArenaBattleScene(BattleScene):
 
     def _draw_menu(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
         status = "PAUSED" if self.paused else f"{self.speed:g}x"
-        title = self.title_font.render(f"Controller Console  [{status}]", True, TEXT_COLOR)
+        title = self.title_font.render(f"Controller Console [{status}]", True, TEXT_COLOR)
         surface.blit(title, (rect.x + 14, rect.y + 10))
-        subtitle_font = self.debug_font or self.small_font
+        font = self.debug_font or self.small_font
         if self.active_team is None:
             source = "Waiting for the first turn..."
         else:
             source = f"Running: {self.last_source}"
-        source = self._fit_text(subtitle_font, source, rect.width - 28)
-        surface.blit(subtitle_font.render(source, True, DIM_COLOR),
-                     (rect.x + 14, rect.y + 46))
-        font = self.debug_font or self.small_font
-        line_height = 21
-        output_top = rect.y + 73
+        source = self._fit_text(font, source, rect.width - 28)
+        surface.blit(font.render(source, True, DIM_COLOR), (rect.x + 14, rect.y + 43))
+
+        # Keep the CURRENT decision and student prints on screen throughout
+        # its attack animation; older lines scroll only in the history region.
+        choice = self._fit_text(font, self.current_choice, rect.width - 28)
+        surface.blit(font.render(choice, True, PRINT_COLOR), (rect.x + 14, rect.y + 66))
         footer_y = rect.bottom - 26
-        count = max(1, (footer_y - output_top) // line_height)
-        for index, (line, color) in enumerate(list(self.console)[-count:]):
-            display = self._fit_text(font, clean_line(line), rect.width - 26)
-            surface.blit(font.render(display, True, color),
-                         (rect.x + 14, output_top + index * line_height))
-        footer = "SPACE pause  +/- speed  R replay  ESC close"
+        available = max(0, (footer_y - rect.y - 96) // 21)
+        pinned_count = min(3, available, len(self.current_prints))
+        for index, line in enumerate(self.current_prints[-pinned_count:]
+                                     if pinned_count else []):
+            label = self._fit_text(font, f"print> {line}", rect.width - 28)
+            surface.blit(font.render(label, True, PRINT_COLOR),
+                         (rect.x + 14, rect.y + 88 + index * 21))
+        history_top = rect.y + 92 + pinned_count * 21
+        history_count = max(0, (footer_y - history_top) // 21)
+        for index, (line, color) in enumerate(list(self.console)[-history_count:]
+                                              if history_count else []):
+            label = self._fit_text(font, clean_line(line), rect.width - 28)
+            surface.blit(font.render(label, True, color),
+                         (rect.x + 14, history_top + index * 21))
+        footer = "SPACE pause  N next  R rerun code  P replay  +/- speed  ESC exit"
         label = self._fit_text(font, footer, rect.width - 28)
         surface.blit(font.render(label, True, DIM_COLOR), (rect.x + 14, footer_y))
 
@@ -161,7 +195,8 @@ class ArenaBattleScene(BattleScene):
                                                     layout.battlefield.y + 82)))
 
 
-def watch(recording: dict, *, speed: float = 1.0) -> None:
+def watch(recording: dict, *, speed: float = 1.0,
+          reload_recording: Callable[[], dict] | None = None) -> None:
     """Open the existing animated RPG scene in spectator mode."""
     pygame.init()
     content = content_for_match(recording["left"], None, recording["right"], None)
@@ -174,7 +209,8 @@ def watch(recording: dict, *, speed: float = 1.0) -> None:
         clock = pygame.time.Clock()
         scene = ArenaBattleScene(screen.get_rect(), recording, audio=audio)
         scene.speed = speed
-        print("Viewer: SPACE pause; +/- speed; R replay; ESC quit.", flush=True)
+        print("Viewer: R reload saved Python; P replay; N next turn; "
+              "SPACE pause; +/- speed; ESC quit.", flush=True)
         running = True
         while running:
             dt = min(0.1, clock.tick(FPS) / 1000.0)
@@ -186,13 +222,46 @@ def watch(recording: dict, *, speed: float = 1.0) -> None:
                         running = False
                     elif event.key == pygame.K_SPACE:
                         scene.paused = not scene.paused
-                    elif event.key == pygame.K_r:
+                        scene.stepping = False
+                    elif event.key == pygame.K_n:
+                        scene.step_one_decision()
+                    elif event.key == pygame.K_p:
                         scene.reset()
+                    elif event.key == pygame.K_r:
+                        if reload_recording is None:
+                            scene.reset()
+                        else:
+                            # Re-run student Python in the bounded worker, not
+                            # in this pygame process. Keep the old scene if
+                            # there is a syntax error or an endless loop.
+                            scene.console.append(("Re-reading saved controller code...", DIM_COLOR))
+                            scene.draw(screen)
+                            pygame.display.flip()
+                            try:
+                                fresh = reload_recording()
+                            except (RuntimeError, ValueError, OSError) as exc:
+                                message = str(exc)
+                                print(f"Could not rerun: {message}", flush=True)
+                                lines = message.splitlines()
+                                detail = next((line for line in lines if ".py, line " in line),
+                                              lines[-1])
+                                detail = detail.strip().replace("\\", "/").rsplit("/", 1)[-1]
+                                scene.current_choice = f"ERROR: {detail}"
+                                scene.current_prints = []
+                                scene.console.append((scene.current_choice, RIGHT_COLOR))
+                                scene.paused = True
+                                scene.stepping = False
+                            else:
+                                old_speed = scene.speed
+                                scene = ArenaBattleScene(screen.get_rect(), fresh, audio=audio)
+                                scene.speed = old_speed
+                                scene.console.append(("Loaded your newly saved Python code.", DIM_COLOR))
+                                print("Updated controller recording loaded.", flush=True)
                     elif event.key in (pygame.K_EQUALS, pygame.K_PLUS, pygame.K_KP_PLUS):
                         scene.speed = min(8.0, scene.speed * 2)
                     elif event.key in (pygame.K_MINUS, pygame.K_KP_MINUS):
                         scene.speed = max(0.25, scene.speed / 2)
-            if not scene.paused:
+            if not scene.paused or scene.stepping:
                 scene.update(dt * scene.speed)
             scene.draw(screen)
             pygame.display.flip()

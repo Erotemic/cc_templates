@@ -4,4 +4,4 @@
 def choose_action(turn):
     if turn.user.hp_ratio < 0.30:
         return turn.defend()
-    return turn.use("arena_tap", target=turn.enemies[0])
+    return turn.attack(target=turn.enemies[0])

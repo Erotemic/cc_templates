@@ -35,7 +35,6 @@ MusicSpec = GeneratedTrackSpec | FileTrackSpec
 class PresentationSpec:
     """Content ids used by the generic battle presentation layer."""
 
-    basic_attack_move_id: str
     menu_move_sound_id: str
     menu_confirm_sound_id: str
     menu_back_sound_id: str
@@ -82,6 +81,7 @@ class GameContent:
     music_tracks: Mapping[str, MusicSpec]
     sound_effects: Mapping[str, SynthSoundSpec]
     presentation: PresentationSpec
+    basic_attack_move_id: str
     default_encounter_id: str
     default_battle_track: str
     default_victory_track: str
@@ -176,11 +176,13 @@ class GameContent:
                 )
             if character.max_hp <= 0:
                 issues.append(ContentIssue(where, "hp must be greater than zero"))
-            if not character.move_ids:
-                issues.append(ContentIssue(where, "add at least one move to moves=[...]"))
             for move_id in character.move_ids:
                 if move_id not in self.moves:
                     issues.append(ContentIssue(where, f'uses unknown move "{move_id}"'))
+                if move_id == self.basic_attack_move_id:
+                    issues.append(ContentIssue(
+                        where, "standard Attack must not also appear in learned skills"
+                    ))
             if character.sprite_id not in self.sprites:
                 issues.append(ContentIssue(where, f'uses unknown sprite "{character.sprite_id}"'))
 
@@ -236,14 +238,18 @@ class GameContent:
                     ContentIssue(where, f'uses unknown music track "{encounter.music_track_id}"')
                 )
 
+        # Attack belongs to combat configuration, not the renderer or a
+        # character's learned skills. The move registry still owns its effects.
+        basic_attack = self.moves.get(self.basic_attack_move_id)
+        if basic_attack is None:
+            issues.append(ContentIssue(
+                "game", f'basic attack move {self.basic_attack_move_id!r} is not defined'
+            ))
+        elif basic_attack.kind != "physical" or basic_attack.target_mode != "single_enemy":
+            issues.append(ContentIssue(
+                "game", "basic attack must be a physical, single-enemy move"
+            ))
         presentation = self.presentation
-        if presentation.basic_attack_move_id not in self.moves:
-            issues.append(
-                ContentIssue(
-                    "game presentation",
-                    f'basic attack move "{presentation.basic_attack_move_id}" is not defined',
-                )
-            )
         for label, sound_id in (
             ("menu move sound", presentation.menu_move_sound_id),
             ("menu confirm sound", presentation.menu_confirm_sound_id),

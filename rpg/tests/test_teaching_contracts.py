@@ -43,7 +43,10 @@ def test_unknown_command_target_is_rejected_at_runtime_too() -> None:
         move_id="bad_target_runtime",
         script=bad_target,
     )
-    content = replace(CONTENT, moves={**CONTENT.moves, move.move_id: move})
+    hero = replace(CONTENT.characters["workshop_hero"],
+                   move_ids=(*CONTENT.characters["workshop_hero"].move_ids, move.move_id))
+    content = replace(CONTENT, moves={**CONTENT.moves, move.move_id: move},
+                      characters={**CONTENT.characters, "workshop_hero": hero})
     state = new_battle(content.encounters["workshop"], content=content)
     actor_id = state.teams[0].active_ids[0]
     target_id = state.teams[1].active_ids[0]

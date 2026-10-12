@@ -909,12 +909,11 @@ class Battle:
 class GamePresentation:
     """Choose the content objects used for standard battle presentation.
 
-    Keeping these as object references means the engine does not rely on hidden
-    names such as ``"strike"`` or ``"menu_confirm"``. A different student
-    game can use completely different ids without changing engine code.
+    This contains only audio, effects and animation choices. The standard
+    Attack is gameplay configuration on Game, not presentation configuration.
+    All references are content objects rather than hard-coded engine ids.
     """
 
-    basic_attack: Move
     menu_move_sound: Sound
     menu_confirm_sound: Sound
     menu_back_sound: Sound
@@ -925,10 +924,11 @@ class GamePresentation:
     defend_sound: Sound
     heal_effect: VisualEffect
     character_motion: CharacterMotionSet = field(default_factory=CharacterMotionSet)
+    # Compatibility for older student games. New games set Game.basic_attack.
+    basic_attack: Move | None = None
 
     def compile(self) -> PresentationSpec:
         return PresentationSpec(
-            basic_attack_move_id=self.basic_attack.move_id,
             menu_move_sound_id=self.menu_move_sound.sound_id,
             menu_confirm_sound_id=self.menu_confirm_sound.sound_id,
             menu_back_sound_id=self.menu_back_sound.sound_id,
@@ -966,6 +966,8 @@ class Game:
     default_battle_music: Music
     victory_music: Music
     defeat_music: Music
+    # A standard action owned by the game, not a character's learned skill.
+    basic_attack: Move | None = None
 
     @property
     def sprites(self) -> Sequence[ArtAsset]:
@@ -1006,6 +1008,11 @@ class Game:
             for item_id, battle in battle_objects.items()
         }
 
+        basic_attack = self.basic_attack or self.presentation.basic_attack
+        if basic_attack is None:
+            raise ContentValidationError([ContentIssue(
+                "game", "set basic_attack to the Move used by the Attack action"
+            )])
         content = GameContent(
             title=self.title,
             palettes={item_id: item.compile() for item_id, item in palette_objects.items()},
@@ -1017,6 +1024,7 @@ class Game:
             sound_effects={item_id: item.compile() for item_id, item in sound_objects.items()},
             music_tracks={item_id: item.spec for item_id, item in music_objects.items()},
             presentation=self.presentation.compile(),
+            basic_attack_move_id=basic_attack.move_id,
             moves={item_id: item.compile() for item_id, item in move_objects.items()},
             characters={item_id: item.compile() for item_id, item in character_objects.items()},
             teams=teams,

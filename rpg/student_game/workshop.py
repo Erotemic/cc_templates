@@ -88,7 +88,7 @@ workshop_hero = Character(
     magic=9,
     speed=7,
     art=workshop_frame,
-    moves=[power_strike, chain_lightning, moves.strike],
+    moves=[power_strike, chain_lightning],
     description="A small character definition intended to be edited in class.",
 )
 
@@ -109,7 +109,7 @@ def practice_enemy_strategy(turn):
         if enemy.hp_ratio < target.hp_ratio:
             target = enemy
 
-    return turn.use(moves.arc_bolt, target=target)
+    return turn.skill(moves.arc_bolt, target=target)
 
 
 MOVES = [power_strike, chain_lightning]

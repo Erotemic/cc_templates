@@ -13,8 +13,9 @@ import math
 from numbers import Real
 from typing import Callable, Literal, Protocol, TypeAlias
 
+from rpg_battle.core.actions import attack_action, defend_action, skill_action
 from rpg_battle.core.effects import effective_stat
-from rpg_battle.core.models import BattleState, CharacterSpec, CombatantState, StatusState, TargetMode
+from rpg_battle.core.models import BattleAction, BattleState, CharacterSpec, CombatantState, StatusState, TargetMode
 
 
 class StudentCodeError(RuntimeError):
@@ -167,25 +168,14 @@ MoveCommand: TypeAlias = Damage | Heal | AddStatus | ChangeStat
 MoveScriptResult: TypeAlias = MoveCommand | list[MoveCommand] | tuple[MoveCommand, ...] | None
 
 
-@dataclass(frozen=True)
-class UseMove:
-    """AI strategy decision to use one known move."""
-
-    move_id: str
-    target: BattlerView | tuple[BattlerView, ...] | Literal["auto"] = "auto"
-
-
-@dataclass(frozen=True)
-class Defend:
-    """AI strategy decision to defend for this turn."""
-
-
-AIStrategyResult: TypeAlias = UseMove | Defend
+# Human controls, built-in AI, and student scripts all return BattleAction.
+# There is no separate student-specific decision type to translate later.
+AIStrategyResult: TypeAlias = BattleAction
 
 
 @dataclass(frozen=True)
 class TurnContext:
-    """Read-only facts available to a student-authored enemy strategy."""
+    """Read-only battle facts and ordinary actions for a team controller."""
 
     user: BattlerView
     allies: tuple[BattlerView, ...]
@@ -193,23 +183,48 @@ class TurnContext:
     available_move_ids: frozenset[str]
     round_number: int
 
+    @staticmethod
+    def _target_ids(
+        target: BattlerView | tuple[BattlerView, ...] | None,
+    ) -> tuple[str, ...]:
+        if target is None:
+            return ()  # The engine chooses the first legal target.
+        if isinstance(target, BattlerView):
+            return (target._combatant_id,)
+        if isinstance(target, tuple) and all(isinstance(t, BattlerView) for t in target):
+            return tuple(t._combatant_id for t in target)
+        raise TypeError("target must be a fighter from turn.enemies, turn.allies, or turn.user")
+
+    def attack(self, *, target: BattlerView | None = None) -> BattleAction:
+        """Use the standard physical Attack available to every fighter."""
+        if target is not None and not isinstance(target, BattlerView):
+            raise TypeError("Attack target must be a fighter from turn.enemies")
+        return attack_action(self.user._combatant_id, self._target_ids(target))
+
+    def skill(
+        self,
+        move: MoveLike | str,
+        *,
+        target: BattlerView | tuple[BattlerView, ...] | None = None,
+    ) -> BattleAction:
+        """Choose one learned skill, optionally selecting its target(s)."""
+        move_id = move if isinstance(move, str) else move.move_id
+        if move_id not in self.available_move_ids:
+            raise ValueError(f"{self.user.name} does not know the skill {move_id!r}")
+        return skill_action(self.user._combatant_id, move_id, self._target_ids(target))
+
     def use(
         self,
         move: MoveLike | str,
         *,
         target: BattlerView | tuple[BattlerView, ...] | None = None,
-    ) -> UseMove:
-        """Choose a move, optionally naming its target view(s)."""
+    ) -> BattleAction:
+        """Older spelling of skill(); kept for existing classroom projects."""
+        return self.skill(move, target=target)
 
-        move_id = move if isinstance(move, str) else move.move_id
-        if move_id not in self.available_move_ids:
-            raise ValueError(f"{self.user.name} does not know the move {move_id!r}")
-        return UseMove(move_id=move_id, target="auto" if target is None else target)
-
-    def defend(self) -> Defend:
-        """Choose the defend action."""
-
-        return Defend()
+    def defend(self) -> BattleAction:
+        """Defend using the same action object as the normal game menu."""
+        return defend_action(self.user._combatant_id)
 
 
 AIStrategy: TypeAlias = Callable[[TurnContext], AIStrategyResult]
@@ -373,16 +388,6 @@ def validate_script_commands(
     return problems
 
 
-def _target_ids_from_ai_decision(
-    target: BattlerView | tuple[BattlerView, ...] | Literal["auto"],
-) -> tuple[str, ...] | Literal["auto"]:
-    if target == "auto":
-        return "auto"
-    if isinstance(target, BattlerView):
-        return (target._combatant_id,)
-    return tuple(view._combatant_id for view in target)
-
-
 def _legal_synthetic_ai_targets(
     context: TurnContext,
     target_mode: TargetMode,
@@ -505,32 +510,46 @@ def smoke_test_ai_strategy(
     for scenario_index, context in enumerate(contexts, start=1):
         try:
             decision = strategy(context)
-            if not isinstance(decision, (UseMove, Defend)):
+            if not isinstance(decision, BattleAction):
                 problems.append(
                     f"scenario {scenario_index}: strategy must return "
-                    f"turn.use(...) or turn.defend(); received {type(decision).__name__}"
+                    "turn.attack(...), turn.skill(...), or turn.defend(); "
+                    f"received {type(decision).__name__}"
                 )
                 continue
-            if isinstance(decision, UseMove):
-                if decision.move_id not in available_move_ids:
+            if decision.actor_id != context.user._combatant_id:
+                problems.append(f"scenario {scenario_index}: action belongs to another fighter")
+                continue
+            if decision.kind not in {"attack", "skill", "defend"}:
+                problems.append(f"scenario {scenario_index}: unsupported strategy action {decision.kind!r}")
+                continue
+            if decision.kind == "skill" and decision.move_id not in available_move_ids:
+                problems.append(
+                    f"scenario {scenario_index}: chose unknown skill {decision.move_id!r}"
+                )
+                continue
+            if decision.kind == "attack" and decision.move_id is not None:
+                problems.append(f"scenario {scenario_index}: Attack does not take a skill id")
+                continue
+            if decision.kind == "defend" and decision.target_ids:
+                problems.append(f"scenario {scenario_index}: Defend does not take a target")
+                continue
+            mode = None
+            if decision.kind == "attack":
+                mode = "single_enemy"
+            elif decision.kind == "skill" and move_target_modes is not None:
+                mode = move_target_modes.get(decision.move_id)
+            if mode is not None and decision.target_ids:
+                legal = _legal_synthetic_ai_targets(context, mode)
+                if not any(
+                    len(group) == len(decision.target_ids)
+                    and set(group) == set(decision.target_ids)
+                    for group in legal
+                ):
                     problems.append(
-                        f"scenario {scenario_index}: chose unknown move {decision.move_id!r}"
+                        f"scenario {scenario_index}: chose an invalid target for "
+                        f"{decision.kind} {decision.move_id or ''!r}"
                     )
-                    continue
-                if move_target_modes is not None and decision.move_id in move_target_modes:
-                    target_ids = _target_ids_from_ai_decision(decision.target)
-                    if target_ids != "auto":
-                        legal = _legal_synthetic_ai_targets(
-                            context, move_target_modes[decision.move_id]
-                        )
-                        if not any(
-                            len(group) == len(target_ids) and set(group) == set(target_ids)
-                            for group in legal
-                        ):
-                            problems.append(
-                                f"scenario {scenario_index}: chose an invalid target for "
-                                f"move {decision.move_id!r}"
-                            )
         except Exception as exc:
             problems.append(f"scenario {scenario_index}: {type(exc).__name__}: {exc}")
     return problems

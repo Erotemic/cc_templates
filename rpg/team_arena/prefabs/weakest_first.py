@@ -6,4 +6,4 @@ def choose_action(turn):
     for enemy in turn.enemies[1:]:
         if enemy.hp < target.hp:
             target = enemy
-    return turn.use("arena_tap", target=target)
+    return turn.attack(target=target)

@@ -13,7 +13,7 @@ from loguru import logger
 from rpg_battle.battle.battle_controller import BattleController
 from rpg_battle.catalog import ContentValidationError, GameContent
 from rpg_battle.core.ai import choose_ai_action, choose_ai_replacement
-from rpg_battle.core.models import BattleState
+from rpg_battle.core.models import BattleAction, BattleState
 from rpg_battle.core.scripting import StudentCodeError
 from rpg_battle.core.rules import resolve_action, resolve_replacement
 from rpg_battle.teaching.scenarios import TeachingScenario
@@ -37,6 +37,8 @@ def simulate_once(
     seed: int = 0,
     max_steps: int = 2000,
     state_setup: Callable[[BattleState], None] | None = None,
+    action_choice: Callable[[BattleController, str], BattleAction] | None = None,
+    on_replacement: Callable[[BattleController, int, str], None] | None = None,
 ) -> SimulationResult:
     """Run both teams under AI control without opening pygame."""
 
@@ -50,27 +52,34 @@ def simulate_once(
     )
     events: list[dict] = []
 
+    # The same turn-driving loop powers headless experiments and spectator
+    # recordings. Optional hooks observe choices; they do not alter battle rules.
     for _ in range(max_steps):
         if controller.state.winner is not None:
             break
 
-        advanced = controller.advance_to_next_turn()
-        events.extend(advanced)
-
+        # Handle replacements before advance_to_next_turn(), which otherwise
+        # automatically replaces the right team's fighters without a callback.
         if controller.state.pending_replacements:
             request = controller.state.pending_replacements[0]
             replacement_id = choose_ai_replacement(controller.state, request.team_index)
             if replacement_id is None:
                 continue
+            if on_replacement is not None:
+                on_replacement(controller, request.team_index, replacement_id)
             events.extend(
                 resolve_replacement(controller.state, request.team_index, replacement_id)
             )
             continue
 
+        events.extend(controller.advance_to_next_turn())
         actor_id = controller.current_actor_id
         if actor_id is None:
             continue
-        action = choose_ai_action(controller.state, actor_id, controller.rng)
+        if action_choice is None:
+            action = choose_ai_action(controller.state, actor_id, controller.rng)
+        else:
+            action = action_choice(controller, actor_id)
         events.extend(resolve_action(controller.state, action, controller.rng))
         controller.current_actor_id = None
 

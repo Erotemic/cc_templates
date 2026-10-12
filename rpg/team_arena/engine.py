@@ -16,7 +16,6 @@ ROSTER = ("arena_guardian", "arena_mage")
 # Classroom-specific content. No changes to the story game or combat formulas.
 # Both sides get exactly the same two character templates and available moves.
 MOVE_SPECS = (
-    MoveSpec("arena_tap", "Tap", "physical", 5, 1.0, "single_enemy"),
     MoveSpec("arena_crush", "Crush", "physical", 20, 1.0, "single_enemy"),
     MoveSpec("arena_sweep", "Sweep", "physical", 7, 1.0, "all_enemies"),
     MoveSpec("arena_spark", "Spark", "magical", 19, 1.0, "single_enemy"),
@@ -29,13 +28,13 @@ GUARDIAN = replace(
     CONTENT.characters["guardian"],
     char_id="arena_guardian", name="Arena Guardian", role="defender",
     max_hp=78, attack=14, defense=11, magic=6, speed=6,
-    move_ids=("arena_tap", "arena_crush", "arena_sweep", "arena_patch"),
+    move_ids=("arena_crush", "arena_sweep", "arena_patch"),
 )
 MAGE = replace(
     CONTENT.characters["moon_mage"],
     char_id="arena_mage", name="Arena Mage", role="caster",
     max_hp=59, attack=6, defense=6, magic=16, speed=10,
-    move_ids=("arena_tap", "arena_spark", "arena_storm", "arena_patch"),
+    move_ids=("arena_spark", "arena_storm", "arena_patch"),
 )
 
 
@@ -74,19 +73,20 @@ def single_match(
 
 @dataclass(frozen=True)
 class MatchSummary:
-    """Result of both seats across each seed; a draw scores 0.5 for both."""
+    """Paired-seat results; unfinished games earn neither controller points."""
 
     left: str
     right: str
     wins: int
     losses: int
     draws: int
+    unfinished: int
     seeds: int
     first_result: SimulationResult | None = None
 
     @property
     def matches(self) -> int:
-        return self.wins + self.losses + self.draws
+        return self.wins + self.losses + self.draws + self.unfinished
 
     @property
     def score(self) -> float:
@@ -101,7 +101,7 @@ def compare(
     """Use the same seed with swapped team seats for every matchup."""
     if runs <= 0:
         raise ValueError("runs must be positive")
-    wins = losses = draws = 0
+    wins = losses = draws = unfinished = 0
     first_result = None
     for index in range(runs):
         game_seed = seed + index
@@ -117,16 +117,20 @@ def compare(
                 if first_result is None:
                     first_result = result
             if who is None:
-                draws += 1
+                # The current RPG engine has no completed tied-game state.
+                # winner=None means the simulation hit its step limit.
+                unfinished += 1
             elif who == 0:
                 wins += 1
             else:
                 losses += 1
-    return MatchSummary(left_name, right_name, wins, losses, draws, runs, first_result)
+    return MatchSummary(left_name, right_name, wins, losses, draws, unfinished, runs, first_result)
 
 
 def friendly_description() -> str:
     items = ["Two identical two-character teams (Guardian + Mage) start with full HP."]
+    basic = CONTENT.moves[CONTENT.basic_attack_move_id]
+    items.append(f"Every fighter can Attack (power={basic.power}) or Defend without learning a skill.")
     for character in (GUARDIAN, MAGE):
         items.append(
             f"{character.name}: HP={character.max_hp} attack={character.attack} "

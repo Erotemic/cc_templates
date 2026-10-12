@@ -2,4 +2,4 @@
 
 
 def choose_action(turn):
-    return turn.use("arena_tap", target=turn.enemies[0])
+    return turn.attack(target=turn.enemies[0])

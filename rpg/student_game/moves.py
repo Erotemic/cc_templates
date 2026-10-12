@@ -17,8 +17,9 @@ from student_game import audio, effects
 
 # --- Declarative moves ---------------------------------------------------
 
+# Standard attack: all fighters can do this without learning it as a skill.
 strike = Move(
-    "Strike",
+    "Attack",
     id="strike",
     kind="physical",
     power=9,

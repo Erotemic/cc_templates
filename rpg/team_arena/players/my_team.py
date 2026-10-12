@@ -1,13 +1,14 @@
-"""My Team: the student starter controller. Edit only this function first.
+"""Your AI team controller. This is the first (and only) file you need to edit.
 
-Play it:       python arena.py battle my_team first_target --log
-Improve it:    python arena.py challenge my_team
-The same function controls BOTH of your team's characters. They have different
-moves; check turn.available_move_ids before trying a character-specific move.
+From the rpg directory, run `python arena.py` to WATCH your code fight.
+Save changes, press R in the battle window, and watch the NEW decisions.
 """
 
 
 def choose_action(turn):
-    # Choose one action for the character whose turn it is.
-    # Start by changing the target, then try a conditional or a different move.
-    return turn.use("arena_tap", target=turn.enemies[0])
+    # This runs when EITHER of your two fighters takes a turn.
+    print("My fighter:", turn.user.name, "HP:", turn.user.hp)
+
+    # Try changing the target or when you use a learned skill instead.
+    # Attack and Defend work for BOTH fighters without learning anything.
+    return turn.attack(target=turn.enemies[0])

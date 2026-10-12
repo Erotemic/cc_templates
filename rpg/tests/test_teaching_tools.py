@@ -137,7 +137,7 @@ def test_check_smoke_tests_student_ai_strategy() -> None:
     broken = replace(CONTENT, teams=broken_teams)
     report = "\n".join(str(issue) for issue in broken.validate())
     assert "strategy" in report
-    assert "turn.use(...) or turn.defend()" in report
+    assert "turn.attack(...), turn.skill(...), or turn.defend()" in report
 
 
 def test_lab_progressively_discloses_engine_details(capsys) -> None:

@@ -1,157 +1,112 @@
-# Build your own team controller — student projects
+# Team-controller projects (30–60 minutes each)
 
-Every project **adds a behavior your previous controller did not have**. Your
-code runs in the real RPG battle engine, not a pretend example. Work in your
-own `team_arena/players/*.py` file; do not edit the prefabs or the battle
-engine. The projects build on each other: each new file copies your previous
-project so you can compare versions. Each project is designed for roughly **30–60 minutes** after students
-know how to use a function and a conditional.
+Each project must add **a decision your controller did not make before**.
+Students start with `team_arena/players/my_team.py`, not engine internals.
+Work through the projects in order. Try one change at a time, run `python
+arena.py`, and press **R** after every save. Explain what changed *in the
+fight*, not just which Python lines changed.
 
-## Project 0 — My First AI (20–30 min)
+## Project 0 — My code is fighting (20–30 min)
 
-**New feature:** A fighter whose actions come from your own Python function.
+**Add:** Your own visible decision and `print(...)` explanation.
 
-Starting point: `team_arena/players/my_team.py`.
+1. Run `python arena.py`; look for `my_team` and its Python filename.
+2. Edit `my_team.py`: change a move, the target, or when you defend.
+3. Print the fighter's HP and your reason for the choice.
+4. Save, press **R**, and find **your output and new move** in the animation.
 
-1. Run `python arena.py watch my_team first_target --seed 3` and watch
-   the two teams fight.
-2. Open `team_arena/players/my_team.py`; add a `print(...)` statement **inside**
-   `choose_action` that announces the fighter's name and current HP. Save it.
-3. Run the same `watch` command again. Find **your print statement** in the
-   on-screen Controller Console next to your controller's name and source file.
-4. Change which move the fighter uses. Watch the result and verify that the
-   printed decision and the animated move agree.
-5. For reproducible results across many battles, run
-   `python arena.py battle my_team first_target --runs 4 --log`.
+**Complete when:** A teammate can point to the moment your code's change takes
+effect and can find your printed explanation. **Concept:** functions, returns,
+printing. **Stretch:** Change your behavior on a particular round.
 
-**Programming idea:** functions and returning values. **Finished when:** the
-visual battle shows your new action and your print output appears under your
-controller's filename, with no invalid-action errors.
+## Project 1 — Two characters, different skills (30–45 min)
 
-**Extension:** Make the controller behave differently on a specific round.
-
-## Project 1 — More Than One Move (30–45 min)
-
-**New feature:** Characters use actions suited to their own move lists, rather
-than both using the same weak move.
+**Add:** A decision that depends on **which skills the current fighter knows**.
+Both the Guardian and Mage can `turn.attack(...)` as often as they like, but
+neither knows every special skill. Make each fighter choose a learned skill
+when appropriate, instead of only using Attack.
 
 ```bash
-python arena.py new move_picker --from first_target
 python arena.py moves
-python arena.py battle move_picker first_target --runs 20 --seed 0
+python arena.py battle my_team first_target --runs 20
 ```
 
-**Goal:** Score at least **80%** against `first_target` across 40 matches
-(20 seeds, two seats each). Test both characters, not just one.
+**Complete when:** Both fighters visibly use different legal skills and your
+score against `first_target` reaches **80%** over 40 games (20 seeds, two
+sides). **Concept:** `if`, `in`, sets. **Clue:** Power is not the only factor;
+physical and magical characters have different stats.
 
-**Design clues:** The characters know different moves. A move's `power` alone
-is not its final damage; character stats also matter. `turn.available_move_ids`
-lets your function check what's legal. The `arena.py moves` display is your
-reference. Your finished AI should not crash when either character acts.
+## Project 2 — Read the room (30–45 min)
 
-**Programming idea:** membership tests and conditionals. **Explain:** Why is
-one hard-coded move name not sufficient for every character?
-
-## Project 2 — Choosing a Threat (30–45 min)
-
-**New feature:** Your target depends on information about the enemy, not just
-where the enemy appears in the list.
+**Add:** A target-selection rule that **reacts to changing enemy facts**.
+Targeting the first enemy forever does not satisfy the project.
 
 ```bash
-python arena.py new threat_hunter --from move_picker
-python arena.py battle threat_hunter heavy_hitter --runs 20 --seed 0
+python arena.py watch my_team heavy_hitter --seed 6
+python arena.py battle my_team heavy_hitter --runs 20
 ```
 
-**Goal:** Score at least **80%** against `heavy_hitter`. Unlike the prefab
-`heavy_hitter` (which you can read), your controller must sometimes choose a
-**different enemy** when
-the situation changes. Explain what makes an enemy a good target.
+**Complete when:** You can show two situations (different rounds, seeds, or
+matchups) where your rule chooses a different target because of what it sees.
+Print the target and the values that informed your decision. Aim for **80%**
+against `heavy_hitter`. **Concept:** loops, comparisons, choosing an item from
+a collection. **Clue:** Knocking out one opponent removes future enemy turns.
 
-**Design clues:** You can compare enemy health, speed, defense, or potential
-damage. Think about whether two injured opponents are more dangerous than
-one defeated opponent. Which enemy can you remove from the fight sooner?
+## Project 3 — One target or a group? (45–60 min)
 
-**Programming idea:** iteration, comparisons, and selecting the best element
-of a collection. **Explain:** What makes your selection adapt to changes
-in enemy health?
-
-## Project 3 — Tactics Against Groups (45–60 min)
-
-**New feature:** Your controller handles the choice between damaging a whole
-group and concentrating damage on one opponent.
+**Add:** A conditional decision between a move targeting **one enemy** and a
+move targeting **all living enemies**. The rule must actually use **both**
+kinds of move in different situations; an always-attack bot is not enough.
 
 ```bash
-python arena.py new squad_tactics --from threat_hunter
 python arena.py moves
-python arena.py battle squad_tactics crowd_control --runs 20 --seed 0
+python arena.py watch my_team crowd_control --seed 8
+python arena.py battle my_team crowd_control --runs 20
 ```
 
-**Goal:** Score at least **80%** against `crowd_control`. Observe how many
-enemies are alive and watch which attacks land before a fighter is knocked out.
-Show your teacher two battle situations in which your controller makes a
-*different tactical choice* based on what it observes.
+**Complete when:** You can demonstrate a group attack and a focused attack,
+explain what condition selected each, and measure whether the change helped
+against `crowd_control`. No fixed win-rate requirement: sometimes a group
+attack is **worse**, and discovering that is a valid result. **Concept:**
+conditionals, tradeoffs, testing a hypothesis.
 
-**Design clues:** Group moves spread their effect. Single-target moves
-concentrate it. A KO takes away an opponent's future turns. Which approach
-looks good on the first round? Does it stay good later? You may keep a group
-move in your controller, but you do not have to.
+## Project 4 — Beat the prefab lineup (45–60 min)
 
-**Programming idea:** algorithms, nested conditions, and tradeoffs.
-**Explain:** When can a move with lower total damage still improve your
-chance of winning?
-
-## Project 4 — Defeat Every Prefab (45–60 min)
-
-**New feature:** A single robust team controller that works against *all*
-of the built-in styles, including the RPG engine's own heuristic AI.
+**Add:** One controller that makes strong, legal decisions against **all seven
+prefab opponents**; this may require revisiting or even discarding earlier
+tactics that didn't work.
 
 ```bash
-python arena.py new contender --from squad_tactics
-python arena.py challenge contender --runs 20 --seed 0
+python arena.py challenge my_team --runs 20 --seed 0
 ```
 
-**Goal:** Your score must reach **80% or better against EACH prefab**. A
-single overall average is not enough. The command prints separate results and
-says `CHALLENGE PASSED` only after all requirements are met.
+**Complete when:** Your score is **at least 80% against EACH prefab** and no
+battle is unfinished. A reference strategy has passed this exact challenge
+using only the documented `turn` API; it is intentionally not provided.
 
-This challenge **has a tested solution** using only the currently documented
-`TurnContext` information and normal Python control flow. You are not given
-that solution. Develop a hypothesis, inspect logs, and iterate.
+**Clues, not instructions:** What costs you the most turns? When does an
+enemy stop being a threat? Does healing help more than finishing an attack?
+Do the same moves suit both characters? Try `--seed 77` after developing with
+seed 0 to see whether the improvement generalizes.
 
-You may discover that techniques from Projects 1–3 work better in combination.
-You should not need external packages, a large model, access to internal game
-state, or new combat rules.
+**Concept:** combined heuristics, experiments, and debugging. **Explain:**
+Which opponent forced you to revise your strategy?
 
-**Programming idea:** combining conditionals, loops, and heuristics into a
-single decision algorithm. **Explain:** Which prefab was hardest to beat?
-Did one improvement help against one opponent but hurt against another?
+## Project 5 — Team-controller tournament (30–60 min)
 
-**Extension:** Run another test with `--seed 77` to investigate whether your
-improvement holds on a different set of random battles.
-
-## Project 5 — A Classroom Tournament (30–60 min)
-
-**New feature:** Your controller competes in a class leaderboard, with a
-repeatable, recorded evaluation rather than an anecdotal victory.
+**Add:** A new saved version of your controller and a repeatable comparison
+against classmates, not just one lucky visual victory.
 
 ```bash
-python arena.py tournament move_picker threat_hunter squad_tactics contender --runs 20 --seed 71 --csv arena_results.csv
+python arena.py new contender_v2 --from my_team
+python arena.py tournament --runs 2 --seed 71 --csv class_results.csv
 ```
 
-Use only controller names that actually exist in your class. Your teacher may
-choose a common seed and run count for everyone. Before the tournament, write
-one sentence predicting which other AI yours will defeat. Afterward, compare
-your prediction to the CSV standings and explain one surprise.
+A teacher can select entrants explicitly and increase `--runs` for finals.
+Before competing, write a prediction. Afterwards, compare the standings and
+explain one result. Then improve **one** decision and compare versions using
+the same seeds. **Concept:** experiment design, reproducibility, fair scoring.
 
-**Programming idea:** experiments, reproducibility, fair comparisons, and
-reading tabular results. **Extension:** Improve your controller, but save its
-old version first. Then compare both versions under the same seeds.
-
-## Checklist before turning in
-
-- My file is under `team_arena/players/` and exports `choose_action(turn)`.
-- Every action is returned with `turn.use(...)` or `turn.defend()`.
-- Both characters can play without throwing an exception.
-- I can state **what behavior I added**, not just what lines I changed.
-- I recorded the seed and number of matches, not just a single win.
-- I can explain my strategy in plain English without needing to read code.
+**Hand-in:** Your editable `.py` file, one new behavior you implemented, one
+interesting observation from a visual battle, and the seeds used to measure
+results. Do **not** modify `prefabs/` or engine code for these projects.

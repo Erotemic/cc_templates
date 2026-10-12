@@ -24,7 +24,7 @@ from rpg_battle.api import (
 from rpg_battle.catalog import ContentValidationError, format_validation_report
 from rpg_battle.core.actions import attack_action, skill_action
 from rpg_battle.core.battle_state import new_battle
-from rpg_battle.core.models import EncounterSpec, TeamSpec
+from rpg_battle.core.models import EncounterSpec, MoveSpec, TeamSpec
 from rpg_battle.core.rules import resolve_action
 
 
@@ -48,7 +48,13 @@ def _script_damage_at_hp(hp: int) -> int:
         active_limits=(1, 1),
         music_track_id=CONTENT.default_battle_track,
     )
-    state = new_battle(encounter, content=CONTENT)
+    # The script's owning fighter must have actually learned this skill.
+    script_knight = replace(
+        CONTENT.characters["knight"],
+        move_ids=(*CONTENT.characters["knight"].move_ids, moves.desperate_strike.move_id),
+    )
+    content = replace(CONTENT, characters={**CONTENT.characters, "knight": script_knight})
+    state = new_battle(encounter, content=content)
     actor_id = state.teams[0].active_ids[0]
     target_id = state.teams[1].active_ids[0]
     state.combatants[actor_id].current_hp = hp
@@ -94,7 +100,7 @@ def test_student_game_uses_direct_object_references() -> None:
     assert characters.knight.art is art.knight_dawn_art
     # Older classroom code can still read ``sprite`` while new examples use ``art``.
     assert characters.knight.sprite is characters.knight.art
-    assert CONTENT.characters["knight"].move_ids == ("shield_bash", "stone_ward", "strike")
+    assert CONTENT.characters["knight"].move_ids == ("shield_bash", "stone_ward")
 
 
 def test_game_uses_art_assets_as_the_student_facing_registry_name() -> None:
@@ -198,12 +204,12 @@ def test_unregistered_team_is_reported_by_validation() -> None:
 
 
 def test_basic_attack_is_game_content_not_a_hard_coded_move_id() -> None:
+    custom_attack = MoveSpec("alternate_basic", "Training Attack", "physical", 15,
+                             1.0, "single_enemy")
     alternate = replace(
         CONTENT,
-        presentation=replace(
-            CONTENT.presentation,
-            basic_attack_move_id=moves.arc_bolt.move_id,
-        ),
+        moves={**CONTENT.moves, custom_attack.move_id: custom_attack},
+        basic_attack_move_id=custom_attack.move_id,
     )
     state = new_battle(content=alternate)
     actor_id = state.teams[0].active_ids[0]
@@ -214,7 +220,7 @@ def test_basic_attack_is_game_content_not_a_hard_coded_move_id() -> None:
         random.Random(2),
     )
     move_events = [event for event in events if event["type"] == "move"]
-    assert move_events[0]["move_id"] == moves.arc_bolt.move_id
+    assert move_events[0]["move_id"] == custom_attack.move_id
 
 
 def test_presentation_refs_are_validated() -> None:

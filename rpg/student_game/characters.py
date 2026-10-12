@@ -19,7 +19,6 @@ knight = Character(
     moves=[
         moves.shield_bash,
         moves.stone_ward,
-        moves.strike,
     ],
     description='A steadfast defender.',
 )
@@ -37,7 +36,6 @@ druid = Character(
     moves=[
         moves.healing_light,
         moves.thorn_bind,
-        moves.strike,
     ],
     description='A healer who slows foes with nature magic.',
 )
@@ -55,7 +53,6 @@ ranger = Character(
     moves=[
         moves.arc_bolt,
         moves.wind_step,
-        moves.strike,
     ],
     description='Fast and accurate.',
 )
@@ -73,7 +70,6 @@ mage = Character(
     moves=[
         moves.arc_bolt,
         moves.ember,
-        moves.strike,
     ],
     description='A focused spellcaster.',
 )
@@ -93,7 +89,6 @@ guardian = Character(
     moves=[
         moves.stone_ward,
         moves.shield_bash,
-        moves.strike,
     ],
     description='A magical construct of crystal and light.',
 )
@@ -111,7 +106,6 @@ spirit = Character(
     moves=[
         moves.mist_veil,
         moves.arc_bolt,
-        moves.strike,
     ],
     description='Elusive and patient.',
 )
@@ -200,7 +194,6 @@ star_corsair = Character(
     speed=9,
     art=art.star_corsair,
     moves=[
-        moves.strike,
         moves.wind_step,
         moves.shield_bash,
     ],
@@ -254,7 +247,6 @@ space_pirate = Character(
     speed=8,
     art=art.space_pirate,
     moves=[
-        moves.strike,
         moves.shield_bash,
         moves.artifact_burst,
     ],

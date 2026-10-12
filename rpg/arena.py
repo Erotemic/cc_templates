@@ -2,9 +2,9 @@
 """Friendly entry point for the student team-controller competition.
 
 From the rpg directory:
-    python arena.py list
-    python arena.py battle my_team first_target --log
-    python arena.py challenge my_team
+    python arena.py              # animated fight with your saved controller
+    python arena.py battle       # quick headless comparison
+    python arena.py challenge    # beat the fixed prefab roster
 """
 
 from __future__ import annotations

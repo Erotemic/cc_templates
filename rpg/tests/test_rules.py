@@ -1,6 +1,8 @@
 import random
 import unittest
+from dataclasses import replace
 
+from student_game import CONTENT
 from rpg_battle.core.actions import attack_action, skill_action, switch_action
 from rpg_battle.core.battle_state import get_combatant, new_battle
 from rpg_battle.core.rules import resolve_action
@@ -16,7 +18,9 @@ class TestRules(unittest.TestCase):
         self.assertLess(get_combatant(state, target_id).current_hp, target_hp)
 
     def test_heal_targets_selected_ally(self):
-        state = new_battle()
+        encounter = CONTENT.default_encounter
+        party = replace(encounter.player_team, starting_active=("knight", "druid"))
+        state = new_battle(replace(encounter, player_team=party), content=CONTENT)
         healer_id = state.teams[0].active_ids[1]
         target_id = state.teams[0].active_ids[0]
         target = get_combatant(state, target_id)

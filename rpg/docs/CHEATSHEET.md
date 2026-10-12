@@ -65,6 +65,19 @@ def my_move(ctx):
     return commands
 ```
 
+## Team-controller actions
+
+Attack and Defend are always available. Skills must be learned by the fighter.
+Your function returns **one action** each turn:
+
+```python
+return turn.attack(target=turn.enemies[0])
+return turn.defend()
+return turn.skill(moves.arc_bolt, target=turn.enemies[0])
+```
+
+The arena has more examples in `team_arena/prefabs/`.
+
 ## Enemy strategy pattern
 
 ```python
@@ -77,7 +90,7 @@ def my_strategy(turn):
         if enemy.hp_ratio < target.hp_ratio:
             target = enemy
 
-    return turn.use(moves.arc_bolt, target=target)
+    return turn.skill(moves.arc_bolt, target=target)
 ```
 
 ## Scripted move power

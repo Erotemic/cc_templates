@@ -25,27 +25,35 @@ and battle wiring live in `workshop_assets.py` and `workshop_battles.py`, so
 students encounter those concepts when they are ready for them rather than in
 their first conditional lesson.
 
-## Team Controller AI Arena
+## AI Team Arena — watch your code fight
 
-Students can program an **AI team controller** as one Python function, pit it
-against readable example opponents, and run a round-robin classroom tournament:
+Edit **one file**, `team_arena/players/my_team.py`, and run:
 
 ```bash
-python arena.py list
-python arena.py moves
-python arena.py battle my_team first_target --runs 4 --log
-python arena.py watch my_team first_target --seed 3
-python arena.py new clever_team --from first_target
-python arena.py challenge clever_team --runs 20
+python arena.py
 ```
 
-Start with [`team_arena/README.md`](team_arena/README.md) and the
-[feature-building student projects](team_arena/STUDENT_PROJECTS.md). A
-verified, finite benchmark challenge asks students to beat **every** built-in
-prefab (80% per opponent over side-swapped seeded matches), without showing
-them the reference decision algorithm. The RPG's existing combat rules are
-used unchanged. **`watch` opens the animated RPG battle**, labeling each
-team controller and showing its `print()` output next to the battle log.
+This opens the animated battle against an example controller. Both teams show
+their Python source files; the Controller Console shows your own `print()`
+messages and the decisions your fighter makes. Edit, **save**, press **R** to
+run your changed code in a new fight. **P** replays the old recording, **N**
+steps one decision while paused, and Space pauses. A VS Code task called
+**RPG Arena: Watch** launches the same activity.
+
+When ready to measure your strategy across many battles:
+
+```bash
+python arena.py battle my_team first_target --runs 4
+python arena.py challenge my_team
+python arena.py tournament --csv class_results.csv
+```
+
+The tournament starts with only student controllers; add `--include-prefabs`
+for examples. Student projects and the known-achievable 80%-per-prefab
+challenge are in [the arena guide](team_arena/README.md) and its
+[projects](team_arena/STUDENT_PROJECTS.md). The same RPG combat engine handles each match, and identical teams fight on
+both sides. Basic Attack and Defend are always available; students choose any
+special skills with `turn.skill(...)`.
 
 ## Trustworthy feedback
 

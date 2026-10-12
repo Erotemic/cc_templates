@@ -13,8 +13,9 @@ def attack_action(
 ) -> BattleAction:
     """Build a basic attack action.
 
-    When ``move_id`` is omitted, the battle resolves the game-specific basic
-    attack from ``GameContent.presentation``.
+    The combat rules resolve the game's standard attack; no learned skill
+    is required. An explicit ``move_id`` is retained for older callers but
+    must identify that same configured basic attack.
     """
 
     return BattleAction(actor_id=actor_id, kind="attack", move_id=move_id, target_ids=target_ids)

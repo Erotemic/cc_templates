@@ -1,5 +1,8 @@
 import random
 import unittest
+from dataclasses import replace
+
+from student_game import CONTENT
 
 from rpg_battle.core.actions import skill_action
 from rpg_battle.core.battle_state import get_combatant, new_battle
@@ -9,7 +12,9 @@ from rpg_battle.core.rules import finish_round, resolve_action
 
 class TestStatuses(unittest.TestCase):
     def test_slow_status_can_apply(self):
-        state = new_battle()
+        encounter = CONTENT.default_encounter
+        party = replace(encounter.player_team, starting_active=("knight", "druid"))
+        state = new_battle(replace(encounter, player_team=party), content=CONTENT)
         actor_id = state.teams[0].active_ids[1]
         target_id = state.teams[1].active_ids[0]
         resolve_action(state, skill_action(actor_id, "thorn_bind", (target_id,)), random.Random(1))

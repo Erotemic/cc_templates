@@ -379,7 +379,7 @@ class BattleScene:
         self.pending_target_ids = []
         if action_kind == "attack":
             self.event_queue = self.controller.resolve_current_player_action(
-                attack_action(actor_id, target_ids=target_ids, move_id=move_id)
+                attack_action(actor_id, target_ids=target_ids)
             )
         elif action_kind == "skill" and move_id is not None:
             self.event_queue = self.controller.resolve_current_player_action(
@@ -455,10 +455,13 @@ class BattleScene:
             logger.debug("Action menu choice {} for actor {}", choice, actor.spec.name)
             if choice == "Attack":
                 self._handle_player_move_selection(
-                    self.content.presentation.basic_attack_move_id, "attack"
+                    self.content.basic_attack_move_id, "attack"
                 )
             elif choice == "Skill":
                 options = [self.content.moves[move_id].name for move_id in actor.spec.move_ids]
+                if not options:
+                    self.log.add("No skills learned.", color=NEUTRAL_EVENT_COLOR)
+                    return
                 self.menu_stack.append(MenuState(title="Choose Skill", options=options))
             elif choice == "Defend":
                 self._resolve_immediate_action(
