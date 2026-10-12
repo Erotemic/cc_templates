@@ -104,6 +104,15 @@ and scripted command powers so students can see changes hidden by win rate.
 - `docs/teacher_notes.md` — teaching contracts and classroom guidance
 - `docs/setup.md` — classroom setup
 
+Advanced students and maintainers can follow
+[the engine architecture guide](docs/ARCHITECTURE.md), which traces one action
+from a controller through the shared `BattleSession`, validation, combat
+rules, events, and animation. To inspect an actual turn without pygame, run:
+
+```bash
+python trace_turn.py --seed 3 --decisions 2
+```
+
 ## Full game features
 
 The reference game remains deliberately rich:

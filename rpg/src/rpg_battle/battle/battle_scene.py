@@ -9,11 +9,12 @@ from loguru import logger
 
 from rpg_battle.audio.engine import AudioEngine
 from rpg_battle.catalog import GameContent, get_default_content
-from rpg_battle.battle.battle_controller import BattleController
+from rpg_battle.battle.session import BattleSession, DecisionRequest
+from rpg_battle.core.ai import choose_ai_action, choose_ai_replacement
 from rpg_battle.battle.combat_log import CombatLog
 from rpg_battle.battle.menu_state import MenuState
 from rpg_battle.core.actions import attack_action, defend_action, skill_action, switch_action
-from rpg_battle.core.models import BattleState, EncounterSpec
+from rpg_battle.core.models import BattleAction, BattleState, EncounterSpec
 from rpg_battle.core.transforms import TRANSFORM_STATUS_INFO
 from rpg_battle.core.battle_state import get_combatant
 from rpg_battle.core.targeting import get_valid_target_groups
@@ -81,23 +82,34 @@ class BattleScene:
         teaching_trace: "TeachingTrace | None" = None,
         seed: int = 5,
         state_setup: Callable[[BattleState], None] | None = None,
+        decision_provider: Callable[[BattleSession, DecisionRequest], BattleAction | str] | None = None,
+        human_teams: frozenset[int] | None = None,
     ) -> None:
         self.rect = rect
         self.content = content or get_default_content()
         self.audio = audio or AudioEngine(self.content)
-        self.controller = BattleController(
+        self.session = BattleSession(
             encounter=encounter,
             seed=seed,
             content=self.content,
             teaching_trace=teaching_trace,
             state_setup=state_setup,
         )
-        track_id = self.controller.encounter.music_track_id or self.content.default_battle_track
+        # Human/AI is a property of the input client, not the battle state
+        # machine. Replays can supply a decision provider for both teams.
+        self.decision_provider = decision_provider
+        self.human_teams = (
+            frozenset(team.team_index for team in self.session.state.teams
+                      if team.controller_type == "human")
+            if human_teams is None else frozenset(human_teams)
+        )
+        self.decision_delay = 0.55
+        track_id = self.session.encounter.music_track_id or self.content.default_battle_track
         if track_id:
             self.audio.play_music(track_id)
         self.log = CombatLog(max_lines=18)
         self.log.add(
-            f"{self.controller.encounter.title} begins.",
+            f"{self.session.encounter.title} begins.",
             color=NEUTRAL_EVENT_COLOR,
             emphasis=True,
         )
@@ -126,17 +138,22 @@ class BattleScene:
         self.small_font = pygame.font.Font(None, 24)
         self.should_quit = False
         self._ensure_visuals_for_all()
-        self.event_queue = self.controller.advance_to_next_turn()
+        self.event_queue = list(self.session.next_step().events)
         logger.info("Battle scene initialized")
 
+    @property
+    def controller(self) -> BattleSession:
+        """Compatibility name for existing lessons; new code uses ``session``."""
+        return self.session
+
     def reset(self) -> None:
-        self.controller.restart()
-        track_id = self.controller.encounter.music_track_id or self.content.default_battle_track
+        self.session.restart()
+        track_id = self.session.encounter.music_track_id or self.content.default_battle_track
         if track_id:
             self.audio.play_music(track_id)
         self.log = CombatLog(max_lines=18)
         self.log.add(
-            f"{self.controller.encounter.title} begins again.",
+            f"{self.session.encounter.title} begins again.",
             color=NEUTRAL_EVENT_COLOR,
             emphasis=True,
         )
@@ -160,11 +177,11 @@ class BattleScene:
         self.lingering_faints = {}
         self.frozen_team_positions = {}
         self._ensure_visuals_for_all()
-        self.event_queue = self.controller.advance_to_next_turn()
+        self.event_queue = list(self.session.next_step().events)
         logger.info("Battle scene reset")
 
     def _ensure_visuals_for_all(self) -> None:
-        for combatant_id, combatant in self.controller.state.combatants.items():
+        for combatant_id, combatant in self.session.state.combatants.items():
             if combatant_id not in self.sprite_actors:
                 side = "left" if combatant.team_index == 0 else "right"
                 self.sprite_actors[combatant_id] = SpriteActor(
@@ -207,12 +224,12 @@ class BattleScene:
         mapping: dict[str, tuple[float, float, float]] = {}
         computed_by_team: dict[int, dict[str, tuple[float, float, float]]] = {}
         for team_index, region in enumerate((left_region, right_region)):
-            team = self.controller.state.teams[team_index]
+            team = self.session.state.teams[team_index]
             side = "left" if team_index == 0 else "right"
             slots = formation_slots(region, side, team.active_limit)
             team_mapping: dict[str, tuple[float, float, float]] = {}
             for combatant_id in team.active_ids:
-                combatant = get_combatant(self.controller.state, combatant_id)
+                combatant = get_combatant(self.session.state, combatant_id)
                 slot_index = combatant.slot_index
                 if slot_index is None or slot_index >= len(slots):
                     continue
@@ -229,7 +246,7 @@ class BattleScene:
                 continue
             for combatant_id, slot in team_mapping.items():
                 mapping.setdefault(combatant_id, slot)
-        for combatant_id, combatant in self.controller.state.combatants.items():
+        for combatant_id, combatant in self.session.state.combatants.items():
             if combatant_id in mapping or combatant_id not in self.last_known_positions:
                 continue
             actor = self.sprite_actors.get(combatant_id)
@@ -248,7 +265,7 @@ class BattleScene:
 
     def _freeze_team_positions(self, team_index: int, *, extra_ids: tuple[str, ...] = ()) -> None:
         frozen: dict[str, tuple[float, float, float]] = {}
-        team = self.controller.state.teams[team_index]
+        team = self.session.state.teams[team_index]
         tracked_ids = list(team.active_ids) + list(extra_ids)
         for combatant_id in tracked_ids:
             slot = self.last_known_positions.get(combatant_id)
@@ -259,7 +276,7 @@ class BattleScene:
 
     def _update_team_freeze_state(self) -> None:
         active_lingering_teams = {
-            get_combatant(self.controller.state, combatant_id).team_index
+            get_combatant(self.session.state, combatant_id).team_index
             for combatant_id in self.lingering_faints
         }
         self.frozen_team_positions = {
@@ -269,14 +286,14 @@ class BattleScene:
         }
 
     def _set_display_hp_target(self, combatant_id: str, hp_value: int) -> None:
-        combatant = get_combatant(self.controller.state, combatant_id)
+        combatant = get_combatant(self.session.state, combatant_id)
         bounded_hp = max(0, min(combatant.spec.max_hp, hp_value))
         self.displayed_hp_target[combatant_id] = float(bounded_hp)
         ratio = bounded_hp / combatant.spec.max_hp if combatant.spec.max_hp else 0.0
         self.hp_bars[combatant_id].set_target(ratio)
 
     def _sync_display_to_current(self, combatant_id: str) -> None:
-        combatant = get_combatant(self.controller.state, combatant_id)
+        combatant = get_combatant(self.session.state, combatant_id)
         hp_value = float(combatant.current_hp)
         self.displayed_hp_current[combatant_id] = hp_value
         self.displayed_hp_target[combatant_id] = hp_value
@@ -284,7 +301,7 @@ class BattleScene:
 
     def _target_names(self, target_ids: list[str]) -> list[str]:
         return [
-            get_combatant(self.controller.state, target_id).spec.name for target_id in target_ids
+            get_combatant(self.session.state, target_id).spec.name for target_id in target_ids
         ]
 
     def _fit_text(
@@ -305,7 +322,7 @@ class BattleScene:
         return prefix + (raw + ellipsis if raw else ellipsis)
 
     def _set_root_menu_for_actor(self, actor_id: str) -> None:
-        actor = get_combatant(self.controller.state, actor_id)
+        actor = get_combatant(self.session.state, actor_id)
         self.current_menu_actor_id = actor_id
         self.pending_action_kind = None
         self.pending_move_id = None
@@ -320,18 +337,22 @@ class BattleScene:
             )
         ]
 
-    def _ensure_player_menu_state(self) -> None:
-        if not self.controller.player_can_act() or self.controller.current_actor_id is None:
+    def _ensure_action_menu(self) -> None:
+        request = self.session.request
+        if (request is None or request.kind != "action"
+                or request.team_index not in self.human_teams):
             return
-        if self.current_menu_actor_id != self.controller.current_actor_id or not self.menu_stack:
-            self._set_root_menu_for_actor(self.controller.current_actor_id)
+        if self.current_menu_actor_id != self.session.current_actor_id or not self.menu_stack:
+            self._set_root_menu_for_actor(self.session.current_actor_id)
 
     def _ensure_replacement_menu(self) -> None:
-        if not self.controller.player_needs_replacement():
+        request = self.session.request
+        if (request is None or request.kind != "replacement"
+                or request.team_index not in self.human_teams):
             return
         if self.menu_stack and self.menu_stack[-1].title == "Choose Replacement":
             return
-        targets = self.controller.player_replacement_targets()
+        targets = list(request.choices)
         self.pending_target_ids = list(targets)
         logger.debug("Opening replacement menu with targets {}", targets)
         self.menu_stack = [
@@ -343,7 +364,7 @@ class BattleScene:
             return
         if self.event_queue or self.event_timer > 0 or self.current_event_timer > 0:
             return
-        if not self.menu_stack and self.controller.state.winner is None:
+        if not self.menu_stack and self.session.state.outcome == "ongoing":
             return
         menu = self._active_menu()
         if event.key in UP_KEYS | LEFT_KEYS:
@@ -378,19 +399,19 @@ class BattleScene:
         self.pending_move_id = None
         self.pending_target_ids = []
         if action_kind == "attack":
-            self.event_queue = self.controller.resolve_current_player_action(
+            self.event_queue = self.session.submit_action(
                 attack_action(actor_id, target_ids=target_ids)
             )
         elif action_kind == "skill" and move_id is not None:
-            self.event_queue = self.controller.resolve_current_player_action(
+            self.event_queue = self.session.submit_action(
                 skill_action(actor_id, move_id, target_ids=target_ids)
             )
         elif action_kind == "defend":
-            self.event_queue = self.controller.resolve_current_player_action(
+            self.event_queue = self.session.submit_action(
                 defend_action(actor_id)
             )
         elif action_kind == "switch" and switch_in_id is not None:
-            self.event_queue = self.controller.resolve_current_player_action(
+            self.event_queue = self.session.submit_action(
                 switch_action(actor_id, switch_in_id)
             )
 
@@ -404,12 +425,12 @@ class BattleScene:
         )
 
     def _handle_player_move_selection(self, move_id: str, action_kind: str) -> None:
-        actor_id = self.controller.current_actor_id
+        actor_id = self.session.current_actor_id
         if actor_id is None:
             return
         move = self.content.moves[move_id]
         logger.debug("Player selected move {} with target_mode={}", move_id, move.target_mode)
-        groups = get_valid_target_groups(self.controller.state, actor_id, move.target_mode)
+        groups = get_valid_target_groups(self.session.state, actor_id, move.target_mode)
         if not groups:
             self._resolve_immediate_action(
                 actor_id=actor_id, move_id=move_id, action_kind=action_kind
@@ -431,7 +452,7 @@ class BattleScene:
             return
         menu = self._active_menu()
         logger.debug("Confirming menu choice for {}", menu.title)
-        if self.controller.state.winner is not None:
+        if self.session.state.outcome != "ongoing":
             choice = menu.current()
             if choice == "Restart":
                 self.reset()
@@ -445,12 +466,12 @@ class BattleScene:
             replacement_id = self.pending_target_ids[menu.selected]
             self.menu_stack = []
             self.current_menu_actor_id = None
-            self.event_queue = self.controller.resolve_player_replacement(replacement_id)
+            self.event_queue = self.session.submit_replacement(replacement_id)
             return
-        actor_id = self.controller.current_actor_id
+        actor_id = self.session.current_actor_id
         if actor_id is None:
             return
-        actor = get_combatant(self.controller.state, actor_id)
+        actor = get_combatant(self.session.state, actor_id)
         if menu.title.endswith("Choose Action"):
             logger.debug("Action menu choice {} for actor {}", choice, actor.spec.name)
             if choice == "Attack":
@@ -471,7 +492,7 @@ class BattleScene:
                 # Future inventory hook: add an `elif choice == "Item"` branch
                 # here that opens an item selection menu using the acting team
                 # inventory stored in `BattleState`.
-                targets = self.controller.switch_targets_for_current_actor()
+                targets = self.session.switch_targets_for_current_actor()
                 if not targets:
                     self.log.add("No one in reserve can switch in.", color=NEUTRAL_EVENT_COLOR)
                     return
@@ -572,7 +593,7 @@ class BattleScene:
             # them later.
             if move_uses_attack_presentation(event.get("move_kind")):
                 self.sprite_actors[actor_id].play_attack(
-                    get_combatant(self.controller.state, actor_id).spec.sprite_id
+                    get_combatant(self.session.state, actor_id).spec.sprite_id
                 )
             actor_x, actor_y, _ = self._position_for(actor_id)
             target_x, target_y = self._make_effect_target(event)
@@ -589,13 +610,14 @@ class BattleScene:
                 self.audio.play_sfx(sound_id)
         elif event_type in {"damage", "status_tick"}:
             target_id = event["target_id"]
-            self.sprite_actors[target_id].play_hurt(get_combatant(self.controller.state, target_id).spec.sprite_id)
+            self.sprite_actors[target_id].play_hurt(get_combatant(self.session.state, target_id).spec.sprite_id)
             x, y, _ = self._position_for(target_id)
             self.floating_texts.append(
                 FloatingText(f"-{event['amount']}", [x, y - 80], DAMAGE_COLOR)
             )
             self._set_display_hp_target(
-                target_id, get_combatant(self.controller.state, target_id).current_hp
+                target_id,
+                event.get("hp_after", get_combatant(self.session.state, target_id).current_hp),
             )
             self.audio.play_sfx(self.content.presentation.damage_sound_id)
         elif event_type == "heal":
@@ -611,12 +633,13 @@ class BattleScene:
             )
             self.floating_texts.append(FloatingText(f"+{event['amount']}", [x, y - 80], HEAL_COLOR))
             self._set_display_hp_target(
-                target_id, get_combatant(self.controller.state, target_id).current_hp
+                target_id,
+                event.get("hp_after", get_combatant(self.session.state, target_id).current_hp),
             )
             self.audio.play_sfx(self.content.presentation.heal_sound_id)
         elif event_type == "ko":
             target_id = event["target_id"]
-            target = get_combatant(self.controller.state, target_id)
+            target = get_combatant(self.session.state, target_id)
             self._freeze_team_positions(target.team_index, extra_ids=(target_id,))
             frozen_slot = self.last_known_positions.get(target_id)
             if frozen_slot is not None:
@@ -627,13 +650,13 @@ class BattleScene:
         elif event_type == "switch":
             incoming_id = event["new_combatant_id"]
             self.lingering_faints.pop(incoming_id, None)
-            self.sprite_actors[incoming_id].set_faint(False, get_combatant(self.controller.state, incoming_id).spec.sprite_id)
+            self.sprite_actors[incoming_id].set_faint(False, get_combatant(self.session.state, incoming_id).spec.sprite_id)
             self._sync_display_to_current(incoming_id)
             self.audio.play_sfx(self.content.presentation.switch_sound_id)
         elif event_type == "replacement_joined":
             combatant_id = event["combatant_id"]
             self.lingering_faints.pop(combatant_id, None)
-            self.sprite_actors[combatant_id].set_faint(False, get_combatant(self.controller.state, combatant_id).spec.sprite_id)
+            self.sprite_actors[combatant_id].set_faint(False, get_combatant(self.session.state, combatant_id).spec.sprite_id)
             self._sync_display_to_current(combatant_id)
             self.audio.play_sfx(self.content.presentation.switch_sound_id)
         elif event_type == "defend":
@@ -641,9 +664,9 @@ class BattleScene:
         elif event_type == "battle_end":
             winner = event.get("winner")
             track_id = (
-                self.content.default_victory_track
-                if winner == 0
-                else self.content.default_defeat_track
+                self.content.default_victory_track if winner == 0
+                else self.content.default_defeat_track if winner == 1
+                else None  # A simultaneous knockout has no winner.
             )
             if track_id:
                 self.audio.play_music(track_id, loops=0)
@@ -654,7 +677,7 @@ class BattleScene:
         self._ensure_visuals_for_all()
         for actor in self.sprite_actors.values():
             actor.update(dt)
-        for combatant_id, combatant in self.controller.state.combatants.items():
+        for combatant_id, combatant in self.session.state.combatants.items():
             hp_speed = max(18.0, combatant.spec.max_hp * 2.4) * dt
             self.displayed_hp_current[combatant_id] = approach(
                 self.displayed_hp_current[combatant_id],
@@ -705,25 +728,40 @@ class BattleScene:
             else:
                 self.event_timer = 0.5
             return
-        if self.current_event_timer > 0 or self.controller.state.winner is not None:
+        if self.current_event_timer > 0 or self.session.state.outcome != "ongoing":
             return
-        if self.controller.player_needs_replacement():
-            self.ai_think_timer = 0.0
-            self._ensure_replacement_menu()
-            return
-        if self.controller.enemy_should_act():
+        request = self.session.request
+        if request is not None:
+            if request.team_index in self.human_teams and self.decision_provider is None:
+                self.ai_think_timer = 0.0
+                if request.kind == "replacement":
+                    self._ensure_replacement_menu()
+                else:
+                    self._ensure_action_menu()
+                return
+            # Both teams, including replay-controlled teams, use this same
+            # decision submission path. The spectator supplies a recorded
+            # decision_provider; ordinary AI uses the built-in strategy.
             if self.ai_think_timer <= 0:
-                self.ai_think_timer = 0.55
+                self.ai_think_timer = self.decision_delay
             else:
                 self.ai_think_timer -= dt
                 if self.ai_think_timer <= 0:
-                    self.event_queue = self.controller.resolve_current_enemy_action()
+                    if self.decision_provider is not None:
+                        decision = self.decision_provider(self.session, request)
+                    elif request.kind == "replacement":
+                        decision = choose_ai_replacement(self.session.state, request.team_index)
+                    else:
+                        assert request.actor_id is not None
+                        decision = choose_ai_action(
+                            self.session.state, request.actor_id, self.session.rng
+                        )
+                    if decision is None:
+                        raise ValueError(f"No legal choice for {request!r}")
+                    self.event_queue = self.session.submit(decision)
             return
         self.ai_think_timer = 0.0
-        if self.controller.player_can_act():
-            self._ensure_player_menu_state()
-            return
-        self.event_queue = self.controller.advance_to_next_turn()
+        self.event_queue = list(self.session.next_step().events)
 
     def draw(self, surface: pygame.Surface) -> None:
         draw_background(surface)
@@ -743,7 +781,7 @@ class BattleScene:
         positions = self._position_map()
         draw_order = sorted(positions.items(), key=lambda item: item[1][1])
         highlighted_targets: set[str] = set()
-        active_actor_id = self.controller.current_actor_id
+        active_actor_id = self.session.current_actor_id
         if self.current_event and self.current_event["type"] == "move":
             highlighted_targets.update(self.current_event.get("target_ids", []))
         elif (
@@ -758,13 +796,13 @@ class BattleScene:
             if combatant_id == active_actor_id:
                 glow = (
                     PLAYER_GLOW
-                    if get_combatant(self.controller.state, combatant_id).team_index == 0
+                    if get_combatant(self.session.state, combatant_id).team_index == 0
                     else ENEMY_GLOW
                 )
                 pygame.draw.ellipse(surface, glow, shadow.inflate(24, 12), 3)
             if combatant_id in highlighted_targets:
                 pygame.draw.ellipse(surface, TARGET_GLOW, shadow.inflate(40, 20), 4)
-            combatant = get_combatant(self.controller.state, combatant_id)
+            combatant = get_combatant(self.session.state, combatant_id)
             self.sprite_actors[combatant_id].draw(
                 surface,
                 combatant.spec.sprite_id,
@@ -806,7 +844,7 @@ class BattleScene:
         center_x: float,
         top_y: float,
     ) -> None:
-        combatant = get_combatant(self.controller.state, combatant_id)
+        combatant = get_combatant(self.session.state, combatant_id)
         badge_specs: list[tuple[str, tuple[int, int, int]]] = []
         for status_name in combatant.statuses:
             transform_info = TRANSFORM_STATUS_INFO.get(status_name)
@@ -839,7 +877,7 @@ class BattleScene:
     def _draw_battler_overlay(
         self, surface: pygame.Surface, combatant_id: str, x: float, y: float, scale: float
     ) -> None:
-        combatant = get_combatant(self.controller.state, combatant_id)
+        combatant = get_combatant(self.session.state, combatant_id)
         self._draw_name_label(surface, combatant.spec.name, x, y - 96 * scale)
         self._draw_status_badges(surface, combatant_id, x, y - 120 * scale)
         bar_rect = pygame.Rect(int(x - 50), int(y + 70 * scale), 100, 14)
@@ -856,7 +894,7 @@ class BattleScene:
     def _team_roster(self, team_index: int) -> list[str]:
         return [
             combatant_id
-            for combatant_id, combatant in sorted(self.controller.state.combatants.items())
+            for combatant_id, combatant in sorted(self.session.state.combatants.items())
             if combatant.team_index == team_index
         ]
 
@@ -872,11 +910,11 @@ class BattleScene:
         pygame.draw.rect(surface, (215, 220, 240), rect, 1, border_radius=6)
 
     def _draw_team_panel(self, surface: pygame.Surface, rect: pygame.Rect, team_index: int) -> None:
-        team = self.controller.state.teams[team_index]
+        team = self.session.state.teams[team_index]
         title = self.title_font.render(team.name, True, TEXT_COLOR)
         surface.blit(title, (rect.x + 18, rect.y + 10))
         for row_index, combatant_id in enumerate(self._team_roster(team_index)):
-            combatant = get_combatant(self.controller.state, combatant_id)
+            combatant = get_combatant(self.session.state, combatant_id)
             y = rect.y + 48 + row_index * 30
             status = "ACTIVE" if combatant.active else "RESERVE" if combatant.alive else "KO"
             text = self.small_font.render(f"{combatant.spec.name} [{status}]", True, TEXT_COLOR)

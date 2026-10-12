@@ -9,12 +9,11 @@ instances. Students normally author friendly ``Character`` and ``Move`` objects 
 """
 
 from dataclasses import dataclass, field
-from typing import Callable, Literal, TYPE_CHECKING
+from typing import Callable, Literal, Mapping, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from rpg_battle.catalog import GameContent
     from rpg_battle.core.scripting import AIStrategy, MoveContext, MoveScriptResult
-    from rpg_battle.teaching.trace import TeachingTrace
+    from rpg_battle.core.trace import TraceSink
 
 MoveKind = Literal["physical", "magical", "heal", "buff", "debuff", "status"]
 TargetMode = Literal[
@@ -78,6 +77,19 @@ class CharacterSpec:
     sprite_id: str
     move_ids: tuple[str, ...]
     description: str = ""
+
+
+@dataclass(frozen=True)
+class CombatContent:
+    """Only the definitions combat rules need; no art/audio/renderer objects.
+
+    A complete ``GameContent`` can supply these three collections without
+    making the combat state retain presentation catalogs or importing pygame.
+    """
+
+    characters: Mapping[str, CharacterSpec]
+    moves: Mapping[str, MoveSpec]
+    basic_attack_move_id: str
 
 
 @dataclass(frozen=True)
@@ -197,11 +209,16 @@ class BattleState:
 
     teams: list[TeamBattleState]
     combatants: dict[str, CombatantState]
-    content: "GameContent | None" = None
+    content: CombatContent | None = None
     round_number: int = 1
     winner: int | None = None
+    outcome: Literal["ongoing", "victory", "draw"] = "ongoing"
     pending_replacements: list[ReplacementRequest] = field(default_factory=list)
-    teaching_trace: "TeachingTrace | None" = None
+    # Session phase is battle state, not UI/AI controller state.
+    pending_turn_order: list[str] = field(default_factory=list)
+    current_actor_id: str | None = None
+    round_announced: bool = False
+    teaching_trace: "TraceSink | None" = None
 
 
 @dataclass(frozen=True)

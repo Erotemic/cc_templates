@@ -54,7 +54,7 @@ Increase `--runs` for a final. The tool prints the number of fixtures and
 progress, and swaps seats for each seed.
 
 - **Wins/losses:** ordinary completed battles.
-- **D (draw):** a completed tie, if the engine later supports one; 0.5 point.
+- **D (draw):** a completed simultaneous knockout; 0.5 point.
 - **U (unfinished):** reached `--max-steps` with no winner; **0 points for
   both controllers**. Infinite defense does not gain draw points.
 - **Error/timeout:** stops the fixture with a diagnostic; not counted as a
@@ -67,8 +67,9 @@ an undisclosed test**.
 
 ## Operational boundaries
 
-The same `simulate_once()` engine loop now powers both the headless scorer and
-recordings. The viewer uses prerecorded decisions and only stores RNG
+The same `BattleSession` lifecycle powers the headless scorer, normal pygame
+game, and arena replay. `simulate_once()` also supplies the recorder's
+student-choice/print hooks. The viewer uses prerecorded decisions and only stores RNG
 checkpoints for decisions that consume the battle generator, reducing replay
 size. **R reruns saved code** in a bounded subprocess; **P** plays the old
 recording. Student prints are limited per decision, and process output is

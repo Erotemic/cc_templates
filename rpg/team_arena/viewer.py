@@ -19,7 +19,7 @@ from rpg_battle.render.layout import LayoutMetrics, compute_battle_layout
 from rpg_battle.settings import FPS, SCREEN_HEIGHT, SCREEN_WIDTH, TEXT_COLOR
 
 from team_arena.engine import ARENA_ID, content_for_match
-from team_arena.recording import apply_replay_step
+from team_arena.recording import replay_choice
 
 LEFT_COLOR = (140, 210, 255)
 RIGHT_COLOR = (255, 185, 154)
@@ -53,7 +53,8 @@ class ArenaBattleScene(BattleScene):
         self.debug_font: pygame.font.Font | None = None
         content = content_for_match(recording["left"], None, recording["right"], None)
         super().__init__(rect, audio=audio, content=content,
-                         encounter=content.encounters[ARENA_ID], seed=recording["seed"])
+                         encounter=content.encounters[ARENA_ID], seed=recording["seed"],
+                         decision_provider=self._replay_decision, human_teams=frozenset())
         self.debug_font = pygame.font.Font(None, 20)
         self.console.append(("Add print(...) inside choose_action(turn).", DIM_COLOR))
 
@@ -72,7 +73,7 @@ class ArenaBattleScene(BattleScene):
     def step_one_decision(self) -> None:
         """Finish exactly one new recorded action, then pause its animations."""
         self.paused = True
-        if (self.controller.state.winner is not None
+        if (self.session.state.outcome != "ongoing"
                 or self.step_index >= len(self.recording["steps"])):
             self.stepping = False
             return
@@ -93,23 +94,19 @@ class ArenaBattleScene(BattleScene):
             self.active_team = event["team"]
         super()._handle_battle_event(event)
 
+    def _replay_decision(self, session, request):
+        """Supply a recorded decision through the same scene path as any AI."""
+        if self.step_index >= len(self.recording["steps"]):
+            raise ValueError("Recording exhausted before the displayed battle ended")
+        step = self.recording["steps"][self.step_index]
+        decision = replay_choice(session, step)
+        self.step_index += 1
+        self.active_team = step["team"]
+        if step["type"] == "action":
+            self._announce_decision(step)
+        return decision
+
     def update(self, dt: float) -> None:
-        # Intercept BOTH teams before the stock scene asks for human input on
-        # the left or decides with its default AI on the right.
-        if (self.controller.state.winner is None
-                and not self.event_queue
-                and self.event_timer <= 0
-                and self.current_event_timer <= 0
-                and (self.controller.current_actor_id is not None
-                     or self.controller.state.pending_replacements)):
-            if self.step_index >= len(self.recording["steps"]):
-                raise ValueError("Recording exhausted before the displayed battle ended")
-            step = self.recording["steps"][self.step_index]
-            self.event_queue = apply_replay_step(self.controller, step)
-            self.step_index += 1
-            self.active_team = step["team"]
-            if step["type"] == "action":
-                self._announce_decision(step)
         super().update(dt)
         if (self.stepping and self.step_index > self.step_origin
                 and not self.event_queue and self.event_timer <= 0
@@ -140,7 +137,7 @@ class ArenaBattleScene(BattleScene):
         for index, panel in enumerate(panels):
             name = self.recording["left"] if index == 0 else self.recording["right"]
             file = self.recording["sources"][index]
-            active = index == self.active_team and self.controller.state.winner is None
+            active = index == self.active_team and self.session.state.outcome == "ongoing"
             color = LEFT_COLOR if index == 0 else RIGHT_COLOR
             if active:
                 pygame.draw.rect(surface, color, panel, 3, border_radius=14)
@@ -186,11 +183,15 @@ class ArenaBattleScene(BattleScene):
 
     def _draw_turn_banner(self, surface: pygame.Surface, layout) -> None:
         super()._draw_turn_banner(surface, layout)
-        # Winner is explicit even after the battle banner fades out.
-        if self.controller.state.winner is not None:
-            winner = (self.recording["left"] if self.controller.state.winner == 0
-                      else self.recording["right"])
-            text = self.title_font.render(f"WINNER: {winner}", True, (255, 225, 150))
+        # A completed tie is not a win for the right team.
+        if self.session.state.outcome != "ongoing":
+            if self.session.state.outcome == "draw":
+                summary = "DRAW: Both teams defeated"
+            else:
+                winner = (self.recording["left"] if self.session.state.winner == 0
+                          else self.recording["right"])
+                summary = f"WINNER: {winner}"
+            text = self.title_font.render(summary, True, (255, 225, 150))
             surface.blit(text, text.get_rect(center=(layout.battlefield.centerx,
                                                     layout.battlefield.y + 82)))
 

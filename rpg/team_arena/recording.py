@@ -12,16 +12,15 @@ from dataclasses import asdict
 import random
 from typing import Any
 
-from rpg_battle.battle.battle_controller import BattleController
+from rpg_battle.battle.session import BattleSession
 from rpg_battle.core.ai import choose_ai_action
 from rpg_battle.core.battle_state import get_combatant
 from rpg_battle.core.models import BattleAction
-from rpg_battle.core.rules import resolve_action, resolve_replacement
 from rpg_battle.teaching.simulate import simulate_once
 
 from team_arena.engine import ARENA_ID, content_for_match
 
-RECORD_VERSION = 2
+RECORD_VERSION = 3
 PRINT_LIMIT = 3600
 
 
@@ -110,7 +109,7 @@ def record_match(left_name: str, right_name: str, *, seed: int = 0,
         "seed": seed, "steps": [],
     }
 
-    def choose_and_record(controller: BattleController, actor_id: str) -> BattleAction:
+    def choose_and_record(controller: BattleSession, actor_id: str) -> BattleAction:
         actor = get_combatant(controller.state, actor_id)
         before = controller.rng.getstate()
         output = LimitedOutput()
@@ -130,7 +129,7 @@ def record_match(left_name: str, right_name: str, *, seed: int = 0,
         record["steps"].append(step)
         return action
 
-    def record_replacement(controller: BattleController, team: int, replacement: str) -> None:
+    def record_replacement(controller: BattleSession, team: int, replacement: str) -> None:
         record["steps"].append({
             "type": "replacement", "team": team, "replacement_id": replacement,
         })
@@ -145,37 +144,37 @@ def record_match(left_name: str, right_name: str, *, seed: int = 0,
     finally:
         random.setstate(saved_random)
 
-    if result.winner is None:
+    if result.outcome == "ongoing":
         raise RuntimeError(
             f"Battle did not finish in {max_steps} steps. "
             "Try an attacking move, or increase --max-steps."
         )
+    record["outcome"] = result.outcome
     record["winner"] = result.winner
     record["rounds"] = result.rounds
     record["remaining_hp"] = list(result.remaining_hp)
     return record
 
 
-def apply_replay_step(controller: BattleController, step: dict[str, Any]) -> list[dict]:
+def apply_replay_step(controller: BattleSession, step: dict[str, Any]) -> list[dict]:
     """Apply a prerecorded choice without importing any student module."""
-    if step["type"] == "replacement":
-        request = controller.state.pending_replacements[0]
+    return controller.submit(replay_choice(controller, step))
+
+
+def replay_choice(controller: BattleSession, step: dict[str, Any]) -> BattleAction | str:
+    """Decode a replay decision, verifying it matches the session's request."""
+    request = controller.request
+    if request is None or request.kind != step["type"]:
+        raise ValueError("Replay decision kind diverged from the battle request")
+    if request.kind == "replacement":
         if request.team_index != step["team"]:
             raise ValueError("Replay replacement team diverged")
-        return resolve_replacement(controller.state, request.team_index, step["replacement_id"])
-    if step["type"] != "action":
-        raise ValueError(f"Unknown replay step type {step['type']!r}")
-    if controller.current_actor_id != step["actor_id"]:
-        raise ValueError(
-            f"Replay diverged: expected {step['actor_id']}, "
-            f"now acting {controller.current_actor_id}"
-        )
-    action = action_from_data(step["action"])
+        return step["replacement_id"]
+    if request.actor_id != step["actor_id"] or request.team_index != step["team"]:
+        raise ValueError("Replay acting fighter or team diverged")
     if "rng_state" in step:
         restore_rng(controller.rng, step["rng_state"])
-    events = resolve_action(controller.state, action, controller.rng)
-    controller.current_actor_id = None
-    return events
+    return action_from_data(step["action"])
 
 
 def verify_replay(record: dict[str, Any]) -> tuple[int | None, int, tuple[int, int]]:
@@ -183,29 +182,28 @@ def verify_replay(record: dict[str, Any]) -> tuple[int | None, int, tuple[int, i
     if record["version"] != RECORD_VERSION:
         raise ValueError("Unknown arena recording version")
     content = content_for_match(record["left"], None, record["right"], None)
-    controller = BattleController(
+    controller = BattleSession(
         encounter=content.encounters[ARENA_ID], seed=record["seed"], content=content,
     )
     index = 0
     max_ticks = max(20, 5 * len(record["steps"]) + 20)
     for _ in range(max_ticks):
-        if controller.state.winner is not None:
+        if controller.state.outcome != "ongoing":
             break
-        if controller.state.pending_replacements or controller.current_actor_id:
+        transition = controller.next_step()
+        if transition.request is not None:
             if index >= len(record["steps"]):
                 raise ValueError("Recording ran out of decisions")
             apply_replay_step(controller, record["steps"][index])
             index += 1
-        else:
-            controller.advance_to_next_turn()
     if index != len(record["steps"]):
         raise ValueError("Recording has unused decisions")
     hp = tuple(
         sum(c.current_hp for c in controller.state.combatants.values()
             if c.team_index == i) for i in (0, 1)
     )
-    actual = (controller.state.winner, controller.state.round_number, hp)
-    expected = (record["winner"], record["rounds"], tuple(record["remaining_hp"]))
+    actual = (controller.state.outcome, controller.state.winner, controller.state.round_number, hp)
+    expected = (record["outcome"], record["winner"], record["rounds"], tuple(record["remaining_hp"]))
     if actual != expected:
         raise ValueError(f"Replay does not match recorded battle: {actual} != {expected}")
-    return actual
+    return (controller.state.winner, controller.state.round_number, hp)

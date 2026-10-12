@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from rpg_battle.catalog import GameContent, get_default_content
 from rpg_battle.core.models import (
     BattleState,
+    CombatContent,
     CombatantState,
     EncounterSpec,
     ReplacementRequest,
@@ -19,7 +19,8 @@ from rpg_battle.core.models import (
 )
 
 if TYPE_CHECKING:
-    from rpg_battle.teaching.trace import TeachingTrace
+    from rpg_battle.catalog import GameContent
+    from rpg_battle.core.trace import TraceSink
 
 
 def _build_team_state(
@@ -27,7 +28,7 @@ def _build_team_state(
     team_spec: TeamSpec,
     active_limit: int,
     requested_active: tuple[str, ...] | None,
-    content: GameContent,
+    content: CombatContent,
 ) -> tuple[TeamBattleState, dict[str, CombatantState]]:
     requested_active = (
         requested_active or team_spec.starting_active or team_spec.members[:active_limit]
@@ -83,12 +84,27 @@ def _build_team_state(
 def new_battle(
     encounter: EncounterSpec | None = None,
     *,
-    content: GameContent | None = None,
-    teaching_trace: "TeachingTrace | None" = None,
+    content: GameContent | CombatContent | None = None,
+    teaching_trace: "TraceSink | None" = None,
 ) -> BattleState:
     """Build a fresh battle state from an encounter and explicit content bundle."""
-    content = content or get_default_content()
-    encounter = encounter or content.default_encounter
+    if content is None:
+        # Keep the convenience factory for early lessons, but importing core
+        # modules alone must not load the rendering/audio-aware game catalog.
+        from rpg_battle.catalog import get_default_content
+        content = get_default_content()
+    if encounter is None:
+        if isinstance(content, CombatContent):
+            raise ValueError("Provide an encounter when using CombatContent")
+        encounter = content.default_encounter
+    combat_content = (
+        content if isinstance(content, CombatContent) else
+        CombatContent(
+            characters=content.characters,
+            moves=content.moves,
+            basic_attack_move_id=content.basic_attack_move_id,
+        )
+    )
     logger.info("Constructing new battle for encounter {}", encounter.encounter_id)
     teams: list[TeamBattleState] = []
     combatants: dict[str, CombatantState] = {}
@@ -101,14 +117,14 @@ def new_battle(
             team_spec=team_spec,
             active_limit=active_limit,
             requested_active=requested_active,
-            content=content,
+            content=combat_content,
         )
         teams.append(team_state)
         combatants.update(team_combatants)
     state = BattleState(
         teams=teams,
         combatants=combatants,
-        content=content,
+        content=combat_content,
         teaching_trace=teaching_trace,
     )
     logger.info(

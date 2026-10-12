@@ -10,12 +10,11 @@ from typing import Callable, Mapping
 
 from loguru import logger
 
-from rpg_battle.battle.battle_controller import BattleController
+from rpg_battle.battle.session import BattleSession
 from rpg_battle.catalog import ContentValidationError, GameContent
 from rpg_battle.core.ai import choose_ai_action, choose_ai_replacement
 from rpg_battle.core.models import BattleAction, BattleState
 from rpg_battle.core.scripting import StudentCodeError
-from rpg_battle.core.rules import resolve_action, resolve_replacement
 from rpg_battle.teaching.scenarios import TeachingScenario
 from rpg_battle.teaching.trace import TeachingTrace
 
@@ -23,6 +22,7 @@ from rpg_battle.teaching.trace import TeachingTrace
 @dataclass(frozen=True)
 class SimulationResult:
     winner: int | None
+    outcome: str
     rounds: int
     remaining_hp: tuple[int, int]
     damage_dealt: tuple[int, int]
@@ -37,8 +37,8 @@ def simulate_once(
     seed: int = 0,
     max_steps: int = 2000,
     state_setup: Callable[[BattleState], None] | None = None,
-    action_choice: Callable[[BattleController, str], BattleAction] | None = None,
-    on_replacement: Callable[[BattleController, int, str], None] | None = None,
+    action_choice: Callable[[BattleSession, str], BattleAction] | None = None,
+    on_replacement: Callable[[BattleSession, int, str], None] | None = None,
 ) -> SimulationResult:
     """Run both teams under AI control without opening pygame."""
 
@@ -46,49 +46,45 @@ def simulate_once(
     if max_steps <= 0:
         raise ValueError("max_steps must be positive")
     trace = TeachingTrace(echo=False)
-    controller = BattleController(
+    session = BattleSession(
         encounter=encounter, seed=seed, content=content,
         state_setup=state_setup, teaching_trace=trace,
     )
     events: list[dict] = []
 
-    # The same turn-driving loop powers headless experiments and spectator
-    # recordings. Optional hooks observe choices; they do not alter battle rules.
+    # Exactly the same request/submit protocol runs a classroom simulation,
+    # graphical scene, or deterministic arena replay. The policies are callers
+    # of this protocol, not special cases in battle-turn progression.
     for _ in range(max_steps):
-        if controller.state.winner is not None:
+        if session.finished:
             break
-
-        # Handle replacements before advance_to_next_turn(), which otherwise
-        # automatically replaces the right team's fighters without a callback.
-        if controller.state.pending_replacements:
-            request = controller.state.pending_replacements[0]
-            replacement_id = choose_ai_replacement(controller.state, request.team_index)
+        step = session.next_step()
+        events.extend(step.events)
+        request = step.request
+        if request is None:
+            continue
+        if request.kind == "replacement":
+            replacement_id = choose_ai_replacement(session.state, request.team_index)
             if replacement_id is None:
-                continue
+                raise RuntimeError(
+                    f"Team {request.team_index} requested a replacement but has no legal choices"
+                )
             if on_replacement is not None:
-                on_replacement(controller, request.team_index, replacement_id)
-            events.extend(
-                resolve_replacement(controller.state, request.team_index, replacement_id)
-            )
+                on_replacement(session, request.team_index, replacement_id)
+            events.extend(session.submit(replacement_id))
             continue
-
-        events.extend(controller.advance_to_next_turn())
-        actor_id = controller.current_actor_id
-        if actor_id is None:
-            continue
-        if action_choice is None:
-            action = choose_ai_action(controller.state, actor_id, controller.rng)
-        else:
-            action = action_choice(controller, actor_id)
-        events.extend(resolve_action(controller.state, action, controller.rng))
-        controller.current_actor_id = None
+        actor_id = request.actor_id
+        assert actor_id is not None
+        action = (choose_ai_action(session.state, actor_id, session.rng)
+                  if action_choice is None else action_choice(session, actor_id))
+        events.extend(session.submit(action))
 
     remaining_hp = []
     for team_index in range(2):
         remaining_hp.append(
             sum(
                 combatant.current_hp
-                for combatant in controller.state.combatants.values()
+                for combatant in session.state.combatants.values()
                 if combatant.team_index == team_index
             )
         )
@@ -98,13 +94,14 @@ def simulate_once(
         if event.get("type") != "damage":
             continue
         actor_id = event.get("actor_id")
-        if actor_id in controller.state.combatants:
-            team_index = controller.state.combatants[actor_id].team_index
+        if actor_id in session.state.combatants:
+            team_index = session.state.combatants[actor_id].team_index
             damage_dealt[team_index] += int(event.get("hp_lost", event.get("amount", 0)))
 
     return SimulationResult(
-        winner=controller.state.winner,
-        rounds=controller.state.round_number,
+        winner=session.state.winner,
+        outcome=session.state.outcome,
+        rounds=session.state.round_number,
         remaining_hp=(remaining_hp[0], remaining_hp[1]),
         damage_dealt=(damage_dealt[0], damage_dealt[1]),
         scripted_commands=tuple(
@@ -216,7 +213,9 @@ def main(
             "Run again with --debug-traceback to see the full Python traceback."
         ) from None
     encounter = content.encounters[encounter_id]
-    win_counts = Counter(result.winner for result in results)
+    win_counts = Counter(
+        (result.outcome, result.winner) for result in results
+    )
     move_counts = Counter(
         event.get("move_name")
         for result in results
@@ -236,9 +235,10 @@ def main(
     print(f"player policy: {_policy_name(encounter.player_team)}")
     print(f"enemy policy:  {_policy_name(encounter.enemy_team)}")
     print()
-    print(f"{encounter.player_team.name} wins: {win_counts.get(0, 0)}")
-    print(f"{encounter.enemy_team.name} wins: {win_counts.get(1, 0)}")
-    print(f"unfinished after {args.max_steps} steps: {win_counts.get(None, 0)}")
+    print(f"{encounter.player_team.name} wins: {win_counts.get(('victory', 0), 0)}")
+    print(f"{encounter.enemy_team.name} wins: {win_counts.get(('victory', 1), 0)}")
+    print(f"draws (both teams defeated): {win_counts.get(('draw', None), 0)}")
+    print(f"unfinished after {args.max_steps} steps: {win_counts.get(('ongoing', None), 0)}")
     print(f"average rounds: {mean(result.rounds for result in results):.2f}")
     print(
         "average remaining HP: "
