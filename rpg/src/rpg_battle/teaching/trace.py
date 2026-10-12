@@ -5,6 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable
 
+# Core owns the optional diagnostics interface; this module owns the classroom
+# collection and pretty-printing implementation.
+from rpg_battle.core.trace import emit_trace, record_trace
+
 
 @dataclass(frozen=True)
 class TraceRecord:
@@ -37,25 +41,3 @@ class TeachingTrace:
         self.records.append(TraceRecord(kind=kind, data=dict(data)))
         if message is not None:
             self.emit(message)
-
-
-def emit_trace(state: object, message: str) -> None:
-    """Emit a message when a BattleState has an attached teaching trace."""
-
-    trace = getattr(state, "teaching_trace", None)
-    if trace is not None:
-        trace.emit(message)
-
-
-def record_trace(
-    state: object,
-    kind: str,
-    *,
-    message: str | None = None,
-    **data: object,
-) -> None:
-    """Record one structured fact when a BattleState has a teaching trace."""
-
-    trace = getattr(state, "teaching_trace", None)
-    if trace is not None:
-        trace.record(kind, message=message, **data)

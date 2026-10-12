@@ -116,9 +116,9 @@ def compare(
                 who = result.winner
                 if first_result is None:
                     first_result = result
-            if who is None:
-                # The current RPG engine has no completed tied-game state.
-                # winner=None means the simulation hit its step limit.
+            if result.outcome == "draw":
+                draws += 1
+            elif result.outcome == "ongoing":
                 unfinished += 1
             elif who == 0:
                 wins += 1

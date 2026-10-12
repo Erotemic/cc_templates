@@ -17,7 +17,7 @@ from rpg_battle.core.models import BattleAction, BattleState
 from rpg_battle.core.rules import legal_replacement_targets, legal_switch_targets, validate_action
 from rpg_battle.core.scripting import StudentCodeError, build_turn_context, script_source_label
 from rpg_battle.core.targeting import get_valid_target_groups
-from rpg_battle.teaching.trace import emit_trace
+from rpg_battle.core.trace import emit_trace
 
 
 def _choose_student_strategy_action(state: BattleState, actor_id: str) -> BattleAction | None:
