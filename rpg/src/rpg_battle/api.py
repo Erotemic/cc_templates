@@ -740,6 +740,7 @@ class Move:
     flavor: str = ""
     action: MoveScript | None = None
     id: str | None = None
+    mana_cost: int = 0
 
     @property
     def move_id(self) -> str:
@@ -800,6 +801,7 @@ class Move:
             effects=tuple(self.effects),
             flavor=self.flavor,
             script=self.action,
+            mana_cost=self.mana_cost,
         )
 
 
@@ -823,6 +825,7 @@ class Character:
     moves: Sequence[Move]
     description: str = ""
     id: str | None = None
+    mana: int = 0
 
     @property
     def sprite(self) -> ArtAsset:
@@ -846,6 +849,7 @@ class Character:
             sprite_id=self.art.sprite_id,
             move_ids=tuple(move.move_id for move in self.moves),
             description=self.description,
+            max_mana=self.mana,
         )
 
 

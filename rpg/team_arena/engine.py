@@ -16,24 +16,24 @@ ROSTER = ("arena_guardian", "arena_mage")
 # Classroom-specific content. No changes to the story game or combat formulas.
 # Both sides get exactly the same two character templates and available moves.
 MOVE_SPECS = (
-    MoveSpec("arena_crush", "Crush", "physical", 20, 1.0, "single_enemy"),
-    MoveSpec("arena_sweep", "Sweep", "physical", 7, 1.0, "all_enemies"),
-    MoveSpec("arena_spark", "Spark", "magical", 19, 1.0, "single_enemy"),
-    MoveSpec("arena_storm", "Storm", "magical", 10, 1.0, "all_enemies"),
-    MoveSpec("arena_patch", "Patch", "heal", 17, 1.0, "single_ally"),
+    MoveSpec("arena_crush", "Crush", "physical", 20, 1.0, "single_enemy", mana_cost=6),
+    MoveSpec("arena_sweep", "Sweep", "physical", 7, 1.0, "all_enemies", mana_cost=4),
+    MoveSpec("arena_spark", "Spark", "magical", 19, 1.0, "single_enemy", mana_cost=6),
+    MoveSpec("arena_storm", "Storm", "magical", 10, 1.0, "all_enemies", mana_cost=8),
+    MoveSpec("arena_patch", "Patch", "heal", 17, 1.0, "single_ally", mana_cost=7),
 )
 
 # Reuse the existing RPG's sprite recipes, changing only battle stats and moves.
 GUARDIAN = replace(
     CONTENT.characters["guardian"],
     char_id="arena_guardian", name="Arena Guardian", role="defender",
-    max_hp=78, attack=14, defense=11, magic=6, speed=6,
+    max_hp=78, max_mana=12, attack=14, defense=11, magic=6, speed=6,
     move_ids=("arena_crush", "arena_sweep", "arena_patch"),
 )
 MAGE = replace(
     CONTENT.characters["moon_mage"],
     char_id="arena_mage", name="Arena Mage", role="caster",
-    max_hp=59, attack=6, defense=6, magic=16, speed=10,
+    max_hp=59, max_mana=14, attack=6, defense=6, magic=16, speed=10,
     move_ids=("arena_spark", "arena_storm", "arena_patch"),
 )
 
@@ -133,14 +133,15 @@ def friendly_description() -> str:
     items.append(f"Every fighter can Attack (power={basic.power}) or Defend without learning a skill.")
     for character in (GUARDIAN, MAGE):
         items.append(
-            f"{character.name}: HP={character.max_hp} attack={character.attack} "
+            f"{character.name}: HP={character.max_hp} MP={character.max_mana} attack={character.attack} "
             f"defense={character.defense} magic={character.magic} speed={character.speed}"
         )
         for name in character.move_ids:
             move = next(move for move in MOVE_SPECS if move.move_id == name)
             items.append(
                 f"  {move.move_id}: {move.kind}, power={move.power}, "
-                f"target={move.target_mode}, accuracy={move.accuracy:g}"
+                f"target={move.target_mode}, cost={move.mana_cost} MP, accuracy={move.accuracy:g}"
             )
-    items.append("All moves use the RPG's actual damage/heal rules; defend reduces incoming damage.")
+    items.append("Skills spend MP; Attack restores 3 MP and Defend restores 7 MP (capped at max).")
+    items.append("All moves use the RPG's actual damage/heal rules; Defend reduces incoming damage.")
     return "\n".join(items)

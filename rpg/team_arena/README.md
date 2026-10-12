@@ -45,16 +45,33 @@ def choose_action(turn):
 - `turn.user` — the fighter acting right now.
 - `turn.enemies` / `turn.allies` — living opponents / other teammates.
 - `turn.available_move_ids` — learned skills this fighter knows.
+- `turn.skill_costs["arena_crush"]` — cost of a learned skill in MP.
+- `turn.can_use("arena_crush")` — whether this fighter knows it **and** has enough MP.
 - `turn.round_number` — current round (starting at 1).
 - A fighter has `name`, `hp`, `max_hp`, `hp_ratio`, `attack`, `defense`,
-  `magic`, `speed`, and `statuses`.
-- `turn.attack(target=enemy)` — regular physical Attack; every fighter can do it.
-- `turn.defend()` — defend; every fighter can do it.
+  `magic`, `speed`, `statuses`, `mana`, `max_mana`, and `mana_ratio`.
+- `turn.attack(target=enemy)` — regular physical Attack, **restoring up to 3 MP**.
+- `turn.defend()` — reduces incoming damage and **restores up to 7 MP**.
 - `turn.skill("arena_crush", target=enemy)` — use a learned skill. Only choose
-  skills in `turn.available_move_ids`. The older `turn.use(...)` still works.
+  skills in `turn.available_move_ids` **that you can afford**. The cost is
+  deducted once on use, whether the skill hits or misses. The older
+  `turn.use(...)` still works.
 
-**Both characters have different skills.** Try `python arena.py moves` to see
-what each knows. Attack and Defend are always available, not listed as skills.
+**Both characters have different skills, mana totals, and skill costs.** A
+skill you cannot afford raises a helpful error rather than silently skipping
+your turn. For example:
+
+```python
+def choose_action(turn):
+    target = min(turn.enemies, key=lambda enemy: enemy.hp)
+    if turn.can_use("arena_crush"):
+        return turn.skill("arena_crush", target=target)
+    if turn.can_use("arena_spark"):
+        return turn.skill("arena_spark", target=target)
+    return turn.attack(target=target)  # recovers MP for later turns
+```
+
+Try `python arena.py moves` to see what each fighter knows. Attack and Defend are always available, not listed as skills.
 Some skills affect every enemy (omit `target`); healing skills need an ally or
 `turn.user` as their target.
 
@@ -77,8 +94,7 @@ python arena.py tournament --csv class_results.csv
   add `--include-prefabs` to include examples. Pairings and progress are shown.
 
 A match stopped at the step limit is **unfinished (U)**, not a draw. It earns
-neither side points. Completed draws (D) would award half a point, but this RPG
-currently has no drawn-battle ending. Errors and timeouts stop the fixture and
+neither side points. Completed draws (D) award half a point, including simultaneous knockouts. Errors and timeouts stop the fixture and
 are **not counted as losses**.
 
 ### Where to go next

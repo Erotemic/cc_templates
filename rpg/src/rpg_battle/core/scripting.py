@@ -11,6 +11,8 @@ responsible for state changes, event generation, knockouts, and presentation.
 from dataclasses import dataclass, field
 import math
 from numbers import Real
+from types import MappingProxyType
+from typing import Mapping
 from typing import Callable, Literal, Protocol, TypeAlias
 
 from rpg_battle.core.actions import attack_action, defend_action, skill_action
@@ -56,6 +58,8 @@ class BattlerView:
     base_defense: int | None = None
     base_magic: int | None = None
     base_speed: int | None = None
+    mana: int = 0
+    max_mana: int = 0
 
     def __post_init__(self) -> None:
         # Synthetic teaching views may only supply the effective values. In that
@@ -74,6 +78,10 @@ class BattlerView:
         if self.max_hp <= 0:
             return 0.0
         return self.hp / self.max_hp
+
+    @property
+    def mana_ratio(self) -> float:
+        return self.mana / self.max_mana if self.max_mana else 0.0
 
     @property
     def effective_attack(self) -> int:
@@ -182,6 +190,12 @@ class TurnContext:
     enemies: tuple[BattlerView, ...]
     available_move_ids: frozenset[str]
     round_number: int
+    skill_costs: Mapping[str, int] = field(default_factory=dict)
+
+    def can_use(self, move_id: str) -> bool:
+        """Whether the fighter knows a skill and has enough mana for it."""
+        return (move_id in self.available_move_ids
+                and self.user.mana >= self.skill_costs.get(move_id, 0))
 
     @staticmethod
     def _target_ids(
@@ -211,6 +225,12 @@ class TurnContext:
         move_id = move if isinstance(move, str) else move.move_id
         if move_id not in self.available_move_ids:
             raise ValueError(f"{self.user.name} does not know the skill {move_id!r}")
+        cost = self.skill_costs.get(move_id, 0)
+        if self.user.mana < cost:
+            raise ValueError(
+                f"{self.user.name} needs {cost} MP for {move_id}, "
+                f"but has {self.user.mana} MP. Attack or Defend to recover mana."
+            )
         return skill_action(self.user._combatant_id, move_id, self._target_ids(target))
 
     def use(
@@ -245,6 +265,8 @@ def _view(combatant: CombatantState) -> BattlerView:
         base_defense=combatant.spec.defense,
         base_magic=combatant.spec.magic,
         base_speed=combatant.spec.speed,
+        mana=combatant.current_mana,
+        max_mana=combatant.spec.max_mana,
     )
 
 
@@ -290,6 +312,10 @@ def build_turn_context(state: BattleState, actor_id: str) -> TurnContext:
         enemies=enemies,
         available_move_ids=frozenset(actor.spec.move_ids),
         round_number=state.round_number,
+        skill_costs=MappingProxyType({
+            move_id: state.content.moves[move_id].mana_cost
+            for move_id in actor.spec.move_ids
+        }) if state.content is not None else {},
     )
 
 
@@ -420,8 +446,10 @@ def _smoke_view(view: BattlerView, *, hp: int, statuses: frozenset[str]) -> Batt
             char_id=view._combatant_id, name=view.name, role="smoke test",
             max_hp=view.max_hp, attack=view.base_attack, defense=view.base_defense,
             magic=view.base_magic, speed=view.base_speed, sprite_id="", move_ids=(),
+            max_mana=view.max_mana,
         ),
         current_hp=hp,
+        current_mana=view.mana,
         statuses={name: StatusState(name, 3) for name in statuses},
     )
     return _view(combatant)

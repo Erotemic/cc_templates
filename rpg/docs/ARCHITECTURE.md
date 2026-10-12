@@ -113,6 +113,12 @@ combat models or state helpers does not eagerly import the art/audio catalog.
    consequences.
 7. A record of damage/heal/status ticks contains intermediate HP snapshots,
    rather than asking a renderer to reconstruct past state from final HP.
+8. Mana belongs to each combatant: `0 <= current_mana <= max_mana`. A Skill
+   action must be affordable **before** the session accepts the decision.
+   Basic Attack and Defend cost 0 MP and restore 3 and 7 MP respectively, capped
+   at each fighter's max. Skill cost is paid once, including when the move misses.
+   Switching preserves each combatant's mana. `mana` events have before/after
+   snapshots so replay/animation can show changes in order.
 
 `BattleController` remains as a **thin compatibility facade** in
 `battle/battle_controller.py` for older workshop/test callers. It delegates
@@ -151,12 +157,23 @@ To trace the implementation, start at `BattleSession.next_step()`, follow
 - **New animation:** consume ordered event fields. Graphics should not decide
   whether a hit landed or how much HP was lost.
 
-## Deferred, independent cleanup
+## Mana: one resource model, not another turn loop
 
-- **Skill mana/costs:** add a resource budget to skills so spamming the highest
-  damage ability isn't automatically the strongest policy. This is a future
-  rules/content/HUD/AI change and is intentionally **not** part of the session
-  refactor. It must be paired with new competitive balance measurements.
+`MoveSpec.mana_cost` and `CharacterSpec.max_mana` define the rules.
+`CombatantState.current_mana` is authoritative; `BattleSession.submit_action()`
+uses `core.rules.validate_action()` to reject unaffordable moves without
+changing RNG, mana, HP, or the pending decision. `core.mana.change_mana()`
+clamps resources and emits a factual `mana` event; `resolve_action()` calls it
+for spend/recovery. Both the human menu and built-in/student AI use the same
+validator and see the same resource balance. Scripted moves pay a flat
+per-use cost, *not* per effect command or affected target.
+
+`TurnContext.user.mana`, `.max_mana`, `.skill_costs` and `.can_use(...)`
+provide read-only observations to student controllers. The source of costs
+is the registered `MoveSpec`, never a controller-supplied number. Legacy
+content defaults to zero mana and zero-cost skills until authored explicitly.
+
+## Deferred, independent cleanup
 - **Active/reserve representation:** fighter activity flags and team roster
   membership still overlap. Simplifying them requires a separate migration
   with explicit invariant tests for switches, fainting, and animation slots.

@@ -83,10 +83,13 @@ def choose_ai_action(
     weakest_enemy = min(enemy_targets, key=lambda target: target.current_hp)
     weakest_ally = min(ally_targets, key=lambda target: target.current_hp / target.spec.max_hp)
 
+    def affordable(move_id: str) -> bool:
+        return actor.current_mana >= state.content.moves[move_id].mana_cost
+
     if actor.current_hp <= actor.spec.max_hp * 0.35:
         for move_id in actor.spec.move_ids:
             move = state.content.moves[move_id]
-            if move.kind == "heal":
+            if move.kind == "heal" and affordable(move_id):
                 groups = get_valid_target_groups(state, actor_id, move.target_mode)
                 target_ids = tuple(groups[0]) if groups else (actor_id,)
                 if move.target_mode == "single_ally":
@@ -104,14 +107,16 @@ def choose_ai_action(
 
     for move_id in actor.spec.move_ids:
         move = state.content.moves[move_id]
-        if move.kind in {"physical", "magical"} and move.target_mode == "single_enemy":
+        if (move.kind in {"physical", "magical"}
+                and move.target_mode == "single_enemy" and affordable(move_id)):
             if weakest_enemy.current_hp <= move.power + 6:
                 return skill_action(actor_id, move_id, target_ids=(weakest_enemy.combatant_id,))
 
     utility = [
         move_id
         for move_id in actor.spec.move_ids
-        if state.content.moves[move_id].kind in {"buff", "debuff", "status"}
+        if (state.content.moves[move_id].kind in {"buff", "debuff", "status"}
+            and affordable(move_id))
     ]
     if utility and rng.random() < 0.3:
         move_id = rng.choice(utility)
@@ -128,7 +133,8 @@ def choose_ai_action(
     attacks = [
         move_id
         for move_id in actor.spec.move_ids
-        if state.content.moves[move_id].kind in {"physical", "magical"}
+        if (state.content.moves[move_id].kind in {"physical", "magical"}
+            and affordable(move_id))
     ]
     if attacks:
         move_id = rng.choice(attacks)

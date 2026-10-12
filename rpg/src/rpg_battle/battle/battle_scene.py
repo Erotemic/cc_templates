@@ -129,6 +129,8 @@ class BattleScene:
         self.hp_bars: dict[str, HPBar] = {}
         self.displayed_hp_current: dict[str, float] = {}
         self.displayed_hp_target: dict[str, float] = {}
+        self.displayed_mana_current: dict[str, float] = {}
+        self.displayed_mana_target: dict[str, float] = {}
         self.last_known_positions: dict[str, tuple[float, float, float]] = {}
         self.lingering_faints: dict[str, tuple[float, float, float]] = {}
         self.frozen_team_positions: dict[int, dict[str, tuple[float, float, float]]] = {}
@@ -173,6 +175,8 @@ class BattleScene:
         self.hp_bars = {}
         self.displayed_hp_current = {}
         self.displayed_hp_target = {}
+        self.displayed_mana_current = {}
+        self.displayed_mana_target = {}
         self.last_known_positions = {}
         self.lingering_faints = {}
         self.frozen_team_positions = {}
@@ -197,6 +201,10 @@ class BattleScene:
                 self.displayed_hp_current[combatant_id] = hp_value
                 self.displayed_hp_target[combatant_id] = hp_value
                 self.hp_bars[combatant_id].snap(combatant.hp_ratio())
+            if combatant_id not in self.displayed_mana_current:
+                mana = float(combatant.current_mana)
+                self.displayed_mana_current[combatant_id] = mana
+                self.displayed_mana_target[combatant_id] = mana
 
     def _active_menu(self) -> MenuState:
         return self.menu_stack[-1]
@@ -292,12 +300,21 @@ class BattleScene:
         ratio = bounded_hp / combatant.spec.max_hp if combatant.spec.max_hp else 0.0
         self.hp_bars[combatant_id].set_target(ratio)
 
+    def _set_display_mana_target(self, combatant_id: str, mana: int) -> None:
+        combatant = get_combatant(self.session.state, combatant_id)
+        self.displayed_mana_target[combatant_id] = float(
+            max(0, min(combatant.spec.max_mana, mana))
+        )
+
     def _sync_display_to_current(self, combatant_id: str) -> None:
         combatant = get_combatant(self.session.state, combatant_id)
         hp_value = float(combatant.current_hp)
         self.displayed_hp_current[combatant_id] = hp_value
         self.displayed_hp_target[combatant_id] = hp_value
         self.hp_bars[combatant_id].snap(combatant.hp_ratio())
+        mana = float(combatant.current_mana)
+        self.displayed_mana_current[combatant_id] = mana
+        self.displayed_mana_target[combatant_id] = mana
 
     def _target_names(self, target_ids: list[str]) -> list[str]:
         return [
@@ -429,6 +446,14 @@ class BattleScene:
         if actor_id is None:
             return
         move = self.content.moves[move_id]
+        actor = get_combatant(self.session.state, actor_id)
+        if action_kind == "skill" and actor.current_mana < move.mana_cost:
+            self.log.add(
+                f"{actor.spec.name} has {actor.current_mana} MP; "
+                f"{move.name} needs {move.mana_cost} MP. Attack or Defend to recharge.",
+                color=NEUTRAL_EVENT_COLOR,
+            )
+            return
         logger.debug("Player selected move {} with target_mode={}", move_id, move.target_mode)
         groups = get_valid_target_groups(self.session.state, actor_id, move.target_mode)
         if not groups:
@@ -479,7 +504,10 @@ class BattleScene:
                     self.content.basic_attack_move_id, "attack"
                 )
             elif choice == "Skill":
-                options = [self.content.moves[move_id].name for move_id in actor.spec.move_ids]
+                options = [
+                    f"{self.content.moves[move_id].name} ({self.content.moves[move_id].mana_cost} MP)"
+                    for move_id in actor.spec.move_ids
+                ]
                 if not options:
                     self.log.add("No skills learned.", color=NEUTRAL_EVENT_COLOR)
                     return
@@ -505,6 +533,14 @@ class BattleScene:
                 )
         elif menu.title == "Choose Skill":
             move_id = actor.spec.move_ids[menu.selected]
+            move = self.content.moves[move_id]
+            if actor.current_mana < move.mana_cost:
+                self.log.add(
+                    f"{move.name} needs {move.mana_cost} MP; "
+                    f"{actor.spec.name} has {actor.current_mana} MP.",
+                    color=NEUTRAL_EVENT_COLOR,
+                )
+                return  # Keep the skill menu open for another choice.
             self.menu_stack = self.menu_stack[:1]
             self._handle_player_move_selection(move_id, "skill")
         elif menu.title == "Choose Target":
@@ -608,6 +644,8 @@ class BattleScene:
             sound_id = event.get("sound_id")
             if sound_id:
                 self.audio.play_sfx(sound_id)
+        elif event_type == "mana":
+            self._set_display_mana_target(event["actor_id"], event["mana_after"])
         elif event_type in {"damage", "status_tick"}:
             target_id = event["target_id"]
             self.sprite_actors[target_id].play_hurt(get_combatant(self.session.state, target_id).spec.sprite_id)
@@ -685,6 +723,11 @@ class BattleScene:
                 hp_speed,
             )
             self.hp_bars[combatant_id].update(dt)
+            self.displayed_mana_current[combatant_id] = approach(
+                self.displayed_mana_current[combatant_id],
+                self.displayed_mana_target[combatant_id],
+                max(8.0, combatant.spec.max_mana * 2.4) * dt,
+            )
         self.lingering_faints = {
             combatant_id: slot
             for combatant_id, slot in self.lingering_faints.items()
@@ -717,6 +760,7 @@ class BattleScene:
             elif event_type in {
                 "damage",
                 "heal",
+                "mana",
                 "status_tick",
                 "ko",
                 "status",
@@ -890,6 +934,14 @@ class BattleScene:
         hp_slot = pygame.Rect(bar_rect.left, bar_rect.bottom + 3, bar_rect.width, 16)
         hp_rect = hp_text.get_rect(topright=(hp_slot.right, hp_slot.top))
         surface.blit(hp_text, hp_rect)
+        if combatant.spec.max_mana:
+            mana = self.displayed_mana_current[combatant_id]
+            mp_rect = pygame.Rect(bar_rect.left, bar_rect.bottom + 21, bar_rect.width, 8)
+            self._draw_mana_bar(surface, mp_rect, mana / combatant.spec.max_mana)
+            mana_text = self.small_font.render(
+                f"MP {int(round(mana))}/{combatant.spec.max_mana}", True, (145, 195, 255)
+            )
+            surface.blit(mana_text, mana_text.get_rect(midtop=(int(x), mp_rect.bottom + 1)))
 
     def _team_roster(self, team_index: int) -> list[str]:
         return [
@@ -908,6 +960,15 @@ class BattleScene:
         )
         pygame.draw.rect(surface, color, fill, border_radius=5)
         pygame.draw.rect(surface, (215, 220, 240), rect, 1, border_radius=6)
+
+    def _draw_mana_bar(self, surface: pygame.Surface, rect: pygame.Rect, ratio: float) -> None:
+        """One consistent mana meter for sprites and the team roster."""
+        pygame.draw.rect(surface, (24, 26, 36), rect, border_radius=3)
+        inner = rect.inflate(-2, -2)
+        fill = inner.copy()
+        fill.width = max(0, int(inner.width * max(0.0, min(1.0, ratio))))
+        pygame.draw.rect(surface, (85, 158, 240), fill, border_radius=3)
+        pygame.draw.rect(surface, (160, 190, 240), rect, 1, border_radius=3)
 
     def _draw_team_panel(self, surface: pygame.Surface, rect: pygame.Rect, team_index: int) -> None:
         team = self.session.state.teams[team_index]
@@ -931,6 +992,16 @@ class BattleScene:
             hp_value_slot = pygame.Rect(rect.right - 64, y, 44, 16)
             hp_value_rect = hp_text.get_rect(topright=(hp_value_slot.right, hp_value_slot.top))
             surface.blit(hp_text, hp_value_rect)
+            if combatant.spec.max_mana:
+                mana = self.displayed_mana_current[combatant_id]
+                mp_ratio = mana / combatant.spec.max_mana
+                self._draw_mana_bar(
+                    surface, pygame.Rect(rect.right - 154, y + 18, 70, 8), mp_ratio
+                )
+                mp_text = self.small_font.render(
+                    f"{int(round(mana))} MP", True, (145, 195, 255)
+                )
+                surface.blit(mp_text, (rect.right - 82, y + 13))
 
     def _draw_hud(self, surface: pygame.Surface, layout) -> None:
         player_rect = layout.player_panel

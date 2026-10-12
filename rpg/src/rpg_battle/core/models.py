@@ -60,6 +60,7 @@ class MoveSpec:
     effects: tuple[MoveEffect, ...] = ()
     flavor: str = ""
     script: Callable[["MoveContext"], "MoveScriptResult"] | None = None
+    mana_cost: int = 0
 
 
 @dataclass(frozen=True)
@@ -77,6 +78,7 @@ class CharacterSpec:
     sprite_id: str
     move_ids: tuple[str, ...]
     description: str = ""
+    max_mana: int = 0
 
 
 @dataclass(frozen=True)
@@ -156,6 +158,7 @@ class CombatantState:
     spec: CharacterSpec
     team_index: int
     current_hp: int | None = None
+    current_mana: int | None = None
     statuses: dict[str, StatusState] = field(default_factory=dict)
     temp_bonuses: dict[str, int] = field(
         default_factory=lambda: {"attack": 0, "defense": 0, "magic": 0, "speed": 0}
@@ -169,6 +172,10 @@ class CombatantState:
     def __post_init__(self) -> None:
         if self.current_hp is None:
             self.current_hp = self.spec.max_hp
+        if self.current_mana is None:
+            self.current_mana = self.spec.max_mana
+        if not 0 <= self.current_mana <= self.spec.max_mana:
+            raise ValueError("Current mana must be between zero and max mana")
 
     @property
     def alive(self) -> bool:

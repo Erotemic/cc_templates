@@ -119,7 +119,10 @@ class ArenaBattleScene(BattleScene):
         color = LEFT_COLOR if side == 0 else RIGHT_COLOR
         self.active_actor = step["actor_name"]
         self.last_source = self.recording["sources"][side]
-        headline = f"{name} / {step['actor_name']}: {step['description']}"
+        headline = (
+            f"{name} / {step['actor_name']} ({step['mana_before']}/{step['max_mana']} MP): "
+            f"{step['description']}"
+        )
         self.console.append((headline, color))
         self.current_choice = headline
         self.current_prints = [clean_line(line) for line in step["prints"]]

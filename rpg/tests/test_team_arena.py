@@ -94,9 +94,11 @@ def test_unfinished_battles_are_not_draws_or_half_credit():
 def test_simple_role_aware_algorithm_can_win_first_assignment():
     # The full final challenge solution is intentionally NOT supplied in tests.
     def chooses_legal_moves_for_both_roles(turn):
-        if "arena_crush" in turn.available_move_ids:
-            return turn.use("arena_crush", target=turn.enemies[0])
-        return turn.use("arena_spark", target=turn.enemies[0])
+        if turn.can_use("arena_crush"):
+            return turn.skill("arena_crush", target=turn.enemies[0])
+        if turn.can_use("arena_spark"):
+            return turn.skill("arena_spark", target=turn.enemies[0])
+        return turn.attack(target=turn.enemies[0])
 
     outcome = compare("student", chooses_legal_moves_for_both_roles,
                       "first_target", controller_for("first_target"),

@@ -52,8 +52,10 @@ The tournament starts with only student controllers; add `--include-prefabs`
 for examples. Student projects and the known-achievable 80%-per-prefab
 challenge are in [the arena guide](team_arena/README.md) and its
 [projects](team_arena/STUDENT_PROJECTS.md). The same RPG combat engine handles each match, and identical teams fight on
-both sides. Basic Attack and Defend are always available; students choose any
-special skills with `turn.skill(...)`.
+both sides. Basic Attack and Defend are always available: Attack recovers up to 3 MP and
+Defend up to 7 MP. Learned skills cost mana and can only be used when
+`turn.can_use(move_id)` is true. Students choose special skills with
+`turn.skill(...)`; the combat engine enforces the cost and displays MP.
 
 ## Trustworthy feedback
 

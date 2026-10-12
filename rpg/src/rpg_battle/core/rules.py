@@ -39,6 +39,9 @@ from rpg_battle.core.scripting import (
     validate_script_commands,
 )
 from rpg_battle.core.trace import emit_trace, record_trace
+from rpg_battle.core.mana import (
+    ATTACK_MANA_RECOVERY, DEFEND_MANA_RECOVERY, change_mana,
+)
 
 def legal_switch_targets(state: BattleState, actor_id: str) -> list[str]:
     actor = get_combatant(state, actor_id)
@@ -620,6 +623,11 @@ def validate_action(state: BattleState, action: BattleAction) -> BattleAction:
     move = state.content.moves.get(move_id)
     if move is None:
         raise ValueError(f"Unknown move {move_id!r}")
+    if action.kind == "skill" and actor.current_mana < move.mana_cost:
+        raise ValueError(
+            f"{actor.spec.name} needs {move.mana_cost} MP for {move.name}, "
+            f"but has {actor.current_mana} MP. Attack or Defend to recover mana."
+        )
     groups = get_valid_target_groups(state, action.actor_id, move.target_mode)
     if not groups:
         raise ValueError(f"No legal targets for {actor.spec.name}'s {move.name}")
@@ -798,10 +806,16 @@ def resolve_action(
     action = validate_action(state, action)
     if _maybe_skip_for_stun(actor, events, rng):
         return events
+    if action.kind == "skill":
+        change_mana(
+            actor, -state.content.moves[action.move_id].mana_cost, events,
+            source=state.content.moves[action.move_id].name,
+        )
     if action.kind == "switch":
         _process_switch(state, action, events)
     elif action.kind == "defend":
         _process_defend(actor, events)
+        change_mana(actor, DEFEND_MANA_RECOVERY, events, source="Defend")
     elif action.kind == "item":
         # Inventory has not been surfaced in the classroom UI yet. When
         # students add item support, route their new action kind through a
@@ -810,6 +824,8 @@ def resolve_action(
         raise NotImplementedError("Item actions are scaffolded but not implemented yet.")
     else:
         _process_move(state, action, events, rng)
+        if action.kind == "attack":
+            change_mana(actor, ATTACK_MANA_RECOVERY, events, source="Attack")
     _collect_faints(state, events)
     return events
 

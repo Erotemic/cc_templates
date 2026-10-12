@@ -34,6 +34,7 @@ def power_strike_logic(ctx):
 power_strike = Move(
     "Workshop Power Strike",
     id="workshop_power_strike",
+    mana_cost=5,
     kind="physical",
     ai_power=8,
     animation=workshop_impact,
@@ -65,6 +66,7 @@ def chain_lightning_logic(ctx):
 chain_lightning = Move(
     "Workshop Chain Lightning",
     id="workshop_chain_lightning",
+    mana_cost=7,
     kind="magical",
     ai_power=8,
     target="all_enemies",
@@ -83,6 +85,7 @@ workshop_hero = Character(
     id="workshop_hero",
     role="student hero",
     hp=52,
+    mana=16,
     attack=9,
     defense=7,
     magic=9,
@@ -109,7 +112,10 @@ def practice_enemy_strategy(turn):
         if enemy.hp_ratio < target.hp_ratio:
             target = enemy
 
-    return turn.skill(moves.arc_bolt, target=target)
+    # Special abilities cost MP. Attack recharges it if we cannot cast.
+    if turn.can_use(moves.arc_bolt.move_id):
+        return turn.skill(moves.arc_bolt, target=target)
+    return turn.attack(target=target)
 
 
 MOVES = [power_strike, chain_lightning]

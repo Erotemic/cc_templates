@@ -20,7 +20,7 @@ from rpg_battle.teaching.simulate import simulate_once
 
 from team_arena.engine import ARENA_ID, content_for_match
 
-RECORD_VERSION = 3
+RECORD_VERSION = 4
 PRINT_LIMIT = 3600
 
 
@@ -78,6 +78,8 @@ def format_action(state, action: BattleAction) -> str:
         return "Item"
     name = ("Attack" if action.kind == "attack" else
             state.content.moves[action.move_id].name if action.move_id else action.kind.title())
+    if action.kind == "skill":
+        name += f" [{state.content.moves[action.move_id].mana_cost} MP]"
     targets = [get_combatant(state, i).spec.name for i in action.target_ids]
     if targets:
         name += " -> " + ", ".join(targets)
@@ -120,6 +122,8 @@ def record_match(left_name: str, right_name: str, *, seed: int = 0,
             "team": actor.team_index, "round": controller.state.round_number,
             "action": asdict(action), "description": format_action(controller.state, action),
             "prints": output.lines(),
+            "mana_before": actor.current_mana,
+            "max_mana": actor.spec.max_mana,
         }
         # The spectator advances the same seed-local RNG between turns. Save
         # a checkpoint ONLY if the choice itself consumed RNG (engine AI).

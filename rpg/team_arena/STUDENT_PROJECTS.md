@@ -21,19 +21,21 @@ printing. **Stretch:** Change your behavior on a particular round.
 
 ## Project 1 — Two characters, different skills (30–45 min)
 
-**Add:** A decision that depends on **which skills the current fighter knows**.
+**Add:** A decision that depends on **which skills the current fighter knows**
+*and whether it can afford them*.
 Both the Guardian and Mage can `turn.attack(...)` as often as they like, but
-neither knows every special skill. Make each fighter choose a learned skill
-when appropriate, instead of only using Attack.
+neither knows every special skill. Make each fighter choose a learned skill when appropriate, falling back to
+Attack or Defend when it cannot afford one. Use `turn.can_use(...)` so the
+controller never crashes with insufficient mana.
 
 ```bash
 python arena.py moves
 python arena.py battle my_team first_target --runs 20
 ```
 
-**Complete when:** Both fighters visibly use different legal skills and your
-score against `first_target` reaches **80%** over 40 games (20 seeds, two
-sides). **Concept:** `if`, `in`, sets. **Clue:** Power is not the only factor;
+**Complete when:** Both fighters visibly use different legal skills, keep
+playing after they run low on mana, and your score against `first_target`
+reaches **80%** over 40 games (20 seeds, two sides). **Concept:** `if`, `in`, sets. **Clue:** Power is not the only factor;
 physical and magical characters have different stats.
 
 ## Project 2 — Read the room (30–45 min)
@@ -70,7 +72,34 @@ against `crowd_control`. No fixed win-rate requirement: sometimes a group
 attack is **worse**, and discovering that is a valid result. **Concept:**
 conditionals, tradeoffs, testing a hypothesis.
 
-## Project 4 — Beat the prefab lineup (45–60 min)
+## Project 4 — Spend, save, and recharge mana (45–60 min)
+
+**Add:** A decision that changes when a fighter has **less MP than the cost
+of its preferred skill**. A controller that only checks what the fighter knows
+and never checks its mana is not complete.
+
+1. Print `turn.user.mana` and `turn.user.max_mana` for the acting fighter.
+2. Read the skill costs with `turn.skill_costs`. Identify a skill whose cost
+   is higher than the fighter's current mana in at least one round.
+3. Make your controller recover MP using Attack or Defend instead of trying
+   an unaffordable skill.
+4. Show a later round where it uses that skill again after recovering.
+
+```bash
+python arena.py watch my_team heavy_hitter --seed 7
+python arena.py battle my_team heavy_hitter --runs 20
+```
+
+**Complete when:** A recorded battle demonstrates **spend → insufficient MP
+→ recover → spend again**, without controller errors. Compare results between
+a version that recovers by attacking and one that recovers by defending.
+**Concept:** state, resource budgeting, conditionals, controlled experiments.
+
+**Clues:** Recovering mana by attacking also damages an opponent, but Defend
+recovers more and reduces incoming damage. Which is better when an enemy is
+nearly defeated? What if your fighter has only 1 HP left?
+
+## Project 5 — Beat the prefab lineup (45–60 min)
 
 **Add:** One controller that makes strong, legal decisions against **all seven
 prefab opponents**; this may require revisiting or even discarding earlier
@@ -86,13 +115,14 @@ using only the documented `turn` API; it is intentionally not provided.
 
 **Clues, not instructions:** What costs you the most turns? When does an
 enemy stop being a threat? Does healing help more than finishing an attack?
-Do the same moves suit both characters? Try `--seed 77` after developing with
+When is a costly Skill worth more than a free Attack? Does the same approach
+work at high and low mana? Do the same moves suit both characters? Try `--seed 77` after developing with
 seed 0 to see whether the improvement generalizes.
 
 **Concept:** combined heuristics, experiments, and debugging. **Explain:**
 Which opponent forced you to revise your strategy?
 
-## Project 5 — Team-controller tournament (30–60 min)
+## Project 6 — Team-controller tournament (30–60 min)
 
 **Add:** A new saved version of your controller and a repeatable comparison
 against classmates, not just one lucky visual victory.

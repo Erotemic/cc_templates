@@ -17,27 +17,37 @@ watch their fight and ask them to explain what their code observed.
 frozen opponents**: `first_target`, `weakest_first`, `cautious`, `rotating`,
 `heavy_hitter`, `crowd_control`, and `engine_heuristic`.
 
-A private reference controller using **only the documented** `turn` API was
-rerun after replacing Tap with ordinary Attack. All results below are from
-the actual engine, with 20 seeds and swapped team seats (40 games per
-opponent). The reference is not included in student files, examples, or tests.
+A private reference controller using **only the documented** `turn` API
+was re-evaluated after adding mana. The currently published challenge uses
+20 seeds and swapped seats (40 games per opponent), starting at seed 0.
+The private controller is **not** included in student files or tests.
 
-| Opponent | Seeds 0–19 | Seeds 77–96 | Seeds 151–170 |
-|---|---:|---:|---:|
-| first_target | 100% | 100% | 100% |
-| weakest_first | 100% | 100% | 100% |
-| cautious | 100% | 100% | 100% |
-| rotating | 100% | 100% | 100% |
-| heavy_hitter | 100% | 100% | 100% |
-| crowd_control | 95% | 90% | 92.5% |
-| engine_heuristic | 85% | 87.5% | 82.5% |
+| Opponent | Score (seeds 0–19) |
+|---|---:|
+| first_target | 100% |
+| weakest_first | 100% |
+| cautious | 100% |
+| rotating | 100% |
+| heavy_hitter | 85% |
+| crowd_control | 92.5% |
+| engine_heuristic | 80% |
 
-The pass criterion is **at least 80% against each opponent separately**, with
-no unfinished games. This is a repeatable finite benchmark, not a guarantee
-of optimal play against arbitrary strategies. The examples intentionally have
-weaknesses; a simple effective strategy can beat them. A new prefab example
-will **not silently change** this challenge; update the named roster and
-revalidate any change deliberately.
+The exact challenge remains achievable on the published seed range. Other
+seed ranges produced different results (in particular the heuristic and
+crowd-control opponents can be harder), so do **not** retain the old
+pre-mana success claims. Winning one finite evaluation is not proof of a
+universally strong algorithm. Students should validate improvements on a
+second seed range, and instructors may use larger samples for finals.
+
+Mana changes the objective: every fighter has an individual, persistent MP
+pool; Skills cost MP; Attack restores up to 3 MP; Defend restores up to 7 MP.
+Student policies must select legal affordable moves. The published baseline
+controller is deliberately elementary, so Project 4 explicitly exercises
+resource decisions apart from overall tournament scoring.
+
+The pass criterion remains **at least 80% against each opponent separately**,
+with no unfinished games. The roster is fixed; adding new prefab examples
+will not silently change grading.
 
 ## Class tournament
 

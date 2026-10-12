@@ -2,8 +2,8 @@
 
 
 def choose_action(turn):
-    if "arena_sweep" in turn.available_move_ids:
+    if turn.can_use("arena_sweep"):
         return turn.skill("arena_sweep")
-    if "arena_storm" in turn.available_move_ids:
+    if turn.can_use("arena_storm"):
         return turn.skill("arena_storm")
     return turn.attack(target=turn.enemies[0])

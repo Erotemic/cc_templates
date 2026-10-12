@@ -136,6 +136,8 @@ class GameContent:
                 issues.append(ContentIssue(where, f"unknown target mode {move.target_mode!r}"))
             if move.power < 0:
                 issues.append(ContentIssue(where, "power cannot be negative"))
+            if type(move.mana_cost) is not int or move.mana_cost < 0:
+                issues.append(ContentIssue(where, "mana_cost must be a nonnegative integer"))
             if not 0.0 <= move.accuracy <= 1.0:
                 issues.append(ContentIssue(where, "accuracy must be between 0.0 and 1.0"))
             if move.animation and move.animation not in self.effects:
@@ -176,12 +178,22 @@ class GameContent:
                 )
             if character.max_hp <= 0:
                 issues.append(ContentIssue(where, "hp must be greater than zero"))
+            if type(character.max_mana) is not int or character.max_mana < 0:
+                issues.append(ContentIssue(where, "mana must be a nonnegative integer"))
             for move_id in character.move_ids:
                 if move_id not in self.moves:
                     issues.append(ContentIssue(where, f'uses unknown move "{move_id}"'))
                 if move_id == self.basic_attack_move_id:
                     issues.append(ContentIssue(
                         where, "standard Attack must not also appear in learned skills"
+                    ))
+                move = self.moves.get(move_id)
+                if (move is not None and type(character.max_mana) is int
+                        and type(move.mana_cost) is int
+                        and move.mana_cost > character.max_mana):
+                    issues.append(ContentIssue(
+                        where, f"skill {move.name!r} costs {move.mana_cost} MP, "
+                        f"but {character.name} has only {character.max_mana} max MP"
                     ))
             if character.sprite_id not in self.sprites:
                 issues.append(ContentIssue(where, f'uses unknown sprite "{character.sprite_id}"'))
@@ -245,6 +257,8 @@ class GameContent:
             issues.append(ContentIssue(
                 "game", f'basic attack move {self.basic_attack_move_id!r} is not defined'
             ))
+        elif basic_attack.mana_cost != 0:
+            issues.append(ContentIssue("game", "basic Attack must cost 0 MP"))
         elif basic_attack.kind != "physical" or basic_attack.target_mode != "single_enemy":
             issues.append(ContentIssue(
                 "game", "basic attack must be a physical, single-enemy move"
@@ -408,6 +422,8 @@ class GameContent:
             base_defense=character.defense,
             base_magic=character.magic,
             base_speed=character.speed,
+            mana=character.max_mana,
+            max_mana=character.max_mana,
         )
 
     def validate_behaviors(self) -> list[ContentIssue]:

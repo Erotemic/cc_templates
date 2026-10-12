@@ -9,6 +9,8 @@ memorize the API.
 ctx.user.hp
 ctx.user.max_hp
 ctx.user.hp_ratio
+ctx.user.mana           # current MP
+ctx.user.max_mana       # maximum MP
 ctx.user.attack          # effective value used right now
 ctx.user.base_attack     # character-sheet value
 ctx.user.statuses
@@ -67,16 +69,26 @@ def my_move(ctx):
 
 ## Team-controller actions
 
-Attack and Defend are always available. Skills must be learned by the fighter.
+Attack and Defend are always available. Skills must be learned by the fighter
+and cost MP. Attack restores up to **3 MP**, Defend up to **7 MP**. Both are
+capped at the fighter's `max_mana`, and costs are charged even if a skill misses.
 Your function returns **one action** each turn:
 
 ```python
-return turn.attack(target=turn.enemies[0])
-return turn.defend()
-return turn.skill(moves.arc_bolt, target=turn.enemies[0])
+def choose_action(turn):
+    target = turn.enemies[0]
+    if turn.can_use(moves.arc_bolt.move_id):
+        return turn.skill(moves.arc_bolt, target=target)
+    return turn.attack(target=target)
 ```
 
-The arena has more examples in `team_arena/prefabs/`.
+You can also return `turn.defend()` when recovering more MP is worth giving
+up an attack. The fighter's own `mana` and `max_mana` are read-only facts.
+
+Inspect `turn.user.mana`, `turn.user.max_mana`, `turn.skill_costs`, and
+`turn.can_use(move_id)` when writing team controllers. `turn.can_use` checks
+both that the skill is learned and that the fighter has enough MP. The arena
+has more examples in `team_arena/prefabs/`.
 
 ## Enemy strategy pattern
 
@@ -90,7 +102,9 @@ def my_strategy(turn):
         if enemy.hp_ratio < target.hp_ratio:
             target = enemy
 
-    return turn.skill(moves.arc_bolt, target=target)
+    if turn.can_use(moves.arc_bolt.move_id):
+        return turn.skill(moves.arc_bolt, target=target)
+    return turn.attack(target=target)
 ```
 
 ## Scripted move power

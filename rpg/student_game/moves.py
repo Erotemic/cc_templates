@@ -30,6 +30,7 @@ strike = Move(
 shield_bash = Move(
     "Shield Bash",
     id="shield_bash",
+    mana_cost=5,
     kind="physical",
     power=11,
     animation=effects.impact,
@@ -42,6 +43,7 @@ shield_bash = Move(
 healing_light = Move(
     "Healing Light",
     id="healing_light",
+    mana_cost=7,
     kind="heal",
     power=16,
     target="single_ally",
@@ -52,6 +54,7 @@ healing_light = Move(
 thorn_bind = Move(
     "Thorn Bind",
     id="thorn_bind",
+    mana_cost=5,
     kind="magical",
     power=8,
     animation=effects.thorn,
@@ -64,6 +67,7 @@ thorn_bind = Move(
 arc_bolt = Move(
     "Arc Bolt",
     id="arc_bolt",
+    mana_cost=5,
     kind="magical",
     power=10,
     animation=effects.arc,
@@ -73,6 +77,7 @@ arc_bolt = Move(
 ember = Move(
     "Ember",
     id="ember",
+    mana_cost=6,
     kind="magical",
     power=10,
     animation=effects.ember,
@@ -85,6 +90,7 @@ ember = Move(
 wind_step = Move(
     "Wind Step",
     id="wind_step",
+    mana_cost=4,
     kind="buff",
     target="self",
     animation=effects.wind,
@@ -97,6 +103,7 @@ wind_step = Move(
 stone_ward = Move(
     "Stone Ward",
     id="stone_ward",
+    mana_cost=5,
     kind="buff",
     target="self",
     animation=effects.shield,
@@ -110,6 +117,7 @@ stone_ward = Move(
 mist_veil = Move(
     "Mist Veil",
     id="mist_veil",
+    mana_cost=4,
     kind="debuff",
     animation=effects.mist,
     sound=audio.mist_veil,
@@ -121,6 +129,7 @@ mist_veil = Move(
 sine_wave = Move(
     "Sine Wave",
     id="sine_wave",
+    mana_cost=5,
     kind="magical",
     power=12,
     animation=effects.sine_wave,
@@ -130,6 +139,7 @@ sine_wave = Move(
 fourier_transform = Move(
     "Fourier Transform",
     id="fourier_transform",
+    mana_cost=8,
     kind="magical",
     power=9,
     animation=effects.fourier_transform,
@@ -142,6 +152,7 @@ fourier_transform = Move(
 square_pulse = Move(
     "Square Pulse",
     id="square_pulse",
+    mana_cost=6,
     kind="magical",
     power=10,
     target="all_enemies",
@@ -152,6 +163,7 @@ square_pulse = Move(
 fractal_veil = Move(
     "Fractal Veil",
     id="fractal_veil",
+    mana_cost=6,
     kind="status",
     target="all_allies",
     animation=effects.fractal,
@@ -164,6 +176,7 @@ fractal_veil = Move(
 gradient_descent = Move(
     "Gradient Descent",
     id="gradient_descent",
+    mana_cost=5,
     kind="magical",
     power=11,
     animation=effects.gradient_descent,
@@ -176,6 +189,7 @@ gradient_descent = Move(
 regularization = Move(
     "Regularization",
     id="regularization",
+    mana_cost=5,
     kind="buff",
     target="self",
     animation=effects.regularization,
@@ -189,6 +203,7 @@ regularization = Move(
 artifact_burst = Move(
     "Artifact Burst",
     id="artifact_burst",
+    mana_cost=8,
     kind="magical",
     power=8,
     target="all_enemies",
@@ -202,6 +217,7 @@ artifact_burst = Move(
 singularity_coil = Move(
     "Singularity Coil",
     id="singularity_coil",
+    mana_cost=8,
     kind="magical",
     power=15,
     animation=effects.chaos_zigzag,
@@ -211,6 +227,7 @@ singularity_coil = Move(
 pixel_storm = Move(
     "Pixel Storm",
     id="pixel_storm",
+    mana_cost=7,
     kind="magical",
     power=10,
     target="all_enemies",
@@ -224,6 +241,7 @@ pixel_storm = Move(
 entropy_shield = Move(
     "Entropy Shield",
     id="entropy_shield",
+    mana_cost=5,
     kind="buff",
     target="self",
     animation=effects.entropy_shield,
@@ -247,6 +265,7 @@ def desperate_strike_logic(ctx: MoveContext):
 desperate_strike = Move(
     "Desperate Strike",
     id="desperate_strike",
+    mana_cost=5,
     kind="physical",
     ai_power=8,  # estimate used only when the computer compares scripted moves
     animation=effects.impact,
