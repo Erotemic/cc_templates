@@ -25,6 +25,26 @@ and battle wiring live in `workshop_assets.py` and `workshop_battles.py`, so
 students encounter those concepts when they are ready for them rather than in
 their first conditional lesson.
 
+## Team Controller AI Arena
+
+Students can program an **AI team controller** as one Python function, pit it
+against readable example opponents, and run a round-robin classroom tournament:
+
+```bash
+python arena.py list
+python arena.py moves
+python arena.py battle my_team first_target --runs 4 --log
+python arena.py new clever_team --from first_target
+python arena.py challenge clever_team --runs 20
+```
+
+Start with [`team_arena/README.md`](team_arena/README.md) and the
+[feature-building student projects](team_arena/STUDENT_PROJECTS.md). A
+verified, finite benchmark challenge asks students to beat **every** built-in
+prefab (80% per opponent over side-swapped seeded matches), without showing
+them the reference decision algorithm. The RPG's existing combat rules are
+used unchanged.
+
 ## Trustworthy feedback
 
 The teaching tools are intended to agree with the actual engine:
