@@ -165,3 +165,94 @@ def test_cli_tournament_writes_rankable_csv(tmp_path):
     assert "name,wins,losses,draws,games,score" in data
     assert "first_target" in data
     assert "heavy_hitter" in data
+
+
+def test_recorded_battles_replay_without_student_code():
+    """Playback must be the same fight, not a similar random simulation."""
+    from team_arena.recording import record_match, verify_replay
+    for left, right, seed in (
+        ("first_target", "crowd_control", 1),
+        ("engine_heuristic", "heavy_hitter", 3),
+        ("my_team", "first_target", 5),
+    ):
+        record = record_match(left, right, seed=seed)
+        assert record["steps"]
+        assert {step["team"] for step in record["steps"]} == {0, 1}
+        assert verify_replay(record) == (
+            record["winner"], record["rounds"], tuple(record["remaining_hp"])
+        )
+
+
+def test_bounded_record_captures_student_prints_and_source_path():
+    from team_arena.cli import bounded_record
+    name = "test_temporary_speaker"
+    file = PLAYERS / f"{name}.py"
+    assert not file.exists()
+    try:
+        file.write_text(
+            'def choose_action(turn):\n'
+            '    print("thinking about", turn.user.name, "on round", turn.round_number)\n'
+            '    return turn.use("arena_tap", target=turn.enemies[0])\n'
+        )
+        record = bounded_record(name, "first_target", seed=1,
+                                max_steps=300, timeout=10)
+        assert record["sources"][0] == f"team_arena/players/{name}.py"
+        assert record["winner"] in (0, 1)
+        prints = [line for step in record["steps"] if step["team"] == 0
+                  for line in step["prints"]]
+        assert any("thinking about Arena" in line and "on round" in line for line in prints)
+    finally:
+        file.unlink(missing_ok=True)
+
+
+def test_recording_print_capture_is_bounded():
+    from team_arena.recording import LimitedOutput
+    stream = LimitedOutput(limit=12)
+    assert stream.write("abc\n") == 4
+    assert stream.write("defghijklmnopqrstuvwxyz") == 23
+    assert stream.lines()[0] == "abc"
+    assert "truncated" in stream.lines()[-1]
+
+
+def test_visual_recording_infinite_loop_times_out():
+    from team_arena.cli import bounded_record
+    name = "test_temporary_viewer_loop"
+    file = PLAYERS / f"{name}.py"
+    assert not file.exists()
+    try:
+        file.write_text('def choose_action(turn):\n    while True:\n        pass\n')
+        with pytest.raises(RuntimeError, match="exceeded"):
+            bounded_record(name, "first_target", seed=1,
+                           max_steps=300, timeout=0.75)
+    finally:
+        file.unlink(missing_ok=True)
+
+
+def test_visual_viewer_playback_matches_recorded_result(monkeypatch):
+    """Requires pygame; run in a classroom dev environment with SDL dummy."""
+    pygame = pytest.importorskip("pygame")
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    monkeypatch.setenv("SDL_AUDIODRIVER", "dummy")
+    from loguru import logger
+    from team_arena.recording import record_match
+    from team_arena.viewer import ArenaBattleScene
+    from rpg_battle.audio.engine import AudioEngine
+    from team_arena.engine import content_for_match
+    logger.remove()
+    record = record_match("first_target", "crowd_control", seed=1)
+    content = content_for_match(record["left"], None, record["right"], None)
+    pygame.init()
+    try:
+        screen = pygame.display.set_mode((1120, 700))
+        scene = ArenaBattleScene(screen.get_rect(), record, audio=AudioEngine(content))
+        for _ in range(2500):
+            scene.update(0.25)
+            if scene.controller.state.winner is not None and not scene.event_queue:
+                break
+        assert scene.controller.state.winner == record["winner"]
+        assert scene.step_index == len(record["steps"])
+        scene.draw(screen)
+        scene.reset()
+        assert scene.step_index == 0
+    finally:
+        pygame.quit()

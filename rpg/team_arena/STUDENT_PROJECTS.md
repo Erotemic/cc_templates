@@ -13,13 +13,20 @@ know how to use a function and a conditional.
 
 Starting point: `team_arena/players/my_team.py`.
 
-1. Run `python arena.py battle my_team first_target --runs 4 --log`.
-2. Find `choose_action`. Change which action the fighter chooses.
-3. Re-run the battle; confirm that the log shows your new action.
-4. Run `python arena.py list` and confirm your file appears as a student entry.
+1. Run `python arena.py watch my_team first_target --seed 3` and watch
+   the two teams fight.
+2. Open `team_arena/players/my_team.py`; add a `print(...)` statement **inside**
+   `choose_action` that announces the fighter's name and current HP. Save it.
+3. Run the same `watch` command again. Find **your print statement** in the
+   on-screen Controller Console next to your controller's name and source file.
+4. Change which move the fighter uses. Watch the result and verify that the
+   printed decision and the animated move agree.
+5. For reproducible results across many battles, run
+   `python arena.py battle my_team first_target --runs 4 --log`.
 
 **Programming idea:** functions and returning values. **Finished when:** the
-battle log contains your modified choice, with no invalid-action errors.
+visual battle shows your new action and your print output appears under your
+controller's filename, with no invalid-action errors.
 
 **Extension:** Make the controller behave differently on a specific round.
 

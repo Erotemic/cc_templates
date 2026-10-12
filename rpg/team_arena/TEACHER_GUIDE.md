@@ -101,3 +101,34 @@ python arena.py tournament first_target heavy_hitter crowd_control contender --r
 Graphical replays, multiple arenas, alternate starting rosters, tournament
 brackets, and true sandboxing are separate features. Keeping the first release
 headless makes students' code edits and measured outcomes central.
+
+## Projector-friendly visual matches and print() debugging
+
+The headless tournament is for scoring many matchups. For a class exhibition,
+open any one pairing in pygame:
+
+```bash
+python arena.py watch my_team crowd_control --seed 71 --speed 2
+python arena.py watch first_target weakest_first --seed 5
+```
+
+Both teams use the normal RPG's character animations, sound, health bars and
+attack effects. The **top of each team panel** identifies its controller and
+source file; the active panel is outlined. The **Controller Console** shows
+which fighter is executing `choose_action`, its choice, and the student's
+`print()` messages, replayed with that exact decision. Messages are also
+printed to the terminal, prefixed with controller/source/round/actor. The
+normal battle log remains visible on the right.
+
+A useful warm-up is to have students add `print(turn.user.name, turn.user.hp)`
+to their own file, then ask them to predict the next action *before* it happens.
+SPACE pauses; +/- changes speed; R replays the same recorded fight; ESC closes.
+
+Each spectator match is first simulated in a time-limited worker. The pygame
+process receives a recording of moves and prints, and never executes student
+functions itself. Thus an accidental `while True` raises a timeout before
+opening the window rather than freezing a displayed battle. This is **not a
+security sandbox** for malicious code: review submissions and use appropriate
+OS isolation for untrusted student programs. Long tournaments stay headless.
+On each code change, relaunch `watch` to regenerate the recording. Windows
+require pygame; install with `python -m pip install -e ".[classroom]"`.

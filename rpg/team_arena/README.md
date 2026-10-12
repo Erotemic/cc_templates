@@ -31,6 +31,52 @@ python arena.py challenge clever_team --runs 20
 The `new` command refuses to overwrite an existing file. It copies the
 example into `team_arena/players/` so the prefabs remain unchanged.
 
+## Watch your code fight (animated)
+
+**Recommended first activity:** open a real battle window, then make a print
+statement appear there. The **left and right controller names**, their Python
+**source-file paths**, and the currently acting controller are shown above the
+fighters. The **Controller Console** in the lower-left shows what each
+controller chose and the lines it printed; the lower-right shows the normal
+battle log. Characters animate moves, damage, HP changes, and knockouts using
+the original pygame RPG art and battle rules.
+
+```bash
+python arena.py watch my_team first_target --seed 3
+```
+
+Open `team_arena/players/my_team.py`. Add these lines **inside**
+`choose_action(turn)`, before the existing return:
+
+```python
+print("I am controlling", turn.user.name)
+print("Round", turn.round_number, "HP", turn.user.hp)
+```
+
+Save and run the same `watch` command again. Watch your messages appear under
+the name **my_team** as the left-side fighters make decisions. They also appear
+in the terminal with the source filename and chosen move. Only edit your
+own controller; the engine and opponent controller stay unchanged.
+
+**Controls:** SPACE pause/resume, `+`/`-` change speed, R replay the same
+recorded match, ESC close. Use `--speed 2` (or up to 8) for a faster match.
+Changing the seed changes the fight; re-running after editing your code records
+its new decisions.
+
+The viewer first **records one real match in a time-limited subprocess**, then
+plays those decisions back with the game's animations. This protects the
+window from getting stuck if a student accidentally writes an endless loop.
+It's a replay, not a live Python debugger; edits take effect when you close
+and launch a new recording. The visual replay never runs student code.
+`print()` inside `choose_action` is recorded with its turn; outputs are bounded
+per turn to keep the display responsive. Regular tournaments stay headless.
+
+If pygame is missing, install the project from this `rpg` directory:
+
+```bash
+python -m pip install -e ".[classroom]"
+```
+
 ## Your controller's entire API
 
 ```python

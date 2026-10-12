@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import tempfile
 import subprocess
 import sys
 
@@ -111,6 +112,46 @@ def bounded_pair(
         ) from exc
 
 
+
+def bounded_record(left: str, right: str, *, seed: int, max_steps: int,
+                   timeout: float) -> dict:
+    """Prepare an animated match without executing student code in pygame.
+
+    The subprocess generates a JSON action tape. A broken/infinite-loop student
+    function is terminated by the parent before opening the battle window.
+    """
+    with tempfile.TemporaryDirectory(prefix="rpg-arena-record-") as folder:
+        destination = Path(folder) / "match.json"
+        command = [
+            sys.executable, str(ROOT / "arena.py"), "__record", left, right,
+            "--seed", str(seed), "--max-steps", str(max_steps),
+            "--output", str(destination),
+        ]
+        env = dict(os.environ, PYTHONHASHSEED="0", PYTHONDONTWRITEBYTECODE="1")
+        try:
+            completed = subprocess.run(
+                command, cwd=ROOT, env=env, capture_output=True, text=True,
+                timeout=timeout, check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"Recording {left} vs {right} exceeded {timeout:g} seconds. "
+                "Check your choose_action function for an infinite loop."
+            ) from exc
+        if completed.returncode:
+            lines = completed.stderr.strip().splitlines()
+            raise RuntimeError(
+                f"Cannot record {left} vs {right}:\n" +
+                "\n".join(lines[-12:])
+            )
+        if not destination.is_file():
+            raise RuntimeError("Recorder did not produce a battle recording")
+        record = json.loads(destination.read_text(encoding="utf8"))
+        from team_arena.recording import verify_replay
+        verify_replay(record)
+        return record
+
+
 def _shared_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--runs", type=int, default=12, help="seeds per side (two games per seed)")
     parser.add_argument("--seed", type=int, default=0, help="first random seed")
@@ -119,7 +160,7 @@ def _shared_options(parser: argparse.ArgumentParser) -> None:
 
 
 def _check_limits(args: argparse.Namespace) -> None:
-    if not 1 <= args.runs <= 500:
+    if not 1 <= getattr(args, "runs", 1) <= 500:
         raise ValueError("--runs must be from 1 to 500")
     if not 1 <= args.max_steps <= 10000:
         raise ValueError("--max-steps must be from 1 to 10000")
@@ -166,6 +207,14 @@ def make_parser() -> argparse.ArgumentParser:
     battle.add_argument("--log", action="store_true", help="show an event-by-event sample game")
     _shared_options(battle)
 
+    view = sub.add_parser("watch", help="watch the animated AI-vs-AI battle and controller prints")
+    view.add_argument("left", help="left team-controller name")
+    view.add_argument("right", help="right team-controller name")
+    view.add_argument("--seed", type=int, default=0, help="reproducible battle seed")
+    view.add_argument("--speed", type=float, default=1.0, help="playback speed, 0.25 to 8")
+    view.add_argument("--max-steps", type=int, default=300, help="recording simulation limit")
+    view.add_argument("--timeout", type=float, default=20, help="max seconds for student code recording")
+
     challenge = sub.add_parser("challenge", help="test one student AI against every prebuilt bot")
     challenge.add_argument("name")
     _shared_options(challenge)
@@ -174,6 +223,13 @@ def make_parser() -> argparse.ArgumentParser:
     tournament.add_argument("names", nargs="*", help="default: all prefabs and all student files")
     tournament.add_argument("--csv", type=Path, help="save standings to a CSV file")
     _shared_options(tournament)
+
+    record = sub.add_parser("__record", help=argparse.SUPPRESS)
+    record.add_argument("left")
+    record.add_argument("right")
+    record.add_argument("--seed", type=int, required=True)
+    record.add_argument("--max-steps", type=int, required=True)
+    record.add_argument("--output", type=Path, required=True)
 
     worker = sub.add_parser("__worker", help=argparse.SUPPRESS)
     worker.add_argument("left")
@@ -191,6 +247,13 @@ def run(args: argparse.Namespace) -> int:
             args.left, args.right, args.runs, args.seed, args.max_steps)))
         return 0
 
+    if args.action == "__record":
+        logger.remove()
+        from team_arena.recording import record_match
+        data = record_match(args.left, args.right, seed=args.seed, max_steps=args.max_steps)
+        args.output.write_text(json.dumps(data), encoding="utf8")
+        return 0
+
     if args.action == "list":
         print("Example controllers:")
         for name in builtin_names():
@@ -199,6 +262,7 @@ def run(args: argparse.Namespace) -> int:
         for name in player_names():
             print("  " + name)
         print("\nRun 'python arena.py moves' for the arena rules.")
+        print("Run 'python arena.py watch my_team first_target' to see the animated fight.")
         return 0
 
     if args.action == "moves":
@@ -215,10 +279,31 @@ def run(args: argparse.Namespace) -> int:
             raise ValueError(f"{name!r} already exists; choose a different name")
         shutil.copyfile(source_for(args.from_name), target)
         print(f"Created {target.relative_to(ROOT)}; edit choose_action(turn).")
-        print(f"Try: python arena.py battle {name} first_target --log")
+        print(f"Watch: python arena.py watch {name} first_target")
+        print(f"Measure: python arena.py battle {name} first_target --runs 12")
         return 0
 
     _check_limits(args)
+
+    if args.action == "watch":
+        if not 0.25 <= args.speed <= 8.0:
+            raise ValueError("--speed must be between 0.25 and 8")
+        import importlib.util
+        if importlib.util.find_spec("pygame") is None:
+            raise RuntimeError(
+                "Visual playback requires pygame. From the rpg directory run "
+                "python -m pip install -e '.[classroom]'"
+            )
+        data = bounded_record(args.left, args.right, seed=args.seed,
+                              max_steps=args.max_steps, timeout=args.timeout)
+        winner = data["left"] if data["winner"] == 0 else data["right"]
+        print(f"Recorded {len(data['steps'])} decisions from round 1 to "
+              f"{data['rounds']} (seed {args.seed}); winner: {winner}", flush=True)
+        print(f"LEFT:  {data['left']}  {data['sources'][0]}", flush=True)
+        print(f"RIGHT: {data['right']}  {data['sources'][1]}", flush=True)
+        from team_arena.viewer import watch
+        watch(data, speed=args.speed)
+        return 0
 
     if args.action == "battle":
         row = _pair(args, args.left, args.right)
