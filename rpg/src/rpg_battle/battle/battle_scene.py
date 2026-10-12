@@ -30,7 +30,12 @@ from rpg_battle.render.tween import approach
 from rpg_battle.render.effect_factory import make_effect
 from rpg_battle.render.floating_text import FloatingText
 from rpg_battle.render.formation import formation_slots
-from rpg_battle.render.layout import BattleLayout, LayoutMetrics, compute_battle_layout
+from rpg_battle.render.layout import (
+    BattleLayout,
+    LayoutMetrics,
+    compute_battle_layout,
+    team_roster_row_layout,
+)
 from rpg_battle.render.hp_bar import HPBar
 from rpg_battle.render.renderer import draw_background, draw_frame
 from rpg_battle.render.sprite_actor import SpriteActor
@@ -138,6 +143,7 @@ class BattleScene:
         self.body_font = pygame.font.Font(None, 28)
         self.menu_font = pygame.font.Font(None, 24)
         self.small_font = pygame.font.Font(None, 24)
+        self.roster_font = pygame.font.Font(None, 21)
         self.should_quit = False
         self._ensure_visuals_for_all()
         self.event_queue = list(self.session.next_step().events)
@@ -1007,7 +1013,7 @@ class BattleScene:
         pygame.draw.rect(surface, (24, 26, 36), rect, border_radius=6)
         inner = rect.inflate(-2, -2)
         fill = inner.copy()
-        fill.width = max(0, int(inner.width * ratio))
+        fill.width = max(0, int(inner.width * max(0.0, min(1.0, ratio))))
         color = (
             (110, 220, 120) if ratio > 0.45 else (240, 180, 80) if ratio > 0.2 else (230, 90, 90)
         )
@@ -1023,38 +1029,84 @@ class BattleScene:
         pygame.draw.rect(surface, (85, 158, 240), fill, border_radius=3)
         pygame.draw.rect(surface, (160, 190, 240), rect, 1, border_radius=3)
 
+    def _draw_roster_resource(
+        self,
+        surface: pygame.Surface,
+        rect: pygame.Rect,
+        *,
+        current: float,
+        maximum: int,
+        is_mana: bool,
+    ) -> None:
+        """Render a short meter with a value alongside, not overlapping it."""
+        if maximum <= 0:
+            dash = self.roster_font.render('-', True, (153, 164, 188))
+            surface.blit(dash, dash.get_rect(center=rect.center))
+            return
+
+        value = f'{int(round(current))}/{maximum}'
+        number = self.roster_font.render(
+            value, True, (170, 205, 255) if is_mana else TEXT_COLOR
+        )
+        gap = 7
+        bar_width = max(12, rect.width - number.get_width() - gap)
+        meter = pygame.Rect(rect.left, rect.centery - 5, bar_width, 11)
+        ratio = current / maximum
+        if is_mana:
+            self._draw_mana_bar(surface, meter, ratio)
+        else:
+            self._draw_row_bar(surface, meter, ratio)
+        surface.blit(number, number.get_rect(midright=(rect.right, rect.centery)))
+
     def _draw_team_panel(self, surface: pygame.Surface, rect: pygame.Rect, team_index: int) -> None:
         team = self.session.state.teams[team_index]
         title = self.title_font.render(team.name, True, TEXT_COLOR)
-        surface.blit(title, (rect.x + 18, rect.y + 10))
-        for row_index, combatant_id in enumerate(self._team_roster(team_index)):
+        surface.blit(title, (rect.x + 18, rect.y + 8))
+
+        roster = self._team_roster(team_index)
+        if not roster:
+            return
+        # Column headings stay in the header; each fighter has one horizontal
+        # row instead of two stacked meters in a too-short row.
+        header = team_roster_row_layout(rect, 0)
+        for text, column in (('FIGHTER', header.name), ('HP', header.hp), ('MP', header.mp)):
+            heading = self.roster_font.render(text, True, (151, 164, 190))
+            surface.blit(heading, (column.left + (0 if text == 'FIGHTER' else 2),
+                                   rect.y + 34))
+
+        for row_index, combatant_id in enumerate(roster):
             combatant = get_combatant(self.session.state, combatant_id)
-            y = rect.y + 46 + row_index * 28
-            status = "ACTIVE" if combatant.active else "RESERVE" if combatant.alive else "KO"
-            text = self.small_font.render(f"{combatant.spec.name} [{status}]", True, TEXT_COLOR)
-            surface.blit(text, (rect.x + 18, y))
-            ratio = (
-                self.displayed_hp_current[combatant_id] / combatant.spec.max_hp
-                if combatant.spec.max_hp
-                else 0.0
+            row = team_roster_row_layout(rect, row_index)
+            if row_index % 2 == 0:
+                pygame.draw.rect(surface, (37, 43, 60), row.row, border_radius=6)
+            status_color = (
+                (110, 220, 140) if combatant.active
+                else (170, 181, 204) if combatant.alive
+                else (224, 105, 112)
             )
-            self._draw_row_bar(surface, pygame.Rect(rect.right - 154, y + 4, 70, 12), ratio)
-            hp_text = self.small_font.render(
-                str(int(round(self.displayed_hp_current[combatant_id]))), True, TEXT_COLOR
+            pygame.draw.circle(surface, status_color, (row.name.x + 7, row.name.centery), 4)
+            name = self._fit_text(
+                self.roster_font, combatant.spec.name, max(0, row.name.width - 23)
             )
-            hp_value_slot = pygame.Rect(rect.right - 64, y, 44, 16)
-            hp_value_rect = hp_text.get_rect(topright=(hp_value_slot.right, hp_value_slot.top))
-            surface.blit(hp_text, hp_value_rect)
-            if combatant.spec.max_mana:
-                mana = self.displayed_mana_current[combatant_id]
-                mp_ratio = mana / combatant.spec.max_mana
-                self._draw_mana_bar(
-                    surface, pygame.Rect(rect.right - 154, y + 18, 70, 8), mp_ratio
-                )
-                mp_text = self.small_font.render(
-                    f"{int(round(mana))} MP", True, (145, 195, 255)
-                )
-                surface.blit(mp_text, (rect.right - 82, y + 11))
+            name_surface = self.roster_font.render(
+                name, True, TEXT_COLOR if combatant.alive else (151, 159, 179)
+            )
+            surface.blit(
+                name_surface,
+                name_surface.get_rect(midleft=(row.name.left + 17, row.name.centery)),
+            )
+            self._draw_roster_resource(
+                surface, row.hp,
+                current=self.displayed_hp_current[combatant_id],
+                maximum=combatant.spec.max_hp,
+                is_mana=False,
+            )
+            self._draw_roster_resource(
+                surface, row.mp,
+                current=self.displayed_mana_current[combatant_id],
+                maximum=combatant.spec.max_mana,
+                is_mana=True,
+            )
 
     def _draw_hud(self, surface: pygame.Surface, layout) -> None:
         player_rect = layout.player_panel

@@ -27,6 +27,16 @@ class BattleLayout:
 
 
 @dataclass(frozen=True)
+class TeamRosterRowLayout:
+    """The fighter name and two resource columns for one team-card row."""
+
+    row: pygame.Rect
+    name: pygame.Rect
+    hp: pygame.Rect
+    mp: pygame.Rect
+
+
+@dataclass(frozen=True)
 class LayoutMetrics:
     """Input values that influence battle scene layout."""
 
@@ -45,15 +55,51 @@ HUD_GAP = 14
 BANNER_HEIGHT = 38
 BANNER_TOP_GAP = 8
 FORMATION_SIDE_CLEARANCE = 20
-FORMATION_TOP_CLEARANCE = 56
+FORMATION_TOP_CLEARANCE = 54
 FORMATION_BOTTOM_CLEARANCE = 92
+
+# One row per fighter. HP and MP each get their own horizontal column;
+# adding fighters increases the panel height, not the number of overlapping
+# meter lines. Keep geometry here rather than repeating offsets in the scene.
+TEAM_CARD_HEADER_HEIGHT = 52
+TEAM_CARD_ROW_HEIGHT = 28
+TEAM_CARD_BOTTOM_PADDING = 10
+TEAM_CARD_HORIZONTAL_PADDING = 16
+TEAM_CARD_COLUMN_GAP = 10
 
 
 def _team_panel_height(row_count: int) -> int:
-    """Return a compact but readable team-summary card height."""
+    """Reserve one complete row for every fighter, including reserves."""
 
     safe_rows = max(2, row_count)
-    return 54 + safe_rows * 24
+    return (
+        TEAM_CARD_HEADER_HEIGHT
+        + safe_rows * TEAM_CARD_ROW_HEIGHT
+        + TEAM_CARD_BOTTOM_PADDING
+    )
+
+
+def team_roster_row_layout(panel: pygame.Rect, row_index: int) -> TeamRosterRowLayout:
+    """Allocate non-overlapping name, HP, and MP columns within a team card.
+
+    The row position and card height share the same constants, so a three- or
+    four-fighter roster cannot extend beyond its panel without a test failing.
+    """
+
+    if row_index < 0:
+        raise ValueError('row_index must be nonnegative')
+    row = pygame.Rect(
+        panel.left + TEAM_CARD_HORIZONTAL_PADDING,
+        panel.top + TEAM_CARD_HEADER_HEIGHT + row_index * TEAM_CARD_ROW_HEIGHT,
+        panel.width - 2 * TEAM_CARD_HORIZONTAL_PADDING,
+        TEAM_CARD_ROW_HEIGHT,
+    )
+    resource_width = min(140, max(70, round(row.width * 0.28)))
+    name_width = row.width - 2 * (resource_width + TEAM_CARD_COLUMN_GAP)
+    name = pygame.Rect(row.left, row.top, name_width, row.height)
+    hp = pygame.Rect(name.right + TEAM_CARD_COLUMN_GAP, row.top, resource_width, row.height)
+    mp = pygame.Rect(hp.right + TEAM_CARD_COLUMN_GAP, row.top, resource_width, row.height)
+    return TeamRosterRowLayout(row=row, name=name, hp=hp, mp=mp)
 
 
 def _lower_hud_height(menu_options: int) -> int:

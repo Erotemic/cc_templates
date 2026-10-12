@@ -138,16 +138,25 @@ class ArenaBattleScene(BattleScene):
         header_font = self.debug_font or self.small_font
         panels = (layout.player_panel, layout.enemy_panel)
         for index, panel in enumerate(panels):
-            name = self.recording["left"] if index == 0 else self.recording["right"]
             file = self.recording["sources"][index]
             active = index == self.active_team and self.session.state.outcome == "ongoing"
             color = LEFT_COLOR if index == 0 else RIGHT_COLOR
             if active:
                 pygame.draw.rect(surface, color, panel, 3, border_radius=14)
-            label = f"{'> ' if active else ''}{name}  -  {file}"
-            line = self._fit_text(header_font, label, panel.width - 12)
-            surface.blit(header_font.render(line, True, color if active else DIM_COLOR),
-                         (panel.x + 6, 8))
+            # Keep source ownership visible *inside* the team's header rather
+            # than floating above the panel border or colliding with roster rows.
+            title_width = self.title_font.size(self.session.state.teams[index].name)[0]
+            source_x = panel.left + 18 + title_width + 16
+            available = max(0, panel.right - 18 - source_x)
+            if available >= 34:
+                line = self._fit_text(header_font, file, available)
+                source_label = header_font.render(
+                    line, True, color if active else DIM_COLOR
+                )
+                surface.blit(
+                    source_label,
+                    source_label.get_rect(midleft=(source_x, panel.y + 23)),
+                )
 
     def _draw_menu(self, surface: pygame.Surface, rect: pygame.Rect) -> None:
         status = "PAUSED" if self.paused else f"{self.speed:g}x"
