@@ -918,30 +918,83 @@ class BattleScene:
             surface.blit(text_surface, text_rect)
             cursor_x += badge_width + gap
 
+    def _draw_battler_meter(
+        self,
+        surface: pygame.Surface,
+        rect: pygame.Rect,
+        *,
+        ratio: float,
+        label: str,
+        value_text: str,
+        fill_color: tuple[int, int, int],
+        border_color: tuple[int, int, int],
+        text_color: tuple[int, int, int] = TEXT_COLOR,
+    ) -> None:
+        pygame.draw.rect(surface, (24, 26, 36), rect, border_radius=6)
+        inner = rect.inflate(-2, -2)
+        fill = inner.copy()
+        fill.width = max(0, int(inner.width * max(0.0, min(1.0, ratio))))
+        pygame.draw.rect(surface, fill_color, fill, border_radius=5)
+        pygame.draw.rect(surface, border_color, rect, 1, border_radius=6)
+
+        label_surface = self.small_font.render(label, True, text_color)
+        value_surface = self.small_font.render(value_text, True, text_color)
+        label_rect = label_surface.get_rect(midleft=(rect.left + 8, rect.centery))
+        value_rect = value_surface.get_rect(midright=(rect.right - 8, rect.centery))
+        surface.blit(label_surface, label_rect)
+        surface.blit(value_surface, value_rect)
+
     def _draw_battler_overlay(
         self, surface: pygame.Surface, combatant_id: str, x: float, y: float, scale: float
     ) -> None:
         combatant = get_combatant(self.session.state, combatant_id)
         self._draw_name_label(surface, combatant.spec.name, x, y - 96 * scale)
         self._draw_status_badges(surface, combatant_id, x, y - 120 * scale)
-        bar_rect = pygame.Rect(int(x - 50), int(y + 70 * scale), 100, 14)
-        self.hp_bars[combatant_id].draw(surface, bar_rect)
-        hp_text = self.small_font.render(
-            f"{int(round(self.displayed_hp_current[combatant_id]))}/{combatant.spec.max_hp}",
-            True,
-            TEXT_COLOR,
+
+        widget_width = 118
+        widget_row_height = 14
+        widget_gap = 4
+        row_count = 2 if combatant.spec.max_mana else 1
+        widget_height = row_count * widget_row_height + (row_count - 1) * widget_gap + 10
+        widget_rect = pygame.Rect(
+            int(x - widget_width / 2),
+            int(y + 62 * scale),
+            widget_width,
+            widget_height,
         )
-        hp_slot = pygame.Rect(bar_rect.left, bar_rect.bottom + 3, bar_rect.width, 16)
-        hp_rect = hp_text.get_rect(topright=(hp_slot.right, hp_slot.top))
-        surface.blit(hp_text, hp_rect)
+        pygame.draw.rect(surface, (20, 23, 34), widget_rect, border_radius=10)
+        pygame.draw.rect(surface, (208, 214, 235), widget_rect, 1, border_radius=10)
+
+        hp_current = int(round(self.displayed_hp_current[combatant_id]))
+        hp_rect = pygame.Rect(widget_rect.x + 6, widget_rect.y + 5, widget_rect.width - 12, 14)
+        self._draw_battler_meter(
+            surface,
+            hp_rect,
+            ratio=hp_current / combatant.spec.max_hp if combatant.spec.max_hp else 0.0,
+            label='HP',
+            value_text=f'{hp_current}/{combatant.spec.max_hp}',
+            fill_color=(110, 220, 120),
+            border_color=(215, 220, 240),
+        )
+
         if combatant.spec.max_mana:
-            mana = self.displayed_mana_current[combatant_id]
-            mp_rect = pygame.Rect(bar_rect.left, bar_rect.bottom + 21, bar_rect.width, 8)
-            self._draw_mana_bar(surface, mp_rect, mana / combatant.spec.max_mana)
-            mana_text = self.small_font.render(
-                f"MP {int(round(mana))}/{combatant.spec.max_mana}", True, (145, 195, 255)
+            mana = int(round(self.displayed_mana_current[combatant_id]))
+            mp_rect = pygame.Rect(
+                widget_rect.x + 6,
+                hp_rect.bottom + widget_gap,
+                widget_rect.width - 12,
+                14,
             )
-            surface.blit(mana_text, mana_text.get_rect(midtop=(int(x), mp_rect.bottom + 1)))
+            self._draw_battler_meter(
+                surface,
+                mp_rect,
+                ratio=mana / combatant.spec.max_mana,
+                label='MP',
+                value_text=f'{mana}/{combatant.spec.max_mana}',
+                fill_color=(85, 158, 240),
+                border_color=(160, 190, 240),
+                text_color=(214, 230, 255),
+            )
 
     def _team_roster(self, team_index: int) -> list[str]:
         return [
@@ -976,7 +1029,7 @@ class BattleScene:
         surface.blit(title, (rect.x + 18, rect.y + 10))
         for row_index, combatant_id in enumerate(self._team_roster(team_index)):
             combatant = get_combatant(self.session.state, combatant_id)
-            y = rect.y + 48 + row_index * 30
+            y = rect.y + 46 + row_index * 28
             status = "ACTIVE" if combatant.active else "RESERVE" if combatant.alive else "KO"
             text = self.small_font.render(f"{combatant.spec.name} [{status}]", True, TEXT_COLOR)
             surface.blit(text, (rect.x + 18, y))
@@ -1001,7 +1054,7 @@ class BattleScene:
                 mp_text = self.small_font.render(
                     f"{int(round(mana))} MP", True, (145, 195, 255)
                 )
-                surface.blit(mp_text, (rect.right - 82, y + 13))
+                surface.blit(mp_text, (rect.right - 82, y + 11))
 
     def _draw_hud(self, surface: pygame.Surface, layout) -> None:
         player_rect = layout.player_panel

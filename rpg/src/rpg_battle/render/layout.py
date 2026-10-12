@@ -37,34 +37,39 @@ class LayoutMetrics:
     menu_options: int
 
 
-TOP_MARGIN = 32
-SIDE_MARGIN = 30
-COLUMN_GAP = 30
-BOTTOM_MARGIN = 6
-HUD_GAP = 18
-BANNER_HEIGHT = 44
-BANNER_TOP_GAP = 10
-FORMATION_SIDE_CLEARANCE = 24
-FORMATION_TOP_CLEARANCE = 84
-FORMATION_BOTTOM_CLEARANCE = 128
+TOP_MARGIN = 20
+SIDE_MARGIN = 24
+COLUMN_GAP = 24
+BOTTOM_MARGIN = 10
+HUD_GAP = 14
+BANNER_HEIGHT = 38
+BANNER_TOP_GAP = 8
+FORMATION_SIDE_CLEARANCE = 20
+FORMATION_TOP_CLEARANCE = 56
+FORMATION_BOTTOM_CLEARANCE = 92
 
 
 def _team_panel_height(row_count: int) -> int:
+    """Return a compact but readable team-summary card height."""
+
     safe_rows = max(2, row_count)
-    return 62 + safe_rows * 26
+    return 54 + safe_rows * 24
 
 
 def _lower_hud_height(menu_options: int) -> int:
+    """Return the lower HUD height for menus / console / log panes."""
+
     safe_options = max(1, menu_options)
-    return max(168, 78 + safe_options * 28)
+    return max(188, 72 + safe_options * 24)
 
 
 def compute_battle_layout(metrics: LayoutMetrics) -> BattleLayout:
     """Compute non-overlapping layout regions for the battle scene.
 
     The battlefield sits between a top roster band and a lower action/log band.
-    The formation regions then reserve headroom for labels and footroom for HP
-    bars so battlers are much less likely to overlap the bottom HUD.
+    The formation regions then reserve headroom for the turn banner and a
+    compact footroom for battler HP / MP widgets so sprites do not collide with
+    the bottom HUD.
     """
 
     top_panel_height = max(

@@ -61,3 +61,19 @@ def test_three_unit_right_formation_is_mirrored() -> None:
     assert len(slots) == 3
     assert slots[0].x > slots[1].x > slots[2].x
     assert slots[0].y < slots[1].y < slots[2].y
+
+
+def test_layout_reserves_readable_formation_height() -> None:
+    layout = compute_battle_layout(
+        LayoutMetrics(
+            screen_width=1120,
+            screen_height=700,
+            left_team_rows=2,
+            right_team_rows=2,
+            menu_options=5,
+        )
+    )
+    assert layout.left_region.height >= 140
+    assert layout.right_region.height >= 140
+    assert layout.left_region.bottom <= layout.battlefield.bottom
+    assert layout.right_region.bottom <= layout.battlefield.bottom
