@@ -147,11 +147,10 @@ class StatusState:
 
 @dataclass
 class CombatantState:
-    """Mutable runtime battler instance created from a ``CharacterSpec``.
+    """Mutable resources and status for one fighter.
 
-    ``slot_index`` records the battler's fixed battlefield position while active.
-    The scene uses that value to keep units anchored to stable formation slots
-    instead of collapsing the remaining party inward when someone is defeated.
+    Placement belongs exclusively to ``TeamBattleState.active_slots``. Living
+    versus knocked out is derived from HP, rather than stored in a second flag.
     """
 
     combatant_id: str
@@ -165,9 +164,6 @@ class CombatantState:
     )
     render_transforms: dict[str, int] = field(default_factory=dict)
     defending: bool = False
-    active: bool = False
-    fainted: bool = False
-    slot_index: int | None = None
 
     def __post_init__(self) -> None:
         if self.current_hp is None:
@@ -179,7 +175,7 @@ class CombatantState:
 
     @property
     def alive(self) -> bool:
-        return self.current_hp > 0 and not self.fainted
+        return self.current_hp > 0
 
     def hp_ratio(self) -> float:
         return max(0.0, min(1.0, self.current_hp / self.spec.max_hp))
@@ -187,19 +183,35 @@ class CombatantState:
 
 @dataclass
 class TeamBattleState:
-    """Runtime team state tracking active and reserve combatant ids."""
+    """Roster order and battlefield placement are the only membership state.
+
+    ``roster_ids`` includes *all* original fighters, including defeated ones.
+    ``active_slots`` has exactly ``active_limit`` positions; empty slots remain
+    empty until explicitly replaced. The derived ``active_ids`` and
+    ``reserve_ids`` compatibility views must not be mutated. ``reserve_ids``
+    includes unfielded KO fighters; use ``living_reserve_ids(state, team_index)``
+    to request a fighter who can actually enter battle.
+    """
 
     team_index: int
     name: str
     controller_type: ControllerType
     active_limit: int
-    active_ids: list[str] = field(default_factory=list)
-    reserve_ids: list[str] = field(default_factory=list)
+    roster_ids: list[str] = field(default_factory=list)
+    active_slots: list[str | None] = field(default_factory=list)
     inventory: list[InventoryEntry] = field(default_factory=list)
     strategy: "AIStrategy | None" = None
 
-    def defeated(self) -> bool:
-        return not self.active_ids and not self.reserve_ids
+    @property
+    def active_ids(self) -> list[str]:
+        """Current frontline, in fixed slot order (derived snapshot)."""
+        return [cid for cid in self.active_slots if cid is not None]
+
+    @property
+    def reserve_ids(self) -> list[str]:
+        """Unfielded roster in selection order (may include knocked-out IDs)."""
+        occupied = set(self.active_ids)
+        return [cid for cid in self.roster_ids if cid not in occupied]
 
 
 @dataclass(frozen=True)

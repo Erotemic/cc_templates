@@ -22,7 +22,8 @@ def test_single_enemy_still_opens_target_menu() -> None:
         # Force a player turn with only one enemy remaining on the frontline.
         scene.controller.current_actor_id = scene.controller.state.teams[0].active_ids[0]
         enemy_team = scene.controller.state.teams[1]
-        enemy_team.active_ids = enemy_team.active_ids[:1]
+        for slot_index in range(1, len(enemy_team.active_slots)):
+            enemy_team.active_slots[slot_index] = None
         scene._set_root_menu_for_actor(scene.controller.current_actor_id)
 
         scene._handle_player_move_selection("strike", "attack")

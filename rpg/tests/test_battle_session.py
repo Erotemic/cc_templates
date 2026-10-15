@@ -8,7 +8,7 @@ import pytest
 
 from rpg_battle.battle.session import BattleSession, DecisionRequest
 from rpg_battle.core.actions import attack_action, defend_action, skill_action
-from rpg_battle.core.battle_state import ensure_replacement_request, mark_fainted
+from rpg_battle.core.battle_state import ensure_replacement_request, living_reserve_ids, mark_fainted
 from rpg_battle.core.models import CombatContent, EncounterSpec, TeamSpec
 from rpg_battle.teaching.simulate import simulate_once
 from student_game import CONTENT
@@ -74,7 +74,7 @@ def test_replacement_is_requested_for_either_team_without_auto_selecting(team_in
     ensure_replacement_request(session.state, team_index)
     request = session.next_step().request
     assert request == DecisionRequest(
-        'replacement', team_index, choices=tuple(session.state.teams[team_index].reserve_ids)
+        'replacement', team_index, choices=tuple(living_reserve_ids(session.state, team_index))
     )
     before = session.rng.getstate()
     assert session.next_step().request == request

@@ -18,7 +18,7 @@ from typing import Literal, TYPE_CHECKING
 
 from loguru import logger
 
-from rpg_battle.core.battle_state import get_combatant, new_battle
+from rpg_battle.core.battle_state import get_combatant, is_active, new_battle
 from rpg_battle.core.models import BattleAction, BattleState, EncounterSpec
 from rpg_battle.core.rules import (
     build_round_turn_queue,
@@ -167,7 +167,7 @@ class BattleSession:
         while self.state.pending_turn_order:
             actor_id = self.state.pending_turn_order.pop(0)
             actor = get_combatant(self.state, actor_id)
-            if not actor.alive or not actor.active:
+            if not actor.alive or not is_active(self.state, actor_id):
                 continue
             self.state.current_actor_id = actor_id
             return SessionStep((make_turn_start_event(self.state, actor_id),), self.request)

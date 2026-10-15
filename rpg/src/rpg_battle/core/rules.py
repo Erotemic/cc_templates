@@ -17,6 +17,8 @@ from rpg_battle.core.battle_state import (
     living_reserve_ids,
     mark_fainted,
     replace_active_with_reserve,
+    is_active,
+    team_defeated,
 )
 from rpg_battle.core.effects import effective_stat
 from rpg_battle.core.events import make_event
@@ -304,7 +306,7 @@ def _update_outcome(state: BattleState, events: list[dict]) -> None:
     """
     if state.outcome != "ongoing":
         return
-    living = [index for index, team in enumerate(state.teams) if not team.defeated()]
+    living = [index for index in range(len(state.teams)) if not team_defeated(state, index)]
     if len(living) >= 2:
         return
     state.pending_replacements.clear()
@@ -328,7 +330,7 @@ def _collect_faints(state: BattleState, events: list[dict]) -> None:
     active_ids = [combatant_id for team in state.teams for combatant_id in list(team.active_ids)]
     for combatant_id in active_ids:
         combatant = get_combatant(state, combatant_id)
-        if combatant.current_hp > 0 or combatant.fainted:
+        if combatant.alive:
             continue
         mark_fainted(state, combatant_id)
         events.append(
@@ -392,6 +394,9 @@ def resolve_replacement(state: BattleState, team_index: int, combatant_id: str) 
     if not bring_reserve_to_active(state, team_index, combatant_id):
         return []
     clear_replacement_request(state, team_index)
+    # A team may have several open slots after a multi-target knockout. Keep
+    # requesting replacements until every fillable slot has been handled.
+    ensure_replacement_request(state, team_index)
     combatant = get_combatant(state, combatant_id)
     return [
         make_event(
@@ -800,7 +805,7 @@ def resolve_action(
         return events
     actor = get_combatant(state, action.actor_id)
     logger.info("Resolving action kind={} actor={}", action.kind, actor.spec.name)
-    if not actor.alive or not actor.active:
+    if not actor.alive or not is_active(state, action.actor_id):
         return events
     # Validate before the stun roll or any mutation, even for human / raw AI actions.
     action = validate_action(state, action)

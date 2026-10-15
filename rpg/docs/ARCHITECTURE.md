@@ -78,7 +78,7 @@ ordinary turn action and should not consume its team's turn.
 | Module | Owns | Does not own |
 |---|---|---|
 | `core/models.py` | Character/Move/Team specs, `BattleAction`, `BattleState`, narrow `CombatContent` | Input policies or graphics |
-| `core/battle_state.py` | Instantiate fighters, active/reserve placements, replacement bookkeeping | Turn selection |
+| `core/battle_state.py` | Instantiate fighters, roster/slot transitions, replacement bookkeeping | Turn selection |
 | `battle/session.py` | Turn order, RNG, round progression, pending requests, submission | Choosing *which* move an AI prefers |
 | `core/rules.py` | Action legality, HP/status/stat effects, knockouts, factual events | Animation or menus |
 | `core/ai.py` | Built-in AI and student strategy adapter | Turn progression |
@@ -97,6 +97,39 @@ The combat state retains only `CombatContent` (characters, moves, basic attack
 ID). It does **not** retain sprites, effect recipes, or music. Full
 `GameContent` is still available to the outer application. Importing the
 combat models or state helpers does not eagerly import the art/audio catalog.
+
+## Fighter placement: one source of truth
+
+The team owns two pieces of mutable placement data:
+
+```python
+team.roster_ids      # every fighter that entered this battle, including KOs
+team.active_slots    # one ID (or None) for each fixed formation position
+```
+
+`CombatantState` owns HP, mana, statuses, and stats. It does **not** keep
+`active`, `fainted`, or `slot_index` copies. The meaning of "alive" is simply
+positive HP, and a fighter is active when its ID occupies an `active_slots`
+position. Leaving a slot vacant does not move the surviving fighters.
+
+For existing callers, `team.active_ids` and `team.reserve_ids` are **derived
+snapshots**; editing those lists cannot change battle state. `reserve_ids`
+contains all unfielded roster IDs, including defeated members. To select a
+valid replacement or switch target, always use
+`living_reserve_ids(state, team_index)`. To ask where a fighter stands, use
+`slot_of(state, fighter_id)`; to ask whether the team can continue, use
+`team_defeated(state, team_index)`.
+
+Placement changes go through `mark_fainted`, `bring_reserve_to_active`,
+`replace_active_with_reserve`, or `move_active_to_reserve` in
+`core/battle_state.py`. Switching appends the outgoing fighter to the end of
+reserve order, preserving existing AI and tournament decisions. After a
+multi-fighter knockout, the session requests one replacement per fillable slot.
+
+`validate_placement(state)` checks full-roster coverage, unique membership,
+legal active slots, and living occupants. Tests invoke it after transitions;
+it need not run on every rendered frame. See `tests/test_placement.py` for
+1–4 active fighter formations, multiple KOs, switches, and replacements.
 
 ## Invariants
 
@@ -119,6 +152,10 @@ combat models or state helpers does not eagerly import the art/audio catalog.
    at each fighter's max. Skill cost is paid once, including when the move misses.
    Switching preserves each combatant's mana. `mana` events have before/after
    snapshots so replay/animation can show changes in order.
+9. Exactly one team roster contains each fighter; active slots contain distinct
+   living roster members. KO fighters remain in the roster (with zero HP), not
+   in a field slot. Derived active/reserve snapshots are not mutable sources
+   of truth.
 
 `BattleController` remains as a **thin compatibility facade** in
 `battle/battle_controller.py` for older workshop/test callers. It delegates
@@ -174,9 +211,9 @@ is the registered `MoveSpec`, never a controller-supplied number. Legacy
 content defaults to zero mana and zero-cost skills until authored explicitly.
 
 ## Deferred, independent cleanup
-- **Active/reserve representation:** fighter activity flags and team roster
-  membership still overlap. Simplifying them requires a separate migration
-  with explicit invariant tests for switches, fainting, and animation slots.
+- **Controller ownership:** ``TeamBattleState`` still retains authoring-time
+  controller preferences and strategy functions. Controller policy can move
+  out of runtime combat state in a separate migration.
 - **Game authoring catalog:** the outer `catalog.py` still validates visual
   and gameplay content together. This does not leak into `CombatContent`, but
   the authoring/validation modules can eventually be separated further.

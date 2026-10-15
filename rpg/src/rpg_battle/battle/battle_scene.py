@@ -242,10 +242,8 @@ class BattleScene:
             side = "left" if team_index == 0 else "right"
             slots = formation_slots(region, side, team.active_limit)
             team_mapping: dict[str, tuple[float, float, float]] = {}
-            for combatant_id in team.active_ids:
-                combatant = get_combatant(self.session.state, combatant_id)
-                slot_index = combatant.slot_index
-                if slot_index is None or slot_index >= len(slots):
+            for slot_index, combatant_id in enumerate(team.active_slots):
+                if combatant_id is None or slot_index >= len(slots):
                     continue
                 slot = slots[slot_index]
                 team_mapping[combatant_id] = (slot.x, slot.y, slot.scale)
@@ -267,7 +265,7 @@ class BattleScene:
             if actor is None:
                 continue
             displayed_hp = self.displayed_hp_current.get(combatant_id, 0.0)
-            if combatant.fainted and not actor.ready_to_hide(displayed_hp):
+            if not combatant.alive and not actor.ready_to_hide(displayed_hp):
                 mapping[combatant_id] = self.last_known_positions[combatant_id]
         return mapping
 
@@ -1080,7 +1078,7 @@ class BattleScene:
             if row_index % 2 == 0:
                 pygame.draw.rect(surface, (37, 43, 60), row.row, border_radius=6)
             status_color = (
-                (110, 220, 140) if combatant.active
+                (110, 220, 140) if combatant_id in team.active_ids
                 else (170, 181, 204) if combatant.alive
                 else (224, 105, 112)
             )

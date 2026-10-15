@@ -52,6 +52,7 @@ def _build_team_state(
             for entry in team_spec.inventory
         ],
         strategy=team_spec.strategy,
+        active_slots=[None] * active_limit,
     )
     combatants: dict[str, CombatantState] = {}
 
@@ -70,13 +71,10 @@ def _build_team_state(
             combatant_id=combatant_id,
             spec=content.characters[char_id],
             team_index=team_index,
-            active=char_id in requested_set and len(team_state.active_ids) < active_limit,
         )
-        if combatant.active:
-            combatant.slot_index = len(team_state.active_ids)
-            team_state.active_ids.append(combatant_id)
-        else:
-            team_state.reserve_ids.append(combatant_id)
+        team_state.roster_ids.append(combatant_id)
+        if member_index < len(requested_active):
+            team_state.active_slots[member_index] = combatant_id
         combatants[combatant_id] = combatant
     return team_state, combatants
 
@@ -186,57 +184,64 @@ def living_ally_ids(
     return [cid for cid in allies if cid != actor_id]
 
 
-def vacant_active_slots(state: BattleState, team_index: int) -> int:
+def slot_of(state: BattleState, combatant_id: str) -> int | None:
+    """Find a fighter's active slot, or None if the fighter is not fielded."""
+    combatant = get_combatant(state, combatant_id)
+    slots = state.teams[combatant.team_index].active_slots
+    return next((index for index, cid in enumerate(slots) if cid == combatant_id), None)
+
+
+def is_active(state: BattleState, combatant_id: str) -> bool:
+    """A fighter is active precisely when present in a frontline slot."""
+    return slot_of(state, combatant_id) is not None
+
+
+def team_defeated(state: BattleState, team_index: int) -> bool:
+    """A team loses only when every member of its full roster has zero HP."""
     team = state.teams[team_index]
-    occupied_slots = {
-        get_combatant(state, combatant_id).slot_index
-        for combatant_id in team.active_ids
-        if get_combatant(state, combatant_id).slot_index is not None
-    }
-    return max(0, team.active_limit - len(occupied_slots))
+    return not any(get_combatant(state, cid).alive for cid in team.roster_ids)
+
+
+def vacant_active_slots(state: BattleState, team_index: int) -> int:
+    return state.teams[team_index].active_slots.count(None)
 
 
 def first_vacant_slot(state: BattleState, team_index: int) -> int | None:
-    """Return the first open battlefield slot for a team, if any."""
+    """Return the first vacant fixed battlefield slot, if any."""
+    slots = state.teams[team_index].active_slots
+    return next((index for index, cid in enumerate(slots) if cid is None), None)
 
-    team = state.teams[team_index]
-    occupied_slots = {
-        get_combatant(state, combatant_id).slot_index
-        for combatant_id in team.active_ids
-        if get_combatant(state, combatant_id).slot_index is not None
-    }
-    for slot_index in range(team.active_limit):
-        if slot_index not in occupied_slots:
-            return slot_index
-    return None
+
+def _move_to_end_of_roster(team: TeamBattleState, combatant_id: str) -> None:
+    """Keep old switch semantics: a switched-out fighter joins the reserve tail."""
+    team.roster_ids.remove(combatant_id)
+    team.roster_ids.append(combatant_id)
 
 
 def move_active_to_reserve(state: BattleState, combatant_id: str) -> None:
     combatant = get_combatant(state, combatant_id)
     team = state.teams[combatant.team_index]
-    if combatant_id in team.active_ids:
-        team.active_ids.remove(combatant_id)
-    if combatant.alive and combatant_id not in team.reserve_ids:
-        team.reserve_ids.append(combatant_id)
-    combatant.active = False
-    combatant.slot_index = None
+    slot = slot_of(state, combatant_id)
+    if slot is None:
+        return
+    team.active_slots[slot] = None
+    if combatant.alive:
+        _move_to_end_of_roster(team, combatant_id)
 
 
 def bring_reserve_to_active(state: BattleState, team_index: int, combatant_id: str) -> bool:
     team = state.teams[team_index]
     slot_index = first_vacant_slot(state, team_index)
-    if combatant_id not in team.reserve_ids or slot_index is None:
+    if (
+        combatant_id not in team.reserve_ids
+        or slot_index is None
+        or not get_combatant(state, combatant_id).alive
+    ):
         return False
-    team.reserve_ids.remove(combatant_id)
-    team.active_ids.append(combatant_id)
-    combatant = get_combatant(state, combatant_id)
-    combatant.active = True
-    combatant.slot_index = slot_index
+    team.active_slots[slot_index] = combatant_id
     logger.debug(
         "Promoted reserve {} to active slot {} on team {}",
-        combatant_id,
-        slot_index,
-        team_index,
+        combatant_id, slot_index, team_index,
     )
     return True
 
@@ -248,41 +253,41 @@ def replace_active_with_reserve(
 ) -> bool:
     actor = get_combatant(state, actor_id)
     team = state.teams[actor.team_index]
-    if actor_id not in team.active_ids or switch_in_id not in team.reserve_ids:
+    slot_index = slot_of(state, actor_id)
+    if (
+        slot_index is None
+        or switch_in_id not in team.reserve_ids
+        or not get_combatant(state, switch_in_id).alive
+    ):
         return False
-    list_index = team.active_ids.index(actor_id)
-    team.active_ids[list_index] = switch_in_id
-    team.reserve_ids.remove(switch_in_id)
-    if actor.alive:
-        team.reserve_ids.append(actor_id)
-    actor.active = False
-    preserved_slot = actor.slot_index
-    actor.slot_index = None
-    incoming = get_combatant(state, switch_in_id)
-    incoming.active = True
-    incoming.slot_index = preserved_slot
-    logger.debug("Swapped {} out for {} in slot {}", actor_id, switch_in_id, preserved_slot)
+    team.active_slots[slot_index] = switch_in_id
+    _move_to_end_of_roster(team, actor_id)
+    logger.debug("Swapped {} out for {} in slot {}", actor_id, switch_in_id, slot_index)
     return True
 
 
 def mark_fainted(state: BattleState, combatant_id: str) -> None:
+    """Knock out a fighter and vacate its slot without renumbering others."""
     combatant = get_combatant(state, combatant_id)
     logger.info("Marking {} as fainted", combatant.spec.name)
-    combatant.fainted = True
-    combatant.active = False
-    team = state.teams[combatant.team_index]
-    if combatant_id in team.active_ids:
-        team.active_ids.remove(combatant_id)
-    if combatant_id in team.reserve_ids:
-        team.reserve_ids.remove(combatant_id)
+    combatant.current_hp = 0
+    slot_index = slot_of(state, combatant_id)
+    if slot_index is not None:
+        state.teams[combatant.team_index].active_slots[slot_index] = None
 
 
 def ensure_replacement_request(state: BattleState, team_index: int) -> None:
     missing = vacant_active_slots(state, team_index)
     if missing <= 0 or not living_reserve_ids(state, team_index):
         return
-    for request in state.pending_replacements:
+    for index, request in enumerate(state.pending_replacements):
         if request.team_index == team_index:
+            # Multiple simultaneous knockouts can create additional vacant
+            # slots before the first replacement decision is handled.
+            if request.slots_to_fill != missing:
+                state.pending_replacements[index] = ReplacementRequest(
+                    team_index=team_index, slots_to_fill=missing,
+                )
             return
     state.pending_replacements.append(
         ReplacementRequest(team_index=team_index, slots_to_fill=missing)
@@ -297,12 +302,43 @@ def clear_replacement_request(state: BattleState, team_index: int) -> None:
 
 
 def reserve_names(state: BattleState, team_index: int) -> list[str]:
-    return [get_combatant(state, cid).spec.name for cid in state.teams[team_index].reserve_ids]
+    return [get_combatant(state, cid).spec.name for cid in living_reserve_ids(state, team_index)]
 
 
 def living_team_indices(state: BattleState) -> list[int]:
-    return [index for index, team in enumerate(state.teams) if not team.defeated()]
+    return [index for index in range(len(state.teams)) if not team_defeated(state, index)]
 
 
 def combatant_name_map(state: BattleState, combatant_ids: Iterable[str]) -> list[str]:
     return [get_combatant(state, combatant_id).spec.name for combatant_id in combatant_ids]
+
+
+def validate_placement(state: BattleState) -> None:
+    """Check the sole authoritative placement representation.
+
+    This check is useful in tests and debugging, not a per-frame tax. Each
+    fighter belongs to exactly one roster; active slots reference living members
+    of that roster, and no fighter occupies two slots.
+    """
+    roster_members: set[str] = set()
+    for team_index, team in enumerate(state.teams):
+        if len(team.active_slots) != team.active_limit:
+            raise ValueError(f"Team {team_index}: active slot count differs from active limit")
+        if len(set(team.roster_ids)) != len(team.roster_ids):
+            raise ValueError(f"Team {team_index}: duplicate roster member")
+        for cid in team.roster_ids:
+            if cid not in state.combatants:
+                raise ValueError(f"Team {team_index}: unknown roster fighter {cid!r}")
+            if cid in roster_members:
+                raise ValueError(f"Fighter {cid!r} belongs to multiple rosters")
+            roster_members.add(cid)
+            if state.combatants[cid].team_index != team_index:
+                raise ValueError(f"Fighter {cid!r} belongs to the wrong team")
+        active = team.active_ids
+        if len(set(active)) != len(active):
+            raise ValueError(f"Team {team_index}: fighter occupies multiple slots")
+        for cid in active:
+            if cid not in team.roster_ids or not state.combatants[cid].alive:
+                raise ValueError(f"Team {team_index}: invalid active fighter {cid!r}")
+    if roster_members != set(state.combatants):
+        raise ValueError("Battle combatants and team rosters disagree")
