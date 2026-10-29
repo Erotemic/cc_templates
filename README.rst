@@ -10,6 +10,9 @@ Start with the project folder that matches the student's comfort level:
   showing how the same idea grows from a few ``if`` statements into a
   data-driven program.
 * ``platformer``: a 2D pygame platformer.
+* ``climber``: an infinite vertical pygame tower with six student exercises
+  (wall jumps, ladders, enemy patrols, rising floor, moving platforms,
+  and procedural generation).
 * ``rpg``: a larger pygame RPG with more structure.
 * ``fpx3d``: a first-person 3D game built directly with Panda3D.
 * ``rts``: a real-time strategy game ported from a high school project.
@@ -18,8 +21,9 @@ Start with the project folder that matches the student's comfort level:
 Running the games
 -----------------
 
-For the projects with a ``pyproject.toml`` (``platformer``, ``rpg``,
-``fpx3d``), the simplest way to run them is from inside the project folder:
+For the projects with a ``pyproject.toml`` (``platformer``, ``climber``,
+``rpg``, ``fpx3d``), the simplest way to run them is from inside the project
+folder:
 
 .. code-block:: bash
 
