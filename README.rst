@@ -40,6 +40,13 @@ Other folders
 
 * ``teaching``: instructor materials, handouts, and exercises.
 
+
+SeeAlso
+-------
+
+* https://github.com/Erotemic/ambition_lite
+* https://github.com/Erotemic/maryo_lite
+
 Further Reading and Interesting Tutorials
 -----------------------------------------
 
