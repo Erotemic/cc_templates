@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fpx3d"
 version = "0.1.0"
-description = "A bright first-person 3D Python game template for students."
+description = "Prism Vault: a playable first-person Panda3D game with guided missions."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -13,8 +13,14 @@ dependencies = [
 ]
 
 [project.scripts]
-fpx3d = "fpx3d.game:main"
+fpx3d = "fpx3d.launch:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["fpx3d*"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

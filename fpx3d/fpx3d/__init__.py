@@ -1,5 +1,7 @@
-"""First Person Exploration 3D game package."""
+"""Prism Vault: a student-editable first-person Panda3D exploration game."""
 
-from .game import main
+# Importing fpx3d should not import Panda3D. This works even for students
+# running the headless simulation or reading the pure Python code.
+from .launch import main
 
 __all__ = ["main"]

@@ -1,26 +1,19 @@
-# settings.py
-import pygame
+"""A few numbers you can experiment with once you know the basics."""
 
-# Window
-WIDTH, HEIGHT = 960, 540
+TILE = 40
+WIDTH = 24 * TILE
+HEIGHT = 15 * TILE
 FPS = 60
-TITLE = "Pygame Platformer Starter"
 
-# Physics
-GRAVITY = 0.5  # pixels/frame^2
-JUMP_VEL = -12  # initial jump velocity
-MOVE_SPEED = 5  # horizontal speed
+PLAYER_WIDTH = 28
+PLAYER_HEIGHT = 34
+MOVE_SPEED = 260          # pixels per second, left and right
+JUMP_SPEED = 620          # jump starts with NEGATIVE vertical speed
+GRAVITY = 1500           # gravity increases vertical speed every second
+MAX_FALL_SPEED = 850
 
-COYOTE_TIME = 0.12        # seconds after leaving ground where jump still works
-JUMP_BUFFER_TIME = 0.12   # seconds to remember a recent jump press
-
-# Colors
-WHITE = pygame.Color(255, 255, 255)
-BLACK = pygame.Color(0, 0, 0)
-SKY = pygame.Color(135, 206, 235)
-GROUND = pygame.Color(60, 60, 80)
-PLAYER_COLOR = pygame.Color(255, 100, 100)
-PLATFORM_COLOR = pygame.Color(80, 180, 120)
-
-# Tiles
-TILE_SIZE = 48
+SKY = (43, 71, 120)
+EARTH = (94, 76, 92)
+GRASS = (111, 198, 144)
+GOLD = (255, 213, 105)
+TEXT = (249, 246, 233)
