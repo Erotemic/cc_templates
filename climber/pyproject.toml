@@ -1,0 +1,19 @@
+[project]
+name = "infinity-climber-classroom"
+version = "0.1.0"
+description = "A playable pygame tower-climbing starter with six student missions"
+requires-python = ">=3.10"
+dependencies = ["pygame-ce>=2.5"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=65"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["climber"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
