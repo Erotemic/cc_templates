@@ -20,6 +20,7 @@ from student_game import (
     effects,
     moves,
     workshop,
+    guided_battles,
     workshop_assets,
     workshop_battles,
 )
@@ -48,10 +49,10 @@ GAME = Game(
     effects=[*effects.EFFECTS, *workshop_assets.EFFECTS],
     sounds=[*audio.SOUNDS, *workshop_assets.SOUNDS],
     music=[*audio.MUSIC, *workshop_assets.MUSIC],
-    moves=[*moves.MOVES, *workshop.MOVES],
-    characters=[*characters.CHARACTERS, *workshop.CHARACTERS],
-    teams=[*battles.TEAMS, *workshop_battles.TEAMS],
-    battles=[*battles.BATTLES, *workshop_battles.BATTLES],
+    moves=[*moves.MOVES, *workshop.MOVES, *guided_battles.MOVES],
+    characters=[*characters.CHARACTERS, *workshop.CHARACTERS, *guided_battles.CHARACTERS],
+    teams=[*battles.TEAMS, *workshop_battles.TEAMS, *guided_battles.TEAMS],
+    battles=[*battles.BATTLES, *workshop_battles.BATTLES, *guided_battles.BATTLES],
     basic_attack=moves.strike,
     presentation=GamePresentation(
         menu_move_sound=audio.menu_move,

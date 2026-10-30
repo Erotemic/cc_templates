@@ -6,6 +6,13 @@ This directory is the game students author. The engine lives under
 Start with `workshop.py`. It is deliberately limited to the first programming
 ideas: move functions, a character, and a simple enemy strategy.
 
+For **unfinished** features to build, use `student.py` next. It contains four
+guided missions: healer decisions, defending when low on HP, a cursed sword
+with no curse, and boss phases. `guided_battles.py` connects each hook to a
+playable opponent, with existing art and sounds. Read `../MISSIONS.md` for
+reproducible scenario commands. `challenge.py` is the independent challenge
+board and does not change the game by itself.
+
 When you want to see more of the same game:
 
 - `workshop_assets.py` contains its palette, procedural sprite frame, effect, sound,

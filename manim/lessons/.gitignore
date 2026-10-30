@@ -1,0 +1,5 @@
+# Manim creates these during rendering; don't commit generated videos.
+media/
+__pycache__/
+.pytest_cache/
+*.pyc

@@ -25,6 +25,33 @@ and battle wiring live in `workshop_assets.py` and `workshop_battles.py`, so
 students encounter those concepts when they are ready for them rather than in
 their first conditional lesson.
 
+## New: four playable missions with missing behavior
+
+The original `workshop.py` worked examples are still here. For an exercise
+where the character and animation exist but the important decision is
+**not yet implemented**, open **`student_game/student.py`**.
+
+The new practice encounters are: a healer that forgets to heal, a coward
+that refuses to defend, a sword without its curse, and a boss with no phase
+changes. Run one of the matching fixed starting scenarios:
+
+```bash
+python lab.py scenario healer_injured
+python main.py --scenario healer_injured --teach
+python lab.py scenario coward_low_hp
+python main.py --scenario coward_low_hp --teach
+python lab.py scenario sword_low_hp
+python main.py --scenario sword_low_hp --teach
+python lab.py scenario boss_low_hp
+python main.py --scenario boss_low_hp --teach
+```
+
+Every exercise also has a **comparison scenario** with healthy HP. See
+[MISSIONS.md](MISSIONS.md) for the guided instructions and
+[TEACHER_GUIDE.md](TEACHER_GUIDE.md) for teaching notes. Advanced students
+can open `student_game/challenge.py` for open-ended goals with conceptual
+hints, rather than guided implementation steps.
+
 ## AI Team Arena — watch your code fight
 
 Edit **one file**, `team_arena/players/my_team.py`, and run:
