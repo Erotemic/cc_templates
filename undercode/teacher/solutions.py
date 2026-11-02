@@ -1,4 +1,4 @@
-"""Instructor examples for the five guided missions. Gameplay never imports this.
+"""Instructor examples for the six guided missions. Gameplay never imports this.
 
 Compare with a student's work after they have made an attempt. These examples
 are also used to test that completing a TODO really changes normal gameplay.
@@ -44,3 +44,13 @@ def choose_echo_pattern(*, context):
 def movement_speed(*, controls):
     """Instructor example: let the world's existing movement step apply a chosen speed."""
     return 230 if controls.sprint_held else 155
+
+
+def clicked_button(*, mouse_position, buttons):
+    """Instructor example: pure hit testing; the engine owns executing the action."""
+    if mouse_position is None:
+        return None
+    for button in buttons:
+        if button.rect.collidepoint(mouse_position):
+            return button.index
+    return None

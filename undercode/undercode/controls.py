@@ -10,7 +10,12 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, kw_only=True)
 class Controls:
-    """Input for one frame: signed movement axes and individual action/menu presses."""
+    """Input for one frame: held movement, single presses, and an optional click.
+
+    mouse_click is the saved left-button press in logical-screen pixels, not
+    the current pointer location or a continuously held button. None means no
+    click this frame. The window adapter has already rejected letterbox margins.
+    """
 
     move_x: float = 0
     move_y: float = 0
@@ -19,6 +24,7 @@ class Controls:
     confirm_pressed: bool = False
     cancel_pressed: bool = False
     sprint_held: bool = False
+    mouse_click: tuple[float, float] | None = None  # One left press, in logical pixels.
 
     @property
     def menu_step(self):

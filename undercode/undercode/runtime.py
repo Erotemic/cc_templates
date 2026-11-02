@@ -1,6 +1,6 @@
 """The pygame adapter: receive events → update one frame → draw → play sounds.
 
-Read run for the loop. read_input handles keyboard mechanics separately from
+Read run for the loop. read_input handles keyboard/mouse mechanics separately from
 game rules: held arrows continue movement; KEYDOWN creates single action presses.
 Engines receive Controls and seconds, never pygame's global keyboard state.
 """
@@ -11,15 +11,33 @@ from .controls import Controls
 from .settings import GAME_TITLE, WIDTH, HEIGHT
 
 
-def read_input(*, pygame, held):
+def logical_mouse_position(*, window_position, viewport):
+    """Convert a window click to logical pixels; clicks in the letterbox return None.
+
+    Drawing scales the logical picture into viewport. Input must undo that same
+    translation and scale. Subtract its offset first, then divide by its size.
+    Keep fractions: rounding a point near a button edge could change the result.
+    """
+    if not viewport.collidepoint(window_position):
+        return None
+    x, y = window_position
+    return ((x - viewport.x) * WIDTH / viewport.width, (y - viewport.y) * HEIGHT / viewport.height)
+
+
+def read_input(*, pygame, held, viewport=None):
     """Return (Controls, commands); update the set of keys currently held.
 
     commands contains window-level actions, not story/encounter events. A repeat
     keydown keeps a key held but must not confirm another menu choice.
+    mouse_click keeps the last left press in this frame; at most one menu action
+    can run per frame, even when several events arrive together.
     """
     commands = []
     confirm_pressed = cancel_pressed = False
     menu_x = menu_y = 0
+    mouse_click = None
+    if viewport is None:
+        viewport = pygame.Rect(0, 0, WIDTH, HEIGHT)
     directions = {
         pygame.K_LEFT: (-1, 0),
         pygame.K_a: (-1, 0),
@@ -54,10 +72,15 @@ def read_input(*, pygame, held):
                 }.get(event.key)
                 if command is not None:
                     commands.append(command)
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            # Use the position saved WITH the press, not the pointer's later
+            # position. A held button creates no new click on subsequent frames.
+            mouse_click = logical_mouse_position(window_position=event.pos, viewport=viewport)
         elif event.type == pygame.KEYUP:
             held.discard(event.key)
         elif event.type == getattr(pygame, "WINDOWFOCUSLOST", -1):
             held.clear()
+            mouse_click = None
             commands.append("unfocused")
         elif event.type == getattr(pygame, "WINDOWFOCUSGAINED", -1):
             commands.append("focused")
@@ -73,6 +96,7 @@ def read_input(*, pygame, held):
         confirm_pressed=confirm_pressed,
         cancel_pressed=cancel_pressed,
         sprint_held=bool(held & {pygame.K_LSHIFT, pygame.K_RSHIFT}),
+        mouse_click=mouse_click,
     )
     return controls, commands
 
@@ -103,7 +127,11 @@ def run(*, game, headless=False, mute=False, frames=None, screenshot=None):
         alive, focused, frame = True, True, 0
         while alive and (frames is None or frame < frames):
             seconds = 1 / 60 if headless else min(clock.tick(60) / 1000, 0.05)
-            controls, commands = read_input(pygame=pygame, held=held)
+            # Pump first so resize events update the actual window dimensions.
+            # Reuse this viewport for input AND drawing in this frame.
+            pygame.event.pump()
+            viewport = surface.get_rect().fit(window.get_rect())
+            controls, commands = read_input(pygame=pygame, held=held, viewport=viewport)
             for command in commands:
                 if command == "quit":
                     alive = False
@@ -129,7 +157,6 @@ def run(*, game, headless=False, mute=False, frames=None, screenshot=None):
             audio.scene(game.scene.name)
             game.sound_label = audio.label
             view.draw(surface=surface, game=game, focused=focused)
-            viewport = surface.get_rect().fit(window.get_rect())
             window.fill((9, 12, 23))
             window.blit(pygame.transform.smoothscale(surface, viewport.size), viewport)
             pygame.display.flip()

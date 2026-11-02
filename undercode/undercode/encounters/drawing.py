@@ -10,6 +10,7 @@ from .. import art
 from ..presentation import UI
 from .arena import Mode
 from .engine import Phase
+from .menu import main_buttons, option_buttons
 
 ARENA_RECT = pygame.Rect(180, 332, 600, 196)
 MESSAGE_RECT = pygame.Rect(104, 322, 752, 216)
@@ -144,7 +145,6 @@ class EncounterView(UI):
                     color=art.MINT,
                 )
                 options = encounter.options()
-                start = max(0, min(encounter.selection - 2, len(options) - 4))
                 if len(options) > 4:
                     self.text(
                         surface=surface,
@@ -153,13 +153,28 @@ class EncounterView(UI):
                         size=18,
                         color=art.MUTED,
                     )
-                for row, option in enumerate(options[start : start + 4]):
-                    i = start + row
-                    y = 378 + row * 32
-                    if i == encounter.selection:
-                        art.soul(surface=surface, center=(135, y + 10), color=art.CORAL, radius=6)
-                    color = art.GOLD if i == encounter.selection else art.PAPER
-                    self.text(surface=surface, text=option, position=(155, y), size=26, color=color)
+                for button in option_buttons(labels=options, selection=encounter.selection):
+                    selected = button.index == encounter.selection
+                    self.panel(
+                        surface=surface,
+                        rect=button.rect,
+                        border=art.GOLD if selected else (55, 65, 82),
+                        radius=4,
+                    )
+                    if selected:
+                        art.soul(
+                            surface=surface,
+                            center=(135, button.rect.y + 14),
+                            color=art.CORAL,
+                            radius=6,
+                        )
+                    self.text(
+                        surface=surface,
+                        text=button.label,
+                        position=(155, button.rect.y + 4),
+                        size=26,
+                        color=art.GOLD if selected else art.PAPER,
+                    )
                 self.text(
                     surface=surface,
                     text="Up / Down: choose    Z: confirm    X: back",
@@ -192,10 +207,10 @@ class EncounterView(UI):
             size=22,
             color=art.GOLD,
         )
-        for index, label in enumerate(("FIGHT", "ACT", "ITEM", "SPARE")):
-            rect = pygame.Rect(104 + index * 190, 604, 176, 62)
-            selected = encounter.phase == Phase.MENU and index == encounter.selection
-            ready = label == "SPARE" and encounter.spare_ready
+        for button in main_buttons():
+            rect = button.rect
+            selected = encounter.phase == Phase.MENU and button.index == encounter.selection
+            ready = button.label == "SPARE" and encounter.spare_ready
             color = art.GOLD if selected else art.MINT if ready else (89, 103, 125)
             self.panel(
                 surface=surface,
@@ -205,7 +220,12 @@ class EncounterView(UI):
                 radius=8,
             )
             self.text(
-                surface=surface, text=label, position=rect.center, size=28, color=color, center=True
+                surface=surface,
+                text=button.label,
+                position=rect.center,
+                size=28,
+                color=color,
+                center=True,
             )
         self.text(
             surface=surface,

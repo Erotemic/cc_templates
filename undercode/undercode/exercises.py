@@ -114,6 +114,40 @@ def check_tactics():
     ]
 
 
+def check_mouse():
+    """Use the student's hit test on real layout records, including a scrolled menu."""
+    from .student_encounters import clicked_button
+    from .encounters.menu import main_buttons, option_buttons
+
+    buttons = main_buttons()
+    cases = [(None, None, "no click returns None"), ((0, 0), None, "outside buttons returns None")]
+    for button in buttons:
+        cases.append(
+            (button.rect.center, button.index, f"click {button.label}: return index {button.index}")
+        )
+    first = buttons[0].rect
+    cases += [
+        (first.topleft, 0, "left/top edges belong to the first button"),
+        ((first.right, first.centery), None, "the right edge is outside"),
+        ((first.centerx, first.bottom), None, "the bottom edge is outside"),
+        ((first.right + 2, first.centery), None, "the gap between buttons is outside"),
+    ]
+    results = []
+    for position, expected, message in cases:
+        actual = clicked_button(mouse_position=position, buttons=buttons)
+        results.append((actual == expected, message))
+    results.append(
+        (
+            clicked_button(mouse_position=(200, 400), buttons=[]) is None,
+            "an empty button list returns None",
+        )
+    )
+    rows = option_buttons(labels=[f"Choice {index}" for index in range(10)], selection=9)
+    actual = clicked_button(mouse_position=rows[-1].rect.center, buttons=rows)
+    results.append((actual == 9, "a scrolled row returns original option index 9"))
+    return results
+
+
 def check_exercises(*, exercise):
     """Print actionable results and return 0 only when the chosen student's checks pass."""
     checks = {
@@ -122,6 +156,7 @@ def check_exercises(*, exercise):
         "healing": check_healing,
         "pulse": check_pulse,
         "tactics": check_tactics,
+        "mouse": check_mouse,
     }
     selected = checks if exercise == "all" else {exercise: checks[exercise]}
     failed = False

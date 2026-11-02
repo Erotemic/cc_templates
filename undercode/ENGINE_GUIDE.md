@@ -202,6 +202,33 @@ A new pattern instance owns fresh cooldowns. Returning an already-used instance
 would carry an old timer into the next turn. Constructing `LanternPulse()` is
 therefore an important operation, not just punctuation.
 
+## Mouse input: the same geometry, a different input source
+
+Mission 6 adds mouse selection without another action system. Read
+`runtime.logical_mouse_position`, `encounters/menu.py`, `Encounter.update_menu`,
+and the student's `clicked_button` in that order.
+
+A desktop window may contain a scaled picture and black margins. A click's
+window coordinates are first checked against that viewport. Outside returns
+None. Inside, subtract the viewport's offset and multiply by the ratio of logical
+to displayed size. This undoes drawing's scale. Fractional coordinates are kept
+so rounding cannot move an outside point across a button edge.
+
+The adapter uses MOUSEBUTTONDOWN's saved position and only the left button.
+Controls.mouse_click exists for that frame, then resets to None. Holding the
+button is therefore different from another press. At most one click is carried
+per frame, even if several arrive together.
+
+Buttons hold label, rect, and original option index. main_buttons/option_buttons
+provide the SAME rectangles to rendering and hit testing. Scrolled rows keep
+their original indices. The student's pure function returns an index or None;
+Encounter assigns selection and calls the normal choose method exactly once.
+Zero is a valid index, which is why the caller checks `is not None`.
+
+Only menu phases invoke hit testing. A click cannot automatically advance a
+message, stop a strike, jump, or bypass a paused/help/fade frame. To add another
+mouse behavior, find that state's input handler and decide its meaning explicitly.
+
 ## 8. Find a place for your own rule
 
 Ask which state must change and who owns that state. Read that owner's update

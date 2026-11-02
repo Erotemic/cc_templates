@@ -5,6 +5,8 @@ from .arena import Arena
 from .model import TurnContext
 from ..contracts import Outcome, EncounterResult
 from ..dialogue import paginate
+from .. import student_encounters
+from .menu import ACTION_LABELS, main_buttons, option_buttons
 
 
 class Phase(Enum):
@@ -128,7 +130,7 @@ class Encounter:
     def options(self):
         """Return the selectable labels for the current menu, or an empty tuple outside menus."""
         if self.phase == Phase.MENU:
-            return ("FIGHT", "ACT", "ITEM", "SPARE")
+            return ACTION_LABELS
         if self.phase == Phase.ACT:
             return tuple(act.name for act in self.opponent.acts) + ("Back",)
         if self.phase == Phase.ITEM:
@@ -213,10 +215,29 @@ class Encounter:
                 self.set_phase(phase=self.after_message)
 
     def update_menu(self, *, seconds, controls):
-        """Move selection on a press, or apply one choice; held movement does not navigate."""
+        """Use one keyboard action or the student's mouse hit test in this menu.
+
+        The caller only enters here during a menu phase. Clicks cannot reveal
+        messages, stop a timing strike, jump, or act during a fade. After a hit,
+        choose() follows the ordinary action path and this frame returns.
+        """
         if controls.cancel_pressed and self.phase != Phase.MENU:
             self.set_phase(phase=Phase.MENU)
-        elif controls.menu_step:
+            return
+        if controls.mouse_click is not None:
+            if self.phase == Phase.MENU:
+                buttons = main_buttons()
+            else:
+                buttons = option_buttons(labels=self.options(), selection=self.selection)
+            clicked = student_encounters.clicked_button(
+                mouse_position=controls.mouse_click, buttons=buttons
+            )
+            # Index 0 is a real option (FIGHT in the main menu), not no choice.
+            if clicked is not None:
+                self.selection = clicked
+                self.choose()  # The same action path used by keyboard confirm.
+                return  # This click cannot also confirm the submenu it opens.
+        if controls.menu_step:
             self.selection = (self.selection + controls.menu_step) % len(self.options())
             self.cues.append("move")
         elif controls.confirm_pressed:

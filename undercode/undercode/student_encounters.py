@@ -1,11 +1,12 @@
-"""ENCOUNTER LEARNING ROUTE -- GUIDED MISSIONS 4 AND 5 -- Build a new defense, then give it to Echo.
+"""ENCOUNTER LEARNING ROUTE -- build patterns, change tactics, and click buttons.
 
 The RippleLanes class is a working example. LanternPulse is YOUR new mechanic:
 its update() is called by the game but spawns nothing until you implement it.
 Read encounters/engine.py and its phase handlers to understand the caller.
 Run --practice pulse to test it, then connect it in choose_echo_pattern().
 F2 shows phase/turn state. --check-exercise pulse/tactics runs YOUR implementation.
-Each mission below explains the inputs, small steps, and visible success checks.
+Mission 6 adds menu hit testing in clicked_button; it is independent of the
+pattern work. Each mission explains its inputs, steps and visible success checks.
 """
 
 import math
@@ -141,6 +142,51 @@ def choose_echo_pattern(*, context):
 
     # TODO: Add the condition and return your new pattern in its branch.
     return RippleLanes()
+
+
+def clicked_button(*, mouse_position, buttons):
+    """MISSION 6 -- Click encounter buttons using a loop and rectangle hit tests.
+
+    Run: python main.py --encounter echo
+    Check: python main.py --check-exercise mouse
+    First read Encounter.update_menu and encounters/menu.py to find the caller
+    and the button records. The starter records mouse presses but returns None
+    here, so YOU implement the behavior that makes buttons clickable.
+
+    YOUR INPUTS:
+      mouse_position: (x, y) in logical-screen pixels, or None when no click exists.
+      buttons: the currently visible Button records. Each has label, rect, index.
+      button.rect.collidepoint(mouse_position): True if the point is inside.
+        Left/top edges count; right/bottom edges do not (pygame's Rect convention).
+
+    YOUR OUTPUT: the clicked button.index, or None if nothing was hit.
+      Index 0 is a real button! None means "nothing"; 0 means the first option.
+
+    WALKTHROUGH:
+    1. Finish the greeting with Z. Try clicking ACT: it does nothing yet.
+       Use the keyboard to inspect the ACT submenu, then press X to return.
+    2. The guard below handles a missing click. After it, loop over buttons.
+    3. Ask each rect whether it contains mouse_position, using collidepoint.
+    4. Inside a successful branch, return button.index. Keep return None AFTER
+       the loop so missing the first button still lets you try the others.
+    5. Run the check, then click FIGHT, ACT, ITEM, SPARE, and a submenu row.
+       Resize the window and try again, including the black letterbox margins.
+
+    TEST IT: the first button, other buttons, gaps, edges, and no click. A click
+    opens/chooses once; holding the mouse does not repeat it. Keyboard still works.
+    In a long ACT list, return button.index, NOT the visible row number: rows
+    scroll, but an option keeps its original index. Use arrows to scroll first.
+
+    WHY: runtime.py translates window clicks into logical pixels before this
+    function. Both drawing and input use the SAME rectangles from menu.py.
+    This pure function chooses a target; the engine applies the actual action.
+    STRETCH: add hover feedback, wheel scrolling, or clickable story choices by
+    locating their input/state/drawing paths yourself. Those are separate rules.
+    """
+    if mouse_position is None:
+        return None  # Worked guard: no event is different from a click at (0, 0).
+    # TODO: loop over buttons, test each rectangle, return the matching index.
+    return None
 
 
 ECHO = Opponent(

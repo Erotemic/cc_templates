@@ -26,7 +26,8 @@ def main(argv=None):
         "--check", action="store_true", help="Check engine/content health; not exercise completion"
     )
     parser.add_argument(
-        "--check-exercise", choices=("facing", "sprint", "healing", "pulse", "tactics", "all")
+        "--check-exercise",
+        choices=("facing", "sprint", "healing", "pulse", "tactics", "mouse", "all"),
     )
     parser.add_argument(
         "--check-sprites", action="store_true", help="Shortcut for --check-exercise facing"

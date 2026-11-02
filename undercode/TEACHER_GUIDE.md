@@ -19,6 +19,9 @@ A peaceful Person has its own art/writing and no Opponent dependency. All rooms
 remain together in `student_world.py`. Opponent definitions and their examples
 are in the encounter catalog, with editable Echo in `student_encounters.py`.
 The named records use keyword arguments, so their data can be read at each call.
+Mouse mission 6 is independent of the pattern tasks. The adapter supplies logical
+click coordinates; the student implements hit testing. Ask them to predict a hit,
+a miss, a boundary, and a scrolled index before enabling the mouse behavior.
 
 ## A first hour
 
@@ -40,7 +43,8 @@ with a challenge and have them discover the engine boundaries through the work.
    prediction before revealing the next line. ENGINE_GUIDE supplies three traces.
 2. **Guided implementation:** use the inline inputs/walkthrough/TODO/checks.
    Facing teaches conditionals, sprint teaches units, healing teaches events,
-   Pulse teaches per-instance state, and tactics teaches functions returning objects.
+   Pulse teaches per-instance state, tactics teaches functions returning objects, and mouse buttons teach a loop
+   over geometry records plus the difference between index zero and no result.
 3. **Partial specification:** change writing after a choice, add a new room,
    combine conditions, or vary a pattern without exact step-by-step code.
 4. **Independent extension:** CHALLENGES names a goal and questions, not a callback.
