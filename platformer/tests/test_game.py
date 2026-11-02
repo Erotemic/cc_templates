@@ -14,15 +14,18 @@ from platformer import level, student
 
 @unittest.skipUnless(importlib.util.find_spec("pygame"), "Install pygame-ce")
 class GameTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
+        # Each test must own its pygame state: the graphical smoke test calls
+        # main(), which correctly invokes pygame.quit() when it finishes.
+        # Class-level initialization would leave subsequent tests without a
+        # font subsystem after the smoke test runs.
         os.environ["SDL_VIDEODRIVER"] = "dummy"
         os.environ["SDL_AUDIODRIVER"] = "dummy"
         import pygame
         pygame.init()
+        self.assertTrue(pygame.font.get_init())
 
-    @classmethod
-    def tearDownClass(cls):
+    def tearDown(self):
         import pygame
         pygame.quit()
 
