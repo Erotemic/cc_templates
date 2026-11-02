@@ -1,8 +1,8 @@
 # Teaching with UnderCode
 
 Students should be able to invent a character before understanding the entire
-engine. Start story authors in `undercode/story/` using [STORY_GUIDE.md](STORY_GUIDE.md).
-They can write conversations, choices and levels by editing JSON. Start students
+engine. Start story authors in `undercode/levels/` using [STORY_GUIDE.md](STORY_GUIDE.md).
+They can write conversations, choices and levels using Python helper calls. Start students
 learning conditionals in `student_sprites.py`; students ready for mechanics can
 use `student_mechanics.py` or the battle example in `student.py`.
 Open the engine when an extension needs it.
@@ -28,7 +28,7 @@ in the starter. The normal test suite checks the engine independently of
 whether students have completed the missions.
 
 Missions 2 and 3 are independent of mission 1; mission 4 builds on mission 3.
-For story authors, edit JSON using [STORY_GUIDE.md](STORY_GUIDE.md) and preview
+For story authors, edit Python level definitions using [STORY_GUIDE.md](STORY_GUIDE.md) and preview
 `--level studio`. Clearly distinguish story customization from programming new
 behavior. Both are useful, but they teach different things.
 
@@ -75,9 +75,14 @@ optional; losing an audio device does not change the rules.
 
 ## Useful boundaries
 
-Keep story **content** in `story/*.json`, battle content in `student.py`,
-and new world actions in `student_mechanics.py`. `story.py` compiles letters to
-internal tile positions, checks links, and manages paged conversations; students
+Keep story **content** in `levels/*.py`, battle content in `student.py`,
+and new world actions in `student_mechanics.py`. `student_world.py` imports
+level modules, registers their definitions, and chooses the starting marker.
+`building.py` provides small documented functions returning ordinary dictionaries;
+students can use Python variables, comments and lists while authoring.
+Triggers and interaction hooks take functions directly, so a student can trace
+`trigger(warm_light)` to the function they implement. `story.py` compiles letters
+to internal tile positions, checks links, and manages paged conversations; students
 author named spawn markers rather than coordinates. Conditions are flag/outcome
 checks, never executable expressions. Choices commit their flags on selection;
 dialogue completion flags commit only on the last confirmed page. Branches
@@ -127,7 +132,7 @@ or editable installation is optional. Existing regular pygame is supported;
 pygame-ce is the suggested install when pygame is absent. Do not install both
 into one environment because they share the `pygame` import name.
 
-Copy the JSON story directory along with the Python files. All art/audio is local Python code. There are no downloads, font installs,
+Copy the level modules and `student_world.py` along with the other Python files. All art/audio is local Python code. There are no downloads, font installs,
 Cairo dependencies, subprocess tools, file paths tied to this repository, or
 writes to protected user folders. Generated music is a short original loop.
 Use `--mute` if opening an audio device is undesirable. An unavailable device is

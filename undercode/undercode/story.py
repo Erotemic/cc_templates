@@ -1,7 +1,5 @@
-"""Load letter maps and dialogue data. No pygame, eval, or executable story files."""
+"""Validate Python story definitions, compile letter maps, and manage conversations."""
 
-import json
-from pathlib import Path
 import textwrap
 from .model import Exit, Outcome, Placement, Room, StoryObject
 
@@ -22,7 +20,7 @@ FIELDS = {
 
 
 class StoryError(ValueError):
-    """An author-facing error with a filename and (for map errors) row/column."""
+    """An author-facing error with a level key and (for map errors) row/column."""
 
 
 def require(condition, message):
@@ -51,7 +49,7 @@ def check_requirement(value):
 def check_dialogue(data):
     """Validate text, choice labels, completion flags, and conditional branches.
 
-    data is a JSON dictionary. Raise StoryError for unsupported fields/types;
+    data is a Python dictionary returned by the story-building helpers. Raise StoryError for unsupported fields/types;
     recurse through replies and branches without executing dialogue or setting flags.
     """
     if "text" in data:
@@ -83,31 +81,21 @@ def check_dialogue(data):
         check_dialogue(branch)
 
 
-def read_json(path):
-    """Read UTF-8 JSON at path, wrapping file/parse errors with its filename in StoryError."""
-    try:
-        return json.loads(path.read_text(encoding="utf8"))
-    except (ValueError, OSError) as error:
-        raise StoryError(f"{path.name}: {error}") from error
+def build_story(levels, start_level, start_entry, character_keys):
+    """Compile registered Python level dictionaries and validate their links.
 
-
-def load_story(directory, character_keys, mechanics):
-    """Compile letter-map JSON files into rooms and validate their links.
-
-    directory contains per-level files and _world.json. character_keys and
-    mechanics are registries used to catch unknown references before play.
-    Convert map letters to internal tile coordinates; authors use named spawns.
-    Return (rooms_by_key, start_level, start_entry). Raise StoryError for invalid
-    JSON, legends, dimensions, IDs, hooks, or destination markers.
+    levels maps keys to definitions built with building.level. The explicit
+    registry and starting marker live in student_world.py; character_keys comes
+    from the battle cast. Return (rooms_by_key, start_level, start_entry).
+    Raise StoryError with a level key for invalid maps, legends or links.
+    This reads definitions only; it never runs interaction callbacks.
     """
-    directory = Path(directory)
+    require(isinstance(levels, dict) and levels, "LEVELS needs a nonempty dictionary")
     rooms, placed = {}, set()
-    for path in sorted(directory.glob("*.json")):
-        if path.stem.startswith("_"):
-            continue
+    for level_key, data in levels.items():
+        require(string(level_key), "level keys must be nonempty strings")
         try:
-            data = read_json(path)
-            require(isinstance(data, dict), "level must be a JSON object")
+            require(isinstance(data, dict), "level must be a dictionary from level(...)")
             require(not (set(data) - {"name", "map", "legend"}), "unknown level field")
             require(string(data.get("name")), "give the level a name")
             rows, legend = data.get("map"), data.get("legend", {})
@@ -118,10 +106,11 @@ def load_story(directory, character_keys, mechanics):
                 3 <= width <= 30 and all(len(row) == width for row in rows),
                 "map needs equal-length rows, 3 to 30 columns",
             )
-            require(isinstance(legend, dict), "legend must be a JSON object")
+            require(isinstance(legend, dict), "legend must be a dictionary")
             for symbol, spec in legend.items():
                 require(
-                    len(symbol) == 1 and isinstance(spec, dict), "legend keys need one character"
+                    isinstance(symbol, str) and len(symbol) == 1 and isinstance(spec, dict),
+                    "legend keys need one character and values need object definitions",
                 )
                 kind = spec.get("kind")
                 require(
@@ -152,7 +141,8 @@ def load_story(directory, character_keys, mechanics):
                 for hook in ("on_enter", "on_interact"):
                     if hook in spec:
                         require(
-                            spec[hook] in mechanics, f"{symbol!r}: unknown mechanic {spec[hook]!r}"
+                            callable(spec[hook]),
+                            f"{symbol!r}: {hook} needs a Python function, without parentheses",
                         )
                         require(
                             (hook == "on_enter" and kind == "trigger")
@@ -167,7 +157,7 @@ def load_story(directory, character_keys, mechanics):
                         spec.get("character") in character_keys, f"{symbol!r}: unknown character"
                     )
                     require(
-                        isinstance(spec.get("battle", True), bool), "battle must be true or false"
+                        isinstance(spec.get("battle", True), bool), "battle must be True or False"
                     )
                 if kind == "door":
                     require(
@@ -193,7 +183,7 @@ def load_story(directory, character_keys, mechanics):
                     kind = spec["kind"]
                     tile = (x, y)
                     output += "D" if kind == "door" else spec.get("tile", ".").replace(" ", "g")
-                    key = spec.get("id", f"{path.stem}:{symbol}:{x}:{y}")
+                    key = spec.get("id", f"{level_key}:{symbol}:{x}:{y}")
                     if kind == "spawn":
                         require(key not in spawns, f"{location}: duplicate spawn id {key!r}")
                         spawns[key] = tile
@@ -208,8 +198,8 @@ def load_story(directory, character_keys, mechanics):
                 tiles.append(output)
             require(spawns, "add at least one spawn marker to the map and legend")
             rest = next((obj.tile for obj in objects if obj.kind == "rest"), None)
-            rooms[path.stem] = Room(
-                path.stem,
+            rooms[level_key] = Room(
+                level_key,
                 data["name"],
                 tuple(tiles),
                 tuple(people),
@@ -219,28 +209,23 @@ def load_story(directory, character_keys, mechanics):
                 tuple(objects),
             )
         except (StoryError, TypeError) as error:
-            raise StoryError(f"{path.name}: {error}") from error
-    require(rooms, f"{directory}: no level JSON files found")
+            raise StoryError(f"{level_key}: {error}") from error
     for key, room in rooms.items():
         for door in room.exits:
-            require(
-                door.destination in rooms, f"{key}.json: unknown door level {door.destination!r}"
-            )
+            require(door.destination in rooms, f"{key}: unknown door level {door.destination!r}")
             require(
                 door.landing in rooms[door.destination].spawns,
-                f"{key}.json: {door.destination!r} has no spawn {door.landing!r}",
+                f"{key}: {door.destination!r} has no spawn {door.landing!r}",
             )
-    config = read_json(directory / "_world.json")
     require(
-        isinstance(config, dict) and not (set(config) - {"start_level", "start_entry"}),
-        "_world.json: use start_level and start_entry",
+        isinstance(start_level, str) and start_level in rooms,
+        "student_world.py: unknown START_LEVEL",
     )
-    start, entry = config.get("start_level"), config.get("start_entry")
-    require(isinstance(start, str) and start in rooms, "_world.json: unknown start_level")
     require(
-        isinstance(entry, str) and entry in rooms[start].spawns, "_world.json: unknown start_entry"
+        isinstance(start_entry, str) and start_entry in rooms[start_level].spawns,
+        "student_world.py: unknown START_ENTRY",
     )
-    return rooms, start, entry
+    return rooms, start_level, start_entry
 
 
 def meets(session, requirement=None):
@@ -271,7 +256,7 @@ class Dialogue:
     """Paged story plus optional choices. Movement pauses while this is open."""
 
     def __init__(self, name, data, session):
-        """Open speaker name's conversation using JSON data and shared session.
+        """Open speaker name's conversation using Python story data and shared session.
 
         Use the first matching branch, or the default dialogue. Prepare pages
         and available choices now; commit flags later when the player confirms.

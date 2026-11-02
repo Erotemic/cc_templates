@@ -193,6 +193,6 @@ ECHO = Character(
 )
 
 # Registration is ordinary Python data. Add your own keys here and place a new
-# character letter in a story JSON legend. --practice previews a pattern.
+# character letter in a Python level legend. --practice previews a pattern.
 EXTRA_CHARACTERS = (ECHO,)
 EXTRA_PATTERNS = {"ripples": RippleLanes, "pulse": LanternPulse}

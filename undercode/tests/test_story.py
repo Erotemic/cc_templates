@@ -1,13 +1,11 @@
 """Student-facing maps, story progression, hooks, and directional sprite behavior."""
 
-import json
 import contextlib
 import io
 import os
 from pathlib import Path
 import subprocess
 import sys
-import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -22,7 +20,20 @@ from undercode.model import Outcome, Session
 from undercode.sprites import VIEW_CASES
 from teacher.solutions import choose_player_view as player_view
 from teacher.solutions import warm_light
-from undercode.story import Dialogue, StoryError, load_story, meets
+from undercode.story import Dialogue, StoryError, build_story, meets
+from undercode.building import (
+    level,
+    spawn,
+    person,
+    door,
+    sign,
+    item,
+    rest,
+    trigger,
+    terrain,
+    choice,
+    branch,
+)
 from undercode.world import tile_center
 
 
@@ -159,7 +170,10 @@ class StoryTests(unittest.TestCase):
         self.assertEqual(game.scene, Scene.BATTLE)
         self.assertEqual(game.battle.character.key, person.character)
 
-    @patch.dict("undercode.world.WORLD_MECHANICS", {"warm_light": warm_light})
+    @patch.dict(
+        next(o for o in ROOMS["studio"].objects if o.kind == "trigger").data,
+        {"on_enter": warm_light},
+    )
     def test_completed_mechanic_trigger_runs_on_entry_and_reentry(self):
         game = Game(level="studio")
         world = game.world
@@ -178,58 +192,69 @@ class StoryTests(unittest.TestCase):
         from dataclasses import replace
 
         sign = next(o for o in world.room.objects if o.kind == "sign")
-        sign = replace(sign, data={"name": "Light", "on_interact": "warm_light", "text": "Warm!"})
+        sign = replace(sign, data={"name": "Light", "on_interact": warm_light, "text": "Warm!"})
         world.interact(sign)
         self.assertEqual(game.session.player.hp, 14)
 
 
 class MapAuthorTests(unittest.TestCase):
+    """Exercise the same Python building helpers students use in their levels."""
+
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        self.directory = Path(self.temp.name)
-        self.level = {
-            "name": "A new place",
-            "map": ["#####", "#@Q.#", "#...D", "#####"],
-            "legend": {
-                "@": {"kind": "spawn", "id": "entry"},
-                "Q": {"kind": "character", "character": "echo", "battle": False, "text": "Hello!"},
-                "D": {"kind": "door", "to": "fresh", "entry": "entry"},
+        """Prepare a tiny Python-authored level with one neighbor and a return door."""
+        self.level = level(
+            "A new place",
+            tiles=["#####", "#@Q.#", "#...D", "#####"],
+            legend={
+                "@": spawn("entry"),
+                "Q": person("echo", battle=False, text="Hello!"),
+                "D": door("fresh", "entry"),
             },
-        }
-        (self.directory / "_world.json").write_text(
-            json.dumps({"start_level": "fresh", "start_entry": "entry"})
         )
 
-    def load(self):
-        (self.directory / "fresh.json").write_text(json.dumps(self.level))
-        return load_story(self.directory, {"echo"}, {})
+    def build(self):
+        """Compile the Python registry, using the same entry point as content.py."""
+        return build_story({"fresh": self.level}, "fresh", "entry", {"echo"})
 
-    def test_added_file_and_arbitrary_letters_need_no_python_registration(self):
-        rooms, start, entry = self.load()
+    def test_python_registration_and_arbitrary_letters_use_named_markers(self):
+        """Moving a spawn letter moves door arrivals without editing coordinate pairs."""
+        rooms, start, entry = self.build()
         self.assertEqual((start, entry), ("fresh", "entry"))
         original = rooms["fresh"].spawns[entry]
         self.level["map"][1] = "#.Q@#"
-        rooms, _, _ = self.load()
+        rooms, _, _ = self.build()
         self.assertNotEqual(rooms["fresh"].spawns[entry], original)
         self.assertEqual(rooms["fresh"].exits[0].landing, "entry")
         self.level["map"][1] = "#@g.#"
         self.level["legend"]["g"] = self.level["legend"].pop("Q")
-        rooms, _, _ = self.load()
+        rooms, _, _ = self.build()
         self.assertEqual(rooms["fresh"].people[0].character, "echo")
+        # New levels are ordinary values registered with a key in student_world.py.
+        second = level(
+            "A second place",
+            ["#####", "#@..D", "#####"],
+            {"@": spawn("arrive"), "D": door("fresh", "entry")},
+        )
+        self.level["legend"]["D"] = door("second", "arrive")
+        rooms, _, _ = build_story(
+            {"fresh": self.level, "second": second}, "fresh", "entry", {"echo"}
+        )
+        self.assertEqual(rooms["fresh"].exits[0].destination, "second")
+        self.assertEqual(rooms["second"].exits[0].destination, "fresh")
 
     def test_bad_symbols_fields_shapes_ids_links_and_hooks_have_diagnostics(self):
+        """Invalid Python definitions report the level and the failed content rule."""
         import copy
 
         mutations = [
-            (lambda d: d["map"].__setitem__(1, "#@!.#"), "fresh.json: row 2, column 3"),
+            (lambda d: d["map"].__setitem__(1, "#@!.#"), "fresh: row 2, column 3"),
             (lambda d: d["map"].__setitem__(1, "#@Q#"), "equal-length"),
             (lambda d: d["legend"]["Q"].__setitem__("character", "missing"), "unknown character"),
             (lambda d: d["legend"]["Q"].__setitem__("battel", False), "unknown field"),
             (lambda d: d["legend"]["D"].__setitem__("to", "missing"), "unknown door level"),
             (lambda d: d["legend"]["D"].__setitem__("entry", "missing"), "no spawn"),
             (lambda d: d["map"].__setitem__(1, "#@@.#"), "duplicate spawn"),
-            (lambda d: d["legend"]["Q"].__setitem__("on_interact", "missing"), "unknown mechanic"),
+            (lambda d: d["legend"]["Q"].__setitem__("on_interact", "missing"), "Python function"),
             (lambda d: d["legend"]["Q"].__setitem__("text", []), "text needs"),
             (lambda d: d["legend"]["@"].__setitem__("tile", "#"), "walkable ground"),
         ]
@@ -239,21 +264,74 @@ class MapAuthorTests(unittest.TestCase):
                 self.level = copy.deepcopy(original)
                 change(self.level)
                 with self.assertRaisesRegex(StoryError, message):
-                    self.load()
+                    self.build()
         self.level = original
         self.level["legend"]["Q"]["id"] = "unique"
         self.level["map"][1] = "#@QQ#"
         with self.assertRaisesRegex(StoryError, "duplicate character"):
-            self.load()
+            self.build()
 
-    def test_bad_json_and_configuration(self):
-        (self.directory / "fresh.json").write_text("{broken")
-        with self.assertRaisesRegex(StoryError, "fresh.json"):
-            load_story(self.directory, {"echo"}, {})
-        self.load()
-        (self.directory / "_world.json").write_text('{"start_level": "missing"}')
-        with self.assertRaisesRegex(StoryError, "_world.json: unknown start_level"):
-            self.load()
+    def test_starting_configuration_and_level_types_are_checked(self):
+        """Catch bad registry values and starting markers before gameplay begins."""
+        for levels, start, entry, message in (
+            ({}, "fresh", "entry", "LEVELS"),
+            ({"fresh": None}, "fresh", "entry", "level must be a dictionary"),
+            ({"fresh": self.level}, "missing", "entry", "unknown START_LEVEL"),
+            ({"fresh": self.level}, "fresh", "missing", "unknown START_ENTRY"),
+        ):
+            with self.subTest(message=message), self.assertRaisesRegex(StoryError, message):
+                build_story(levels, start, entry, {"echo"})
+
+    def test_python_story_helpers_drive_dialogue_items_terrain_and_direct_callbacks(self):
+        """Compile Python choices/branches and call a function only during interaction."""
+        from undercode.world import World
+
+        calls = []
+
+        def greet(world, obj):
+            """Example student callback that remembers a fact and records its invocation."""
+            calls.append(obj.key)
+            world.session.flags.add("greeted")
+
+        definition = level(
+            "Python story",
+            ["TTTTTTTTT", "T@.CISRTT", "T....s..T", "TTTTTTTTT"],
+            {
+                "T": terrain("#"),
+                "@": spawn("start"),
+                "C": person(
+                    "echo",
+                    battle=False,
+                    text="Welcome",
+                    on_interact=greet,
+                    choices=[choice("Yes", "Thanks", set_flags=["agreed"])],
+                    branches=[branch("done", "Welcome back")],
+                ),
+                "I": item("A key", "key", "Found it"),
+                "S": sign("Note", ["First paragraph", "Second paragraph"], set_flags=["done"]),
+                "R": rest(),
+                "s": trigger(greet, name="Greeting"),
+            },
+        )
+        rooms, _, _ = build_story({"python": definition}, "python", "start", {"echo"})
+        self.assertFalse(calls)  # Defining/building a level must not call its mechanics.
+        world = World(rooms, Session(), "python", "start")
+        world.interact(world.room.people[0])
+        self.assertEqual(len(calls), 1)
+        self.assertIn("greeted", world.session.flags)
+        finish_dialogue(world)
+        self.assertIn("agreed", world.session.flags)
+        item_obj = next(o for o in world.room.objects if o.kind == "item")
+        world.interact(item_obj)
+        finish_dialogue(world)
+        self.assertIn("key", world.session.flags)
+        note = next(o for o in world.room.objects if o.kind == "sign")
+        world.interact(note)
+        finish_dialogue(world)
+        self.assertIn("done", world.session.flags)
+        world.interact(world.room.people[0])
+        self.assertEqual(world.dialogue.pages, ["Welcome back"])
+        self.assertEqual(rooms["python"].tiles[0], "#########")
 
 
 class SpriteTaskTests(unittest.TestCase):

@@ -1,42 +1,71 @@
-# Build a story with letter maps
+# Build your story in Python
 
-Start with **`undercode/story/studio.json`**. It contains a complete small quest:
-meet the Story Keeper, collect a bookmark, open the east gate, read the ending,
-and return to hear a different greeting. Run it directly:
+Open **`undercode/levels/studio.py`**. It describes a small quest using Python
+function calls: meet the Story Keeper, collect a bookmark, open the east gate,
+read the ending, and return to hear a different greeting.
 
 ```bash
 python main.py --level studio
 ```
 
-Change the writing or move a letter in the map. Run `python main.py --check`,
-then play again. You can build a whole story without changing a Python file.
+Change a sentence or move a map letter. Run `python main.py --check`, then play
+again. Level files are ordinary Python: you can use comments, variables, lists,
+dictionaries and functions as you learn them.
 
 ## Your first new level
 
-Save this as **`undercode/story/my_room.json`**:
+Save this as **`undercode/levels/my_room.py`**:
 
-```json
-{
-  "name": "My first room",
-  "map": [
-    "############",
-    "#@....F....#",
-    "#..........#",
-    "#..?.......D",
-    "############"
-  ],
-  "legend": {
-    "@": {"kind": "spawn", "id": "entrance"},
-    "F": {
-      "kind": "character",
-      "character": "folio",
-      "name": "The Librarian",
-      "battle": false,
-      "text": ["Welcome! What kind of story will you tell?"]
+```python
+"""My first story level."""
+
+from ..building import level, spawn, person, sign, door
+
+LIBRARIAN_NAME = "The Librarian"  # Change this and run again.
+
+LEVEL = level(
+    "My first room",
+    tiles=[
+        "############",
+        "#@....F....#",
+        "#..........#",
+        "#..?.......D",
+        "############",
+    ],
+    legend={
+        "@": spawn("entrance"),
+        "F": person(
+            "folio",
+            name=LIBRARIAN_NAME,
+            battle=False,
+            text=["Welcome! What kind of story will you tell?"],
+        ),
+        "?": sign("A note", "Your story starts here."),
+        "D": door("courtyard", "camp"),
     },
-    "?": {"kind": "sign", "name": "A note", "text": "Your story starts here."},
-    "D": {"kind": "door", "to": "courtyard", "entry": "camp"}
-  }
+)
+```
+
+A **list** (`[...]`) stores the map rows in order. A **dictionary** (`{...}`)
+connects each letter to its meaning. A **function call**, such as
+`door("courtyard", "camp")`, describes the object to put there. Named arguments
+such as `battle=False` let you change just the options you need.
+
+Open **`undercode/student_world.py`**. Add `my_room` to the existing import:
+
+```python
+from .levels import courtyard, garden, nook, studio, my_room
+```
+
+Add one entry to `LEVELS`, keeping the existing entries:
+
+```python
+LEVELS = {
+    "courtyard": courtyard.LEVEL,
+    "garden": garden.LEVEL,
+    "nook": nook.LEVEL,
+    "studio": studio.LEVEL,
+    "my_room": my_room.LEVEL,
 }
 ```
 
@@ -45,163 +74,183 @@ python main.py --check
 python main.py --level my_room --entry entrance
 ```
 
-The file name is the level key. New files are found automatically. To reach it
-from the existing world, add a door letter to another room's map and legend:
+The dictionary key `"my_room"` is the level name that doors and the command line
+use. To reach it from the existing world, add a letter to another level's map
+and its legend:
 
-```json
-"M": {"kind": "door", "to": "my_room", "entry": "entrance"}
+```python
+"M": door("my_room", "entrance"),
 ```
 
-The destination is a **named spawn marker**, not a coordinate pair. Move `@`
-anywhere on walkable ground and every door using `entrance` follows it.
-Use different symbols/IDs for additional entrances. Place markers away from
-doors so arriving players have room to stand. The starting room and marker
-are in `undercode/story/_world.json`. R clears story progress for a new run.
+Doors arrive at **named markers**. Move `@` anywhere on walkable ground and all
+doors using `"entrance"` arrive there. Use different letters and marker names
+for additional entrances. Put markers away from doors so arriving players have
+room to stand. `START_LEVEL` and `START_ENTRY` in `student_world.py` choose the
+beginning of a run. R clears progress and starts again.
 
 ## Maps and legends
 
-Rows must have equal lengths: **3–30 columns and 3–16 rows**. Smaller rooms
-are centered. Count spaces as tiles; use `g` for grass when spaces are hard to
-see. This starter has a single-screen viewport; scrolling is a later project.
+Rows must be equally wide: **3–30 columns and 3–16 rows**. Smaller rooms are
+centered. Spaces count as tiles; use `g` for grass if that is easier to read.
+Scrolling maps can be a later programming project.
 
-The default terrain is `#` wall/tree, `~` water, `.` path, `g` grass, `d` bridge,
-and space for grass. Walls and water block movement. All other symbols need
-a legend entry. Letters have **no built-in object meanings**: `F` can mean a
-character in one room and a door in another. The legend can even override a
-terrain symbol. Use one character per symbol, avoiding combining emoji.
+Default terrain: `#` wall/tree, `~` water, `.` path, `g` grass, `d` bridge, and
+space for grass. Walls and water block movement. Every other symbol needs a
+legend entry. Letters have **no built-in object meaning**: `F` can be a person
+in one level and a door in another. The legend can override terrain letters too.
+Use one character per symbol, avoiding combining emoji.
 
-Objects stand on path by default. Add `"tile": "g"` for grass underneath, or
-use an alias for terrain:
+Objects stand on path by default. Add `tile="g"` for grass underneath, or
+alias terrain with any letter:
 
-```json
-"T": {"kind": "tile", "tile": "#"}
+```python
+"T": terrain("#"),
+"F": person("folio", tile="g"),
 ```
 
-| Kind | Fields to start with | Behavior |
-| --- | --- | --- |
-| `spawn` | `id` | Invisible named arrival point |
-| `character` | `character`, optional `name`, `battle`, `text` | Z talks; battle defaults to true |
-| `door` | `to`, `entry` | Walk onto it to change levels with a fade |
-| `sign` | `name`, `text` | Z reads paged text |
-| `item` | `name`, `flag`, `text` | Z collects once; remembers its flag for this run |
-| `rest` | optional `name` | Z restores HP and cocoa |
-| `trigger` | `on_enter`, optional `name` | Calls a registered Python mechanic on entry |
-| `tile` | `tile` | Paints terrain, with no interaction |
+Import the helpers you use from `..building` at the top of the level file.
+Every helper has a docstring explaining its arguments.
 
-A symbol can repeat for terrain, doors or separate objects. Give characters
-an explicit unique `id` when their outcome matters; for example `"id": "gate_guard"`.
-If you repeat a character symbol, omit its ID for automatic per-instance IDs,
-or use different letters with different IDs. Spawn IDs are unique within a
-level; explicit character IDs are unique across the story.
+| Function call | What the player finds |
+| --- | --- |
+| `spawn("entrance")` | Invisible named arrival marker |
+| `person("folio")` | A neighbor offering a battle |
+| `person("echo", battle=False, text="Hello!")` | A story-only neighbor |
+| `door("garden", "south")` | A door to a named marker in another level |
+| `sign("Notice", "Welcome!")` | A sign read with Z |
+| `item("Bookmark", "bookmark", "You found it!")` | A collectible that sets a flag |
+| `rest()` | A fountain that restores HP and cocoa with Z |
+| `trigger(warm_light, name="Warm light")` | A place that calls your Python function on entry |
+| `terrain("#")` | A wall/tree under any chosen map letter |
 
-## Writing dialogue and choices
+A symbol can repeat for terrain, doors or separate objects. Give a character a
+unique `id` when its battle outcome matters:
 
-`text` can be one string or a list of paragraphs. Long passages are paged
+```python
+"G": person("ferris", id="gate_guard"),
+```
+
+To repeat the same character art in several places, omit `id` for automatic
+per-instance IDs, or use different letters with different IDs. Spawn names are
+unique within a level; explicit character IDs are unique across the story.
+
+## Dialogue and choices
+
+`text` accepts a string or list of paragraphs. Long passages are paged
 automatically; Z advances and X closes. Movement pauses while reading.
-A character with `"battle": false` only talks. Reuse any existing `character`
-key for its portrait: `folio`, `ferris`, `prism`, or `echo`.
-A battle character with story text first speaks, then offers the normal
-accept/decline invitation. With no text, it offers the invitation immediately.
+Existing character keys are `folio`, `ferris`, `prism`, and `echo`. A story-only
+neighbor can reuse any portrait with `battle=False` and its own `name`/writing.
 
-Add choices to a character or sign:
+A battle character with story text speaks before offering the normal
+accept/decline invitation. Without story text, it offers the invitation immediately.
 
-```json
-"C": {
-  "kind": "character",
-  "character": "echo",
-  "battle": false,
-  "name": "Gate Keeper",
-  "text": "Will you carry a message?",
-  "choices": [
-    {"label": "Yes, I will.", "text": "Thank you!", "set_flags": ["accepted_message"]},
-    {"label": "Maybe later.", "text": "I will wait here."}
-  ]
-}
+Add a choice list using Python calls:
+
+```python
+"C": person(
+    "echo",
+    battle=False,
+    name="Gate Keeper",
+    text="Will you carry a message?",
+    choices=[
+        choice("Yes, I will.", "Thank you!", set_flags=["accepted_message"]),
+        choice("Maybe later.", "I will wait here."),
+    ],
+),
 ```
 
-The arrows select; Z commits the choice, sets its flags, and opens its reply.
-Keep labels at most 60 characters. Longer lists scroll to the selected choice.
-X after choosing closes the reply but does not undo the choice.
+The arrows select; Z commits the choice, sets its flags, and opens the reply.
+Keep labels at most 60 characters. Longer lists scroll. X after choosing closes
+the reply but does not undo that choice.
 
-A `set_flags` list on the whole dialogue is applied after the last page is
-confirmed. Closing early does not set those completion flags. Items are collected
-immediately on interaction, even if their description is closed early.
+`set_flags` on the whole conversation applies after its last page is confirmed.
+Closing early does not set those completion flags. Items are collected on
+interaction, even if their description is closed early.
 
 ## Remembering what happened
 
-Flags are names you invent, such as `bookmark` or `accepted_message`. An item
-sets its `flag`, and choices/completed dialogue can use `set_flags`.
-A door can require a flag:
-
-```json
-"G": {
-  "kind": "door", "to": "my_room", "entry": "entrance",
-  "requires": "bookmark",
-  "locked_text": "Find the golden bookmark first."
-}
-```
-
-`requires` also works on characters, signs, items, rests, triggers and choices.
-A list such as `["bookmark", "accepted_message"]` requires **all** of them.
-Characters/objects remain visible when locked, and show `locked_text` when used;
-unavailable choices are hidden. Triggers wait until their conditions are met
-on a new entry. Use `spared:gate_guard` or `defeated:gate_guard` to check a
-battle outcome using the character's placement `id`. Leaving/losing is neither.
-Those two prefixes are reserved for outcome checks, not ordinary flag names.
-
-Use `branches` for a different conversation when progress changes:
-
-```json
-"text": "Please find the bookmark.",
-"branches": [
-  {"requires": "finished_story", "text": "You finished it! What comes next?"},
-  {"requires": "bookmark", "text": "You found it. The gate will open now."}
-]
-```
-
-The **first matching branch replaces the default dialogue**, including its
-choices and completion flags. Put the most specific ending first. A branch can
-have its own `text`, `choices`, and `set_flags`. The starter supports one choice
-followed by a reply, rather than an entire nested dialogue language. Several
-conversations with flags are often enough to tell a story.
-
-## Add mechanics when you need them
-
-Open **`undercode/student_mechanics.py`**. Mission 2 gives you the
-`warm_light(world, obj)` function, already connected to the Studio's mint oval.
-Its effect is intentionally unfinished: follow the inputs, diagnostic and
-small steps in its docstring to implement healing and a HUD message. Play
-`python main.py --level studio` after each edit. Ordinary fountains still
-restore HP while this mission is unfinished.
-
-The engine calls a registry function by name:
+A flag is a name you invent, such as `"bookmark"` or `"accepted_message"`.
+An item sets its flag; choices and completed dialogue can use `set_flags`.
+Check a flag on a door:
 
 ```python
-WORLD_MECHANICS = {"warm_light": warm_light}
+"G": door(
+    "my_room",
+    "entrance",
+    requires="bookmark",
+    locked_text="Find the golden bookmark first.",
+),
 ```
 
-Connect it through a legend entry:
+`requires` also works on people, signs, items, rests, triggers and choices.
+A list such as `requires=["bookmark", "accepted_message"]` requires **all**
+flags. Locked people/objects remain visible and show `locked_text` when used;
+unavailable choices are hidden. Triggers check conditions when you enter.
 
-```json
-"s": {"kind": "trigger", "name": "Warm light", "on_enter": "warm_light"}
+Use `requires="spared:gate_guard"` or `"defeated:gate_guard"` to check a
+battle outcome by placement `id`. Leaving/losing is neither. Those two prefixes
+are reserved for outcome checks, so use other names for ordinary flags.
+
+For a greeting that changes as the story progresses, add branches:
+
+```python
+"C": person(
+    "echo",
+    battle=False,
+    text="Please find the bookmark.",
+    branches=[
+        branch("finished_story", "You finished it! What comes next?"),
+        branch("bookmark", "You found it. The gate will open now."),
+    ],
+),
 ```
 
-The function runs once when entering, then again if you leave and return.
-It receives the world and the object, so it can read `obj.data`, set
-`world.session.flags`, heal, or call `world.tell(...)`. It does not draw.
-For a sign, item, character or rest, use `on_interact` instead, which runs on Z
-after requirements pass. A mechanic hook is an immediate action; dialogue
-completion flags are the right choice for rewards that require reading to the end.
+The **first matching branch replaces the default conversation**, including its
+choices and completion flags. Put the most specific ending first. A branch may
+have its own `choices` and `set_flags`. The starter supports a choice followed
+by a reply; several conversations with flags let you build a longer story.
 
-Add your own function and registry name for a new rule. JSON only names
-registered functions; it never evaluates Python expressions. For battles and
-special defense sequences, continue with `student.py` and [MISSIONS.md](MISSIONS.md).
+## Connect your own Python mechanics
 
-## Fixing map mistakes
+Mission 2 in **`undercode/student_mechanics.py`** provides an unfinished
+`warm_light(world, obj)` function. The Studio already connects it to its mint
+oval; follow the inline walkthrough to implement healing and feedback.
+Ordinary fountains work while this mission is unfinished.
 
-`--check` checks JSON, map sizes, legend fields, character keys, IDs, mechanic
-names, door targets and arrival markers before simulating combat content.
-Normal launch also validates story files, so a typo produces a terminal error
-rather than a half-working level. Unknown symbols report file, row and column.
-JSON uses double quotes, `true`/`false`, and no trailing commas or comments.
-Restart the game after editing files; levels are read at startup.
+Connect your function in a level with a normal import and function argument:
+
+```python
+from ..building import trigger
+from ..student_mechanics import warm_light
+
+# Inside your legend:
+"s": trigger(warm_light, name="Warm light"),
+```
+
+Pass **`warm_light`**, without parentheses. You are giving the engine a function
+to call later. `warm_light(...)` would call it immediately while defining the level.
+The engine calls `warm_light(world, obj)` once on entry, then again if you leave
+and return. The function can inspect `obj.data`, change `world.session.flags`,
+heal, or show `world.tell(...)`; it does not draw a frame.
+
+For an action when Z is pressed, pass an `on_interact` function:
+
+```python
+from ..student_mechanics import your_action
+
+"?": sign("A curious sign", "Something happened.", on_interact=your_action),
+```
+
+Write `your_action(world, obj)` yourself, then import it. Requirements are
+checked before the action runs. Use dialogue completion flags for rewards that
+require reading to the end. For attacks and defenses, continue with the guided
+missions in [MISSIONS.md](MISSIONS.md).
+
+## Testing and finding mistakes
+
+`--check` validates Python level definitions, map dimensions, legend fields,
+character keys, IDs, callable hooks, door destinations and named arrival markers.
+Normal launch checks story content too. Unknown letters report the level, row
+and column. Python syntax/import errors show the usual file and line traceback;
+fix that line, then run again. Stop and relaunch after editing: definitions are
+built at startup; R resets progress without re-importing files. Use comments to explain your story and variables for repeated writing.

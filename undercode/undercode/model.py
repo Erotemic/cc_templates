@@ -120,7 +120,7 @@ class Placement:
     """Locate one character instance in a compiled level.
 
     character selects a Character definition; key remembers this instance's
-    outcome. tile is an internal (column, row); data holds its JSON story options.
+    outcome. tile is an internal (column, row); data holds its Python story options.
     """
 
     key: str
@@ -149,7 +149,7 @@ class Room:
 
     tiles is rectangular terrain; people/exits/objects hold internal positions.
     spawns maps arrival names to (column, row) pairs. rest_tile identifies the
-    first fountain, if any. Authors edit JSON; story.load_story builds this data.
+    first fountain, if any. Authors edit Python level definitions; story.build_story compiles them.
     """
 
     key: str

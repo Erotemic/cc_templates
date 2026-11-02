@@ -106,8 +106,9 @@ to Ripples. Each call constructs a fresh instance so timers do not leak.
 
 Follow [STORY_GUIDE.md](STORY_GUIDE.md). This project uses story data rather than
 implementing engine rules. Move letters, write conversations and choices, add a
-level file, and connect a door to its named entrance. Set a flag in one place
-and use it to change a later conversation or open a gate.
+Python level file, register it in `student_world.py`, and connect a door to its
+named entrance. Set a flag in one place and use it to change a later conversation
+or open a gate.
 
 **Test it:** travel both ways, close/read dialogue, try locked gates before and
 after collecting an item, and restart for a fresh story. Run `--check`.

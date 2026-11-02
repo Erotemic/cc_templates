@@ -2,6 +2,7 @@
 
 from dataclasses import asdict, replace
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -259,6 +260,69 @@ class LaunchTests(unittest.TestCase):
             self.assertTrue(path.is_file())
             image = pygame.image.load(str(path))
             self.assertEqual(image.get_size(), (960, 720))
+
+    def test_copied_game_registers_a_new_python_level_and_reports_map_mistakes(self):
+        """A student can import a Python level and launch it outside this repository."""
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "student_game"
+            project.mkdir()
+            shutil.copy2(ROOT / "main.py", project / "main.py")
+            shutil.copytree(
+                ROOT / "undercode",
+                project / "undercode",
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+            module = project / "undercode" / "levels" / "my_room.py"
+            module.write_text(
+                '"""A new level written in Python."""\n'
+                "from ..building import level, spawn, door, sign\n"
+                'MESSAGE = "I wrote this in Python."\n'
+                'LEVEL = level("My room", ["######", "#@.?.D", "######"], {\n'
+                '    "@": spawn("entrance"),\n'
+                '    "?": sign("My note", MESSAGE),\n'
+                '    "D": door("courtyard", "camp"),\n'
+                "})\n"
+            )
+            registry = project / "undercode" / "student_world.py"
+            registry.write_text(
+                registry.read_text()
+                + '\nfrom .levels import my_room\nLEVELS["my_room"] = my_room.LEVEL\n'
+            )
+            command = [sys.executable, str(project / "main.py")]
+            checked = subprocess.run(
+                command + ["--check"], cwd=directory, capture_output=True, text=True, timeout=30
+            )
+            self.assertEqual(checked.returncode, 0, checked.stderr)
+            self.assertIn("5 rooms", checked.stdout)
+            played = subprocess.run(
+                command
+                + [
+                    "--headless",
+                    "--mute",
+                    "--level",
+                    "my_room",
+                    "--entry",
+                    "entrance",
+                    "--frames",
+                    "2",
+                ],
+                cwd=directory,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            self.assertEqual(played.returncode, 0, played.stderr)
+            # Change the file size too: Python can reuse bytecode for same-size
+            # edits made within one filesystem timestamp second.
+            module.write_text(
+                module.read_text().replace('"#@.?.D"', '"#@.!.D"') + "\n# Map edited.\n"
+            )
+            bad = subprocess.run(
+                command + ["--check"], cwd=directory, capture_output=True, text=True, timeout=30
+            )
+            self.assertNotEqual(bad.returncode, 0)
+            self.assertIn("my_room: row 2, column 4", bad.stderr)
+            self.assertNotIn("Traceback", bad.stderr)
 
     def test_list_check_bad_key_and_invisible_desktop(self):
         listed = self.run_main("--list")

@@ -1,8 +1,7 @@
 """The cast, equipment and overworld. Extend these ordinary data structures."""
 
-from pathlib import Path
-from .story import load_story
-from .student_mechanics import WORLD_MECHANICS
+from .story import build_story
+from .student_world import LEVELS, START_LEVEL, START_ENTRY
 
 from .model import Act, Character, Weapon
 from .attacks import TimingStrike, RhythmStrike
@@ -88,8 +87,7 @@ PATTERNS = {
     **EXTRA_PATTERNS,
 }
 
-# Levels are discovered automatically; adding a JSON file needs no Python registration.
-
-ROOMS, START_LEVEL, START_ENTRY = load_story(
-    Path(__file__).with_name("story"), {c.key for c in CHARACTERS}, WORLD_MECHANICS
+# Compile the student's Python story after registering the battle cast.
+ROOMS, START_LEVEL, START_ENTRY = build_story(
+    LEVELS, START_LEVEL, START_ENTRY, {c.key for c in CHARACTERS}
 )

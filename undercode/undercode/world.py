@@ -4,7 +4,6 @@ import math
 import pygame
 from .model import Outcome, Placement
 from .story import Dialogue, meets
-from .student_mechanics import WORLD_MECHANICS
 
 TILE = 32
 BLOCKED = "#~"
@@ -146,14 +145,14 @@ class World:
         )
 
     def run_hook(self, target, name):
-        """Call target's named on_enter/on_interact mechanic if one is configured.
+        """Call target's on_enter/on_interact Python function if one is configured.
 
-        Look up the registry name in target.data and pass (self, target) to the
-        student function. Level validation has already checked that name exists.
+        Read the function from target.data and pass (self, target) to it.
+        Story validation has already checked that the hook is callable.
         """
         hook = target.data.get(name)
         if hook:
-            WORLD_MECHANICS[hook](self, target)
+            hook(self, target)
 
     def interact(self, target):
         """Apply a Z interaction to a character placement or story object.

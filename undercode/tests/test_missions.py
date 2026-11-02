@@ -21,13 +21,17 @@ from undercode.app import Game
 from undercode.arena import Arena
 from undercode.battle import Phase
 from undercode.controls import Controls
+from undercode.content import ROOMS
 from undercode.model import TurnContext
 from undercode.student import LanternPulse, RippleLanes
 from undercode.world import tile_center
 
 
 class CompletedMissionTests(unittest.TestCase):
-    @patch.dict("undercode.world.WORLD_MECHANICS", {"warm_light": solutions.warm_light})
+    @patch.dict(
+        next(o for o in ROOMS["studio"].objects if o.kind == "trigger").data,
+        {"on_enter": solutions.warm_light},
+    )
     def test_healing_reports_actual_gain_and_clamps_health(self):
         world = Game(level="studio").world
         trigger = next(o for o in world.room.objects if o.kind == "trigger")

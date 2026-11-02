@@ -1,7 +1,7 @@
 """GUIDED MISSION 2 -- Give the Story Studio's light a healing effect.
 
 Run ``python main.py --level studio``. The mint oval below the path is already
-connected to warm_light through the 's' letter in studio.json. It does not heal
+connected to warm_light through the 's' letter in levels/studio.py. It does not heal
 yet. You implement the effect; the engine handles entering/leaving the tile.
 """
 
@@ -37,5 +37,5 @@ def warm_light(world, obj):
     pass
 
 
-# The engine calls registry functions by their JSON name. Add your own here.
-WORLD_MECHANICS = {"warm_light": warm_light}
+# To connect another mechanic, import it in a level and pass the function:
+# "s": trigger(warm_light, name="Warm light")

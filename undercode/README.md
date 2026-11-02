@@ -37,7 +37,7 @@ Audio is optional; `python main.py --mute` does not open an audio device.
 6. The fade returns you to exactly where you were walking. The lantern fountain
    near camp restores HP and cocoa. The north path leads to two more neighbors.
 
-For story writing, open **[undercode/story/studio.json](undercode/story/studio.json)**
+For story writing, open **[undercode/levels/studio.py](undercode/levels/studio.py)**
 and follow **[STORY_GUIDE.md](STORY_GUIDE.md)**. Move a letter, rewrite a line,
 or add a room with its own legend. `python main.py --level studio` previews it.
 
@@ -71,7 +71,7 @@ Other rooms, story choices and example defenses remain available while you work.
 - Four connected letter-map rooms with collisions, named door destinations,
   conversations, fountains and fades between rooms and encounters.
 - Story-only characters, signs, choices, flags, collectibles and locked gates
-  authored in JSON; optional registered Python mechanics.
+  authored with Python helper calls; direct function hooks for new mechanics.
 - Four supplied walking drawings; students implement choosing their direction.
 - Four original characters: Folio, Ferris, Prism and the editable Echo.
 - FIGHT timing with a single focus strike or a three-beat rhythm strike.
@@ -143,17 +143,19 @@ device is reported in the HUD and does not stop play.
 
 | File | Responsibility |
 | --- | --- |
-| **`undercode/story/*.json`** | Draw levels with letters, place people/doors and write dialogue/choices |
+| **`undercode/levels/*.py`** | Draw levels with letters, place people/doors and write dialogue/choices |
+| **`undercode/student_world.py`** | Register levels and choose the starting room/marker |
+| `undercode/building.py` | Documented helpers for writing levels, objects and dialogue |
 | **`undercode/student_sprites.py`** | Mission 1: implement directional views in normal play |
 | **`undercode/student_mechanics.py`** | Mission 2: implement the Story Studio healing light |
 | **`undercode/student.py`** | Missions 3–4: implement Lantern Pulse and Echo's changing tactics |
-| `undercode/content.py` | Register battle characters, techniques and practice keys; load story files |
+| `undercode/content.py` | Register battle characters, techniques and practice keys; compile the Python story |
 | `undercode/patterns.py` | Four worked defense-pattern classes |
 | `undercode/attacks.py` | Player timing/ rhythm mini-games and their small extension contract |
 | `undercode/model.py` | Character, ACT, weapon, room, player and session data |
 | `undercode/battle.py` | Explicit battle phases, menus, turns, damage and outcomes |
 | `undercode/arena.py` | Shared soul movement, hazard physics, shields and collision rules |
-| `undercode/story.py` | Validate/compile level files and manage paged story dialogue |
+| `undercode/story.py` | Validate/compile Python level definitions and manage paged story dialogue |
 | `undercode/sprites.py` | Directional-view acceptance examples |
 | `teacher/solutions.py` | Instructor examples, never loaded by gameplay |
 | `undercode/world.py` | Overworld movement, collisions, conversations and doors |
@@ -187,7 +189,7 @@ inline mission walkthroughs when implementing the student functions.
 ## Extending the game
 
 **A character:** copy `ECHO` in `student.py`, give it a unique `key`, add it to
-`EXTRA_CHARACTERS`, then add a character letter in a level JSON legend.
+`EXTRA_CHARACTERS`, then add a character letter in a Python level legend.
 Its `character` selects the definition; an optional unique `id` remembers that
 specific neighbor's battle outcome. Run `--check`, then `--encounter your_key`.
 
@@ -203,11 +205,12 @@ The examples show cooldowns, reachable safe lanes, warnings and mode changes.
 `StrikeView`. Add a `Weapon` with that factory in `content.py`. Tab selects it in
 the overworld; the battle controller applies damage without knowing its class.
 
-**A room/story:** copy a level JSON in `undercode/story/`, draw a rectangular
-letter map, and add its legend. Doors link to named spawn markers; new files
-are discovered automatically. Dialogue choices, flags, conditional branches,
-collectibles and locked doors require no Python. Follow [STORY_GUIDE.md](STORY_GUIDE.md).
-Use `student_mechanics.py` for new rules connected through `on_interact` / `on_enter`.
+**A room/story:** copy a Python module in `undercode/levels/`, draw its letter
+map, and use helpers such as `person(...)`, `door(...)` and `sign(...)` in its
+legend. Import/register it in `student_world.py`. Doors link to named spawn
+markers. Choices, flags and branches use ordinary Python calls and lists.
+Follow [STORY_GUIDE.md](STORY_GUIDE.md), and pass functions from
+`student_mechanics.py` to `trigger(...)` or `on_interact` to add new rules.
 
 ## Scope and validation
 
