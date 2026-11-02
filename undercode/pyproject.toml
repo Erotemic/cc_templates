@@ -1,0 +1,23 @@
+[project]
+name = "undercode-classroom"
+version = "0.1.0"
+description = "An original pygame overworld and encounter template with extensible attack and defense sequences"
+requires-python = ">=3.10"
+dependencies = ["pygame-ce>=2.5,<3"]
+
+[build-system]
+requires = ["setuptools>=65"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["undercode"]
+
+[tool.setuptools.package-data]
+undercode = ["story/*.json"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["E402"]

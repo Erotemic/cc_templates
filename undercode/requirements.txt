@@ -1,0 +1,2 @@
+# Skip installation if an existing regular pygame installation already works.
+pygame-ce>=2.5,<3

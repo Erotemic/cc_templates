@@ -1,0 +1,54 @@
+{
+  "name": "Quiet Observatory",
+  "map": [
+    "##############################",
+    "#ggggggggggggg..ggggggggggggg#",
+    "#ggggggggggggg..gggg~~~~~~ggg#",
+    "#gggggggggggggR.gggg~~~~~~ggg#",
+    "#ggggg##gggggg..gggg~~~~~~ggg#",
+    "#ggggg##gggggg..gggg~~~~~~ggg#",
+    "#ggggggggggggg..ggggggggggggg#",
+    "#ggggggggggggg..ggggggggggggg#",
+    "#gg......P.................bgW",
+    "#gg...................E....gg#",
+    "#ggggggggggggg..ggggggggggggg#",
+    "#ggggggggggggg..ggggggggggggg#",
+    "#ggggggggggggg..gggggg##ggggg#",
+    "#ggggggggggggga.gggggg##ggggg#",
+    "#ggggggggggggg..ggggggggggggg#",
+    "##############SS##############"
+  ],
+  "legend": {
+    "a": {
+      "kind": "spawn",
+      "id": "south"
+    },
+    "b": {
+      "kind": "spawn",
+      "id": "east"
+    },
+    "P": {
+      "kind": "character",
+      "id": "prism",
+      "character": "prism"
+    },
+    "E": {
+      "kind": "character",
+      "id": "echo",
+      "character": "echo"
+    },
+    "R": {
+      "kind": "rest"
+    },
+    "S": {
+      "kind": "door",
+      "to": "courtyard",
+      "entry": "north"
+    },
+    "W": {
+      "kind": "door",
+      "to": "studio",
+      "entry": "entrance"
+    }
+  }
+}
