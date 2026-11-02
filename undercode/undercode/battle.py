@@ -7,6 +7,8 @@ from .model import Outcome, TurnContext
 
 
 class Phase(Enum):
+    """Name the current step of a battle so one input cannot control several steps."""
+
     MESSAGE = auto()
     MENU = auto()
     ACT = auto()
@@ -18,7 +20,19 @@ class Phase(Enum):
 
 
 class Battle:
+    """Manage a single encounter's dialogue, menu choices, turns and outcome.
+
+    Share Player with the session so health/snacks persist. Each defense uses
+    its own Arena; each timed attack uses a fresh Strike. Game handles world
+    transitions after the closing message reaches Phase.FINISHED.
+    """
+
     def __init__(self, character, player, weapon, seed=0):
+        """Start character's encounter with the shared player and chosen weapon.
+
+        seed controls defense randomness. Initialize enemy health and progress,
+        then display the character's greeting before opening the main menu.
+        """
         self.character = character
         self.player = player
         self.weapon = weapon
@@ -42,26 +56,37 @@ class Battle:
 
     @property
     def spare_ready(self):
+        """Return whether ACT choices have built enough understanding to spare the enemy."""
         return self.calm >= self.character.calm_needed
 
     @staticmethod
     def paginate(text):
+        """Return text split into pages of at most three wrapped 52-character lines."""
         lines = textwrap.wrap(text, width=52) or [""]
         return tuple(" ".join(lines[i : i + 3]) for i in range(0, len(lines), 3))
 
     @property
     def current_message(self):
+        """Return the entire current page, including characters not yet revealed."""
         return self.pages[self.page]
 
     @property
     def visible_message(self):
+        """Return the current page prefix revealed at 55 characters per second."""
         return self.current_message[: int(self.age * 55)]
 
     @property
     def message_complete(self):
+        """Return whether the typewriter has revealed the entire current page."""
         return self.age * 55 >= len(self.current_message)
 
     def set_phase(self, phase):
+        """Enter phase and reset its elapsed age and menu selection.
+
+        DEFEND asks the character for a new pattern using a TurnContext, creates
+        an Arena, then increments the turn counter. ATTACK creates the selected
+        weapon's Strike. Other phases do not create a mini-game.
+        """
         self.phase = phase
         self.age = 0.0
         self.selection = 0
@@ -74,6 +99,11 @@ class Battle:
             self.strike = self.weapon.factory()
 
     def say(self, message, then=Phase.DEFEND):
+        """Page message and show it before entering then (DEFEND by default).
+
+        Reset the page index and typewriter. Revealing or advancing text does
+        not itself select a menu action or consume another battle turn.
+        """
         self.message = message
         self.pages = self.paginate(message)
         self.page = 0
@@ -81,11 +111,17 @@ class Battle:
         self.set_phase(Phase.MESSAGE)
 
     def finish(self, outcome, message):
+        """Record outcome and show a final message before Phase.FINISHED.
+
+        Queue the matching result cue. Game waits until the player finishes
+        reading this message before scheduling the return to the world.
+        """
         self.outcome = outcome
         self.say(message, Phase.FINISHED)
         self.cues.append("win" if outcome in (Outcome.SPARED, Outcome.DEFEATED) else "soft")
 
     def options(self):
+        """Return the selectable labels for the current menu, or an empty tuple outside menus."""
         if self.phase == Phase.MENU:
             return ("FIGHT", "ACT", "ITEM", "SPARE")
         if self.phase == Phase.ACT:
@@ -101,6 +137,12 @@ class Battle:
         return ()
 
     def choose(self):
+        """Execute the current menu selection in the active phase.
+
+        Main-menu choices enter submenus or an attack. ACT changes understanding,
+        ITEM can consume cocoa and heal the shared player, and MERCY may finish
+        the encounter. Queue feedback/messages rather than drawing or changing rooms.
+        """
         self.cues.append("select")
         if self.phase == Phase.MENU:
             self.set_phase((Phase.ATTACK, Phase.ACT, Phase.ITEM, Phase.MERCY)[self.selection])
@@ -137,6 +179,13 @@ class Battle:
                 self.say("They are still guarded. Try an ACT that helps you understand them.")
 
     def update(self, dt, controls):
+        """Advance the current battle phase by dt seconds with this frame's Controls.
+
+        Handle text reveal/advance and menu presses, or delegate to Strike/Arena.
+        Apply finished strike accuracy to enemy HP; copy defense HP and cues back
+        from Arena. Record an outcome when someone loses, and let Game handle
+        the later scene transition.
+        """
         self.age += dt
         self.portrait_flash = max(0, self.portrait_flash - dt)
         if self.phase == Phase.MESSAGE:

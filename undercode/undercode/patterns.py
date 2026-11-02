@@ -4,15 +4,19 @@ from .arena import DefensePattern, Mode, Vec
 
 
 class FallingPages(DefensePattern):
+    """Drop warned rows of pages with two adjacent open lanes, using seeded gaps."""
+
     name = "Falling pages"
     hint = "Move freely. Find the gaps between the falling pages."
     duration = 5.2
 
     def __init__(self, gentle=False):
+        """Start a fresh spawn timer; gentle lowers projectile speed for calmer turns."""
         self.cooldown = 0.25
         self.speed = 90 if gentle else 115
 
     def update(self, arena, dt):
+        """Consume dt seconds and add due page rows until 3.4 seconds into the defense."""
         self.cooldown -= dt
         while self.cooldown <= 0 and arena.elapsed < 3.4:
             gap = arena.rng.randrange(6)
@@ -31,16 +35,20 @@ class FallingPages(DefensePattern):
 
 
 class ClockworkHops(DefensePattern):
+    """Alternate low horizontal gears while the arena supplies gravity and jumping."""
+
     name = "Clockwork hops"
     hint = "Left / Right: move. Tap Z / Space to jump over the low gears."
     mode = Mode.GRAVITY
     duration = 5.8
 
     def __init__(self):
+        """Start the first low gear after a short warning setup and reset its side counter."""
         self.cooldown = 0.15
         self.wave = 0
 
     def update(self, arena, dt):
+        """Consume dt seconds, alternating warned gears from the left and right edges."""
         self.cooldown -= dt
         while self.cooldown <= 0 and arena.elapsed < 3.6:
             from_left = self.wave % 2 == 0
@@ -58,16 +66,20 @@ class ClockworkHops(DefensePattern):
 
 
 class ShieldWaltz(DefensePattern):
+    """Send warned sparks toward the fixed soul from four directions in sequence."""
+
     name = "Shield waltz"
     hint = "Hold an arrow / WASD direction to face your shield toward a spark."
     mode = Mode.SHIELD
     duration = 5.6
 
     def __init__(self):
+        """Reset the spawn timer and the counter that chooses the next entrance."""
         self.cooldown = 0.2
         self.wave = 0
 
     def update(self, arena, dt):
+        """Use dt seconds to schedule due sparks, aiming each at the arena center."""
         self.cooldown -= dt
         while self.cooldown <= 0 and arena.elapsed < 3.7:
             center = Vec(arena.width / 2, arena.height / 2)
@@ -93,14 +105,22 @@ class ShieldWaltz(DefensePattern):
 
 
 class SafeLanes(DefensePattern):
+    """Warn about vertical beam lanes while leaving a reachable two-lane opening."""
+
     name = "Between the lines"
     hint = "Amber lines are warnings. Step into a gap before they light up."
     duration = 5.6
 
     def __init__(self):
+        """Start a fresh clock for the first set of beam warnings."""
         self.cooldown = 0.2
 
     def update(self, arena, dt):
+        """Consume dt seconds and schedule beam sets near the soul's current lane.
+
+        Use arena.rng to pick a nearby gap, rather than making the player cross
+        the entire arena. Arena owns warning timers, damage, and beam removal.
+        """
         self.cooldown -= dt
         while self.cooldown <= 0 and arena.elapsed < 4.1:
             lane = min(5, int(arena.soul.position.x / 100))

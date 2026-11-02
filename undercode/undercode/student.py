@@ -16,16 +16,24 @@ PLAYER_NAME = "Courier"
 
 
 class RippleLanes(DefensePattern):
+    """Worked defense example: falling rows with a two-lane opening that slides sideways."""
+
     name = "Ripples in the margins"
     hint = "Move through the spaces between the ripples."
     duration = 5.4
 
     def __init__(self):
+        """Give this turn its own cooldown, wave counter, and editable spawn interval in seconds."""
         self.cooldown = 0.3
         self.wave = 0
         self.spawn_interval = 0.7  # TRY: .9 is calmer; .5 is busier.
 
     def update(self, arena, dt):
+        """Consume dt seconds and create any ripple rows due during the spawn window.
+
+        Compute a sliding gap from the wave counter and warn before projectiles
+        fall. Arena moves and removes them; this method only schedules hazards.
+        """
         if self.spawn_interval <= 0:
             raise ValueError("Ripple spawn_interval must be positive.")
         self.cooldown -= dt
@@ -80,9 +88,16 @@ class LanternPulse(DefensePattern):
     duration = 7.5
 
     def __init__(self):
+        """Initialize this turn's timer; mission 3 supplies the code that counts it down."""
         self.cooldown = 0.3
 
     def update(self, arena, dt):
+        """MISSION 3: implement the timer and warned sparks described above.
+
+        Arena calls this once per defense update with dt in seconds. Keep state
+        on self and create projectiles through arena.spawn; the starter has no
+        effect until you replace the TODOs with your own implementation.
+        """
         if False:
             print(
                 "PULSE DEBUG:",

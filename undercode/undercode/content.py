@@ -12,14 +12,17 @@ from .student import EXTRA_CHARACTERS, EXTRA_PATTERNS
 
 
 def folio_pattern(context):
+    """Return fresh falling pages, slowed when context.calm shows understanding."""
     return FallingPages(gentle=context.calm > 0)
 
 
 def ferris_pattern(context):
+    """Return a fresh jump pattern on even defense turns, or beam lanes on odd turns."""
     return ClockworkHops() if context.turn % 2 == 0 else SafeLanes()
 
 
 def prism_pattern(context):
+    """Return a fresh shield pattern on even defense turns, or beam lanes on odd turns."""
     return ShieldWaltz() if context.turn % 2 == 0 else SafeLanes()
 
 

@@ -26,25 +26,34 @@ class StoryError(ValueError):
 
 
 def require(condition, message):
+    """Raise StoryError with message when an author-facing content check fails."""
     if not condition:
         raise StoryError(message)
 
 
 def string(value):
+    """Return whether value is a string containing at least one non-whitespace character."""
     return isinstance(value, str) and bool(value.strip())
 
 
 def strings(value):
+    """Return whether value is a list of nonempty strings; an empty list is allowed."""
     return isinstance(value, list) and all(string(v) for v in value)
 
 
 def check_requirement(value):
+    """Validate that requires is absent, one flag string, or a list of flag strings."""
     require(
         value is None or string(value) or strings(value), "requires needs a flag or list of flags"
     )
 
 
 def check_dialogue(data):
+    """Validate text, choice labels, completion flags, and conditional branches.
+
+    data is a JSON dictionary. Raise StoryError for unsupported fields/types;
+    recurse through replies and branches without executing dialogue or setting flags.
+    """
     if "text" in data:
         require(
             string(data["text"]) or (strings(data["text"]) and data["text"]),
@@ -75,6 +84,7 @@ def check_dialogue(data):
 
 
 def read_json(path):
+    """Read UTF-8 JSON at path, wrapping file/parse errors with its filename in StoryError."""
     try:
         return json.loads(path.read_text(encoding="utf8"))
     except (ValueError, OSError) as error:
@@ -82,7 +92,14 @@ def read_json(path):
 
 
 def load_story(directory, character_keys, mechanics):
-    """Compile every non-underscore JSON file, then check cross-level links."""
+    """Compile letter-map JSON files into rooms and validate their links.
+
+    directory contains per-level files and _world.json. character_keys and
+    mechanics are registries used to catch unknown references before play.
+    Convert map letters to internal tile coordinates; authors use named spawns.
+    Return (rooms_by_key, start_level, start_entry). Raise StoryError for invalid
+    JSON, legends, dimensions, IDs, hooks, or destination markers.
+    """
     directory = Path(directory)
     rooms, placed = {}, set()
     for path in sorted(directory.glob("*.json")):
@@ -227,7 +244,13 @@ def load_story(directory, character_keys, mechanics):
 
 
 def meets(session, requirement=None):
-    """A flag, or a list of flags (all needed). Outcomes use spared:id / defeated:id."""
+    """Return whether session satisfies every required story fact.
+
+    requirement can be None, a flag string, or a list of strings (all required).
+    Ordinary names check session.flags. 'spared:id' and 'defeated:id' instead
+    check the remembered battle outcome for that character placement ID.
+    This reads progress without changing it or evaluating Python expressions.
+    """
     if requirement is None:
         return True
     requirements = [requirement] if isinstance(requirement, str) else requirement
@@ -248,6 +271,11 @@ class Dialogue:
     """Paged story plus optional choices. Movement pauses while this is open."""
 
     def __init__(self, name, data, session):
+        """Open speaker name's conversation using JSON data and shared session.
+
+        Use the first matching branch, or the default dialogue. Prepare pages
+        and available choices now; commit flags later when the player confirms.
+        """
         self.name, self.session = name, session
         branch = next((b for b in data.get("branches", []) if meets(session, b["requires"])), None)
         self.data = branch or data
@@ -262,6 +290,11 @@ class Dialogue:
 
     @staticmethod
     def paginate(text):
+        """Return three-line pages from a text string or list of paragraphs.
+
+        Wrap at 48 characters and keep paragraph boundaries as page boundaries.
+        No pygame font or display is needed to prepare dialogue.
+        """
         paragraphs = [text] if isinstance(text, str) else text
         pages = []
         for paragraph in paragraphs:
@@ -271,9 +304,17 @@ class Dialogue:
 
     @property
     def choosing(self):
+        """Return whether the last page is open and there are choices to select."""
         return self.page == len(self.pages) - 1 and bool(self.choices)
 
     def update(self, controls):
+        """Apply one frame's menu/confirm/cancel presses to this conversation.
+
+        Confirm advances a page or commits a choice's flags and opens its reply.
+        Confirming the final page commits dialogue completion flags and finishes.
+        Cancel closes without completion flags; an already committed choice is
+        kept. World reads finished/cancelled to resume walking or offer a battle.
+        """
         if controls.cancel:
             self.finished = self.cancelled = True
             return

@@ -13,6 +13,7 @@ MUTED = (146, 158, 182)
 
 
 def star(surface, center, radius, color=GOLD, points=4):
+    """Draw an alternating-radius star on surface, using pixel center/radius and RGB color."""
     x, y = center
     vertices = []
     for i in range(points * 2):
@@ -23,10 +24,16 @@ def star(surface, center, radius, color=GOLD, points=4):
 
 
 def folio(surface, center, scale, time):
+    """Draw Folio's book portrait at center on surface.
+
+    scale multiplies local drawing sizes; time is elapsed seconds for bobbing.
+    This shared portrait signature works for world NPCs and larger battle art.
+    """
     x, y = center
     y += math.sin(time * 2.2) * 3 * scale
 
     def polygon(points, color):
+        """Scale local book vertices around the bobbing center and draw a filled polygon."""
         pygame.draw.polygon(surface, color, [(x + a * scale, y + b * scale) for a, b in points])
 
     polygon(
@@ -57,6 +64,7 @@ def folio(surface, center, scale, time):
 
 
 def ferris(surface, center, scale, time):
+    """Draw Ferris at pixel center with scale-sized details animated by time in seconds."""
     x, y = center
     y += math.sin(time * 2.8) * 2 * scale
     for side in (-1, 1):
@@ -99,6 +107,7 @@ def ferris(surface, center, scale, time):
 
 
 def prism(surface, center, scale, time):
+    """Draw Prism at pixel center with scale-sized details animated by time in seconds."""
     x, y = center
     y += math.sin(time * 2) * 4 * scale
     points = [(x, y - 52 * scale), (x + 39 * scale, y), (x, y + 45 * scale), (x - 39 * scale, y)]
@@ -132,7 +141,12 @@ def prism(surface, center, scale, time):
 
 
 def courier(surface, center, time, walking=False, view="down"):
-    """Four views share colors and proportions; no files or sprite library needed."""
+    """Draw the Courier's supplied walking art on surface at pixel center.
+
+    view is 'up', 'down', 'left', or 'right', chosen by the student function.
+    walking enables the stride; time is the world walk clock in seconds.
+    Draw only: this function does not choose facing or change movement state.
+    """
     x, y = center
     stride = math.sin(time * 13) * 3 if walking else 0
     pygame.draw.ellipse(surface, (25, 33, 49), (x - 11, y + 7, 22, 7))
@@ -161,6 +175,7 @@ def courier(surface, center, time, walking=False, view="down"):
 
 
 def soul(surface, center, color=CORAL, radius=8):
+    """Draw the player marker at pixel center with an RGB color and radius in pixels."""
     x, y = center
     pygame.draw.polygon(
         surface, color, [(x, y - radius), (x + radius, y), (x, y + radius), (x - radius, y)]

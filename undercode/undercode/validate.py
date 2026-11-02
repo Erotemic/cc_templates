@@ -7,6 +7,13 @@ from .model import TurnContext
 
 
 def validate_content(characters, weapons, patterns, rooms):
+    """Return a list of content problems, or [] when the supplied registries pass.
+
+    Check character/weapon/room data first. If valid, construct and simulate
+    registered defense patterns, several character-selected patterns, and player
+    strikes with no input. Catch factory/simulation errors as readable messages.
+    Called explicitly by --check; this runs student code but opens no window.
+    """
     errors = []
     names = [c.key for c in characters]
     if len(names) != len(set(names)):
@@ -32,6 +39,7 @@ def validate_content(characters, weapons, patterns, rooms):
             continue
 
         def walkable(tile):
+            """Return whether tile, a (column, row) pair, is inside this room on walkable ground."""
             x, y = tile
             return (
                 0 <= y < len(room.tiles)

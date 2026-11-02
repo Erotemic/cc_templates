@@ -9,7 +9,18 @@ import pygame
 
 
 class Audio:
+    """Generate and play optional music/effects independently of the game rules.
+
+    Channel 0 is reserved for looping music; other channels play cues. Disabled
+    or unavailable audio leaves play/scene/toggle safe to call during the loop.
+    """
+
     def __init__(self, enabled=True):
+        """Try to open the mixer and synthesize sounds, unless enabled is False.
+
+        Missing Linux audio endpoints skip initialization; pygame audio errors
+        print a diagnostic and leave enabled False so gameplay can continue.
+        """
         self.enabled = False
         self.muted = not enabled
         self.current_scene = None
@@ -53,11 +64,17 @@ class Audio:
 
     @property
     def label(self):
+        """Return a short HUD message describing audio availability and mute state."""
         if not self.enabled:
             return "Sound unavailable / off"
         return "M: sound off" if self.muted else "M: sound on"
 
     def tone(self, hz, duration):
+        """Return a pygame Sound synthesized at hz for duration seconds.
+
+        Build a fading 22,050 Hz mono signed-16-bit buffer in memory. The mixer
+        must already be initialized; no sound file is read or written.
+        """
         rate = 22050
         data = array("h")
         for i in range(int(rate * duration)):
@@ -68,6 +85,11 @@ class Audio:
         return pygame.mixer.Sound(buffer=data.tobytes())
 
     def theme(self, battle):
+        """Return an original looping melody; battle chooses its faster tempo.
+
+        Generate samples in memory using MIDI note numbers converted to Hz.
+        This creates the sound but does not start playback.
+        """
         rate, beat = 22050, 0.32 if battle else 0.48
         melody = (64, 67, 71, 74, 71, 67, 62, 67, 64, 69, 72, 76, 72, 69, 67, 62)
         data = array("h")
@@ -85,6 +107,11 @@ class Audio:
         return pygame.mixer.Sound(buffer=data.tobytes())
 
     def scene(self, name):
+        """Loop the music named WORLD or BATTLE when the scene name changes.
+
+        Leave the current track running on repeated calls. Respect mute and
+        do nothing if audio is unavailable; name must be a registered music key.
+        """
         if not self.enabled or name == self.current_scene:
             return
         self.current_scene = name
@@ -93,10 +120,12 @@ class Audio:
         channel.set_volume(0 if self.muted else 0.26)
 
     def play(self, cue):
+        """Play a known cue on an effect channel when audio is available and unmuted."""
         if self.enabled and not self.muted and cue in self.effects:
             self.effects[cue].play()
 
     def toggle(self):
+        """Switch mute state, update music volume, and stop effects when muting."""
         self.muted = not self.muted
         if self.enabled:
             pygame.mixer.Channel(0).set_volume(0 if self.muted else 0.26)

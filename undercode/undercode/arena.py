@@ -15,6 +15,8 @@ Vec = pygame.Vector2
 
 
 class Mode(Enum):
+    """Choose defense controls: free movement, gravity with jumping, or a fixed shield."""
+
     FREE = auto()
     GRAVITY = auto()
     SHIELD = auto()
@@ -22,6 +24,12 @@ class Mode(Enum):
 
 @dataclass
 class Bullet:
+    """Store one circular projectile in arena-local pixels.
+
+    velocity is pixels per second. During warmup (seconds), the projectile
+    warns without moving or damaging; damage is HP lost on a successful hit.
+    """
+
     position: Vec
     velocity: Vec
     radius: float = 6
@@ -32,6 +40,12 @@ class Bullet:
 
 @dataclass
 class Beam:
+    """Store a rectangular hazard that warns, becomes dangerous, then expires.
+
+    rect uses arena-local pixels. age, warmup and duration are seconds;
+    Arena.update advances age and removes the beam after its active interval.
+    """
+
     rect: pygame.Rect
     warmup: float = 0.8
     duration: float = 0.3
@@ -40,11 +54,19 @@ class Beam:
 
     @property
     def active(self):
+        """Return whether the beam is past its warning and inside its damage interval."""
         return self.warmup <= self.age < self.warmup + self.duration
 
 
 @dataclass
 class Soul:
+    """Store the player-controlled marker during one defense.
+
+    position/radius use arena pixels; vertical_speed is pixels per second.
+    facing is a direction vector for shield mode. invulnerable and guard_flash
+    are seconds remaining on damage protection and the visual block effect.
+    """
+
     position: Vec
     radius: float = 7
     vertical_speed: float = 0
@@ -55,7 +77,12 @@ class Soul:
 
 
 def segment_hits_circle(start, end, center, radius):
-    """Swept collision: fast bullets cannot jump through the soul between frames."""
+    """Return whether a moving point's segment reaches a circle.
+
+    start/end/center are vectors in the same coordinate system; radius is a
+    distance in pixels. Testing the whole segment catches fast projectiles
+    that pass through the player between two frames.
+    """
     delta = end - start
     length_squared = delta.length_squared()
     fraction = (
@@ -65,7 +92,12 @@ def segment_hits_circle(start, end, center, radius):
 
 
 class DefensePattern:
-    """Subclass this in student.py. Keep timers on the instance, not globals."""
+    """Define an enemy defense; subclass this in student.py.
+
+    A new instance owns each turn's timers. Set name, hint, mode and duration
+    (seconds), then implement update(arena, dt) to create hazards. Arena handles
+    movement, collisions and HP; patterns use its spawn/beam methods and rng.
+    """
 
     name = "Untitled pattern"
     hint = "Move with the arrow keys or WASD."
@@ -73,14 +105,32 @@ class DefensePattern:
     duration = 5.0
 
     def update(self, arena: "Arena", dt: float):
+        """Create or schedule hazards for dt seconds of this defense.
+
+        Subclasses must implement this method. Use arena-local pixels and
+        arena.rng for repeatable randomness; keep cooldowns on self. This base
+        method raises NotImplementedError to identify an unfinished subclass.
+        """
         raise NotImplementedError
 
 
 class Arena:
+    """Simulate one defense in a local 600 by 196 pixel playfield.
+
+    Own the soul, projectiles, beams, seeded RNG and temporary HP. Battle copies
+    HP back to Player and drains cues after each update. Patterns create
+    hazards; View translates local positions into window positions.
+    """
+
     width = 600
     height = 196
 
     def __init__(self, pattern, hp, seed=0):
+        """Create a defense with a fresh pattern, starting HP, and random seed.
+
+        Check the pattern's duration/mode, then choose its initial soul position.
+        No keyboard, display, or audio device is opened by this constructor.
+        """
         if not math.isfinite(pattern.duration) or pattern.duration <= 0:
             raise ValueError("Pattern duration must be finite and positive.")
         if not isinstance(pattern.mode, Mode):
@@ -103,9 +153,17 @@ class Arena:
 
     @property
     def done(self):
+        """Return whether time ran out or the player has no HP left."""
         return self.elapsed >= self.pattern.duration or self.hp <= 0
 
     def spawn(self, x, y, vx, vy, radius=6, damage=2, color=(255, 188, 112), warmup=0):
+        """Append a warned circular projectile; return None.
+
+        x/y are arena-local pixels; vx/vy are pixels per second. radius is in
+        pixels, damage is nonnegative integer HP, and warmup is seconds before
+        motion/damage. color is an RGB tuple. Invalid geometry raises ValueError.
+        Example: arena.spawn(8, 98, 160, 0, warmup=0.5) warns, then moves right.
+        """
         if (
             not all(math.isfinite(v) for v in (x, y, vx, vy, radius, warmup))
             or radius <= 0
@@ -119,6 +177,12 @@ class Arena:
         self.bullets.append(Bullet(Vec(x, y), Vec(vx, vy), radius, damage, color, warmup))
 
     def beam(self, x, y, width, height, warmup=0.8, duration=0.3):
+        """Append a rectangular hazard that warns before briefly damaging.
+
+        x/y/width/height use arena-local pixels. warmup and duration are seconds;
+        duration and dimensions must be positive. Invalid geometry/timing raises
+        ValueError. Arena advances and removes the beam; this method returns None.
+        """
         if (
             not all(math.isfinite(v) for v in (x, y, width, height, warmup, duration))
             or min(width, height, duration) <= 0
@@ -130,6 +194,11 @@ class Arena:
         self.beams.append(Beam(pygame.Rect(x, y, width, height), warmup, duration))
 
     def hurt(self, damage):
+        """Subtract damage HP unless the soul is temporarily invulnerable.
+
+        A successful hit clamps HP at zero, increments hits, grants 0.7 seconds
+        of protection, and queues a hurt sound. It does not end Battle itself.
+        """
         if self.soul.invulnerable > 0:
             return
         self.hp = max(0, self.hp - damage)
@@ -138,6 +207,12 @@ class Arena:
         self.cues.append("hurt")
 
     def move_soul(self, dt: float, controls: Controls):
+        """Apply Controls for dt seconds using the pattern's movement mode.
+
+        Free movement normalizes diagonals; gravity allows grounded confirm
+        presses to jump; shield mode changes facing without moving the soul.
+        Clamp the soul inside the local playfield after movement.
+        """
         soul = self.soul
         if self.pattern.mode == Mode.SHIELD:
             if controls.x or controls.y:
@@ -167,6 +242,13 @@ class Arena:
         soul.position.y = max(soul.radius, min(self.height - soul.radius, soul.position.y))
 
     def update(self, dt: float, controls: Controls):
+        """Advance controls, the student pattern, hazards, and collisions by dt seconds.
+
+        Reject negative/nonfinite dt and stop at the pattern's time limit.
+        Warnings consume time before bullets move or hurt; shield blocks remove
+        incoming bullets. Check swept collisions so fast bullets cannot skip
+        the soul. Remove expired hazards and keep sound names in cues.
+        """
         if not math.isfinite(dt) or dt < 0:
             raise ValueError("Elapsed seconds must be finite and nonnegative.")
         if self.done:

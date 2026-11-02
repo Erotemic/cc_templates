@@ -170,6 +170,20 @@ broadcast system, or thread scheduler to learn before making a character.
 See **[MISSIONS.md](MISSIONS.md)** for extension steps and
 **[TEACHER_GUIDE.md](TEACHER_GUIDE.md)** for classroom use and architecture.
 
+## Reading the code
+
+Start at `main.main`: it converts keys to `Controls`, calls `Game.update`, then
+calls `View.draw`. Follow `Game.update` into `World.update` for walking/story
+interactions or `Battle.update` for encounters. During defense, `Arena.update`
+calls your pattern's `update(arena, dt)`; during world drawing, `View.draw_world`
+calls your `choose_player_view(facing)`.
+
+Classes and methods document their inputs, results and state changes in place.
+`dt` means elapsed seconds. World positions use room pixels; defense positions
+use arena pixels; tile pairs mean (column, row). Render methods translate these
+positions into the logical screen and leave game rules unchanged. Use the
+inline mission walkthroughs when implementing the student functions.
+
 ## Extending the game
 
 **A character:** copy `ECHO` in `student.py`, give it a unique `key`, add it to

@@ -8,6 +8,15 @@ import sys
 
 
 def main(argv=None):
+    """Read launch options, run the pygame loop, and return an exit status.
+
+    argv is a list of command-line arguments, or None to use the terminal's
+    arguments. --list, --check and --check-sprites return before opening a
+    window. For play, this function turns keyboard events into Controls,
+    updates Game, draws through View, and sends queued sound names to Audio.
+    Normal completion returns 0; failed exercise/content checks return 1.
+    Invalid arguments or startup failures raise SystemExit with an explanation.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     entry = parser.add_mutually_exclusive_group()
     entry.add_argument("--encounter", metavar="KEY", help="Start directly with a character")

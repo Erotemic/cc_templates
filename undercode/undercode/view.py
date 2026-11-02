@@ -17,18 +17,37 @@ MESSAGE_RECT = pygame.Rect(104, 322, 752, 216)
 
 
 class View:
+    """Draw the game onto the fixed logical surface without advancing its models.
+
+    Positions passed to helpers use logical pixels. main.py scales the finished
+    960 by 720 frame to the window; model coordinates stay independent of resizing.
+    Fonts use pygame's bundled default, so students need no system font files.
+    """
+
     def __init__(self):
+        """Cache the supported default-font sizes after main.py initializes pygame.font."""
         self.fonts = {
             size: pygame.font.Font(None, size) for size in (18, 20, 22, 24, 26, 28, 32, 38, 44, 64)
         }
 
     def text(self, surface, text, position, size=24, color=art.PAPER, center=False):
+        """Draw text at a pixel position and return the occupied pygame.Rect.
+
+        size selects a cached font; color is RGB. position is the top-left by
+        default, or the center when center=True. Returning the rectangle helps
+        layout checks; drawing does not change any game state.
+        """
         image = self.fonts[size].render(str(text), True, color)
         rect = image.get_rect(center=position) if center else image.get_rect(topleft=position)
         surface.blit(image, rect)
         return rect
 
     def lines(self, text, width, size):
+        """Return text wrapped to width pixels at the selected font size.
+
+        Keep explicit paragraph breaks and split overlong words into pieces so
+        each line fits. This measures text only; it does not draw anything.
+        """
         font = self.fonts[size]
         lines = []
         for paragraph in str(text).split("\n"):
@@ -54,6 +73,12 @@ class View:
         return lines
 
     def wrapped(self, surface, text, rect, size=26, color=art.PAPER):
+        """Draw text inside rect, reducing font size down to 18 when needed.
+
+        rect uses logical pixels. Wrap to its width and stop before lines leave
+        its height. This is a bounded label helper; Dialogue/Battle paginate long
+        messages beforehand so the player can still read the whole conversation.
+        """
         candidates = [s for s in (size, 24, 22, 20, 18) if s <= size]
         for chosen in candidates:
             lines = self.lines(text, rect.width, chosen)
@@ -65,10 +90,12 @@ class View:
             self.text(surface, line, (rect.x, rect.y + i * (chosen + 4)), chosen, color)
 
     def panel(self, surface, rect, color=(25, 32, 53), border=(83, 101, 120), radius=12):
+        """Draw a filled rounded rect with a border, using logical pixels and RGB colors."""
         pygame.draw.rect(surface, color, rect, border_radius=radius)
         pygame.draw.rect(surface, border, rect, 2, border_radius=radius)
 
     def bar(self, surface, rect, fraction, color):
+        """Draw a progress bar in rect, clamping fraction to the visible 0..1 range."""
         pygame.draw.rect(surface, (44, 49, 69), rect, border_radius=4)
         filled = rect.copy()
         filled.width = round(rect.width * max(0, min(1, fraction)))
@@ -76,12 +103,19 @@ class View:
             pygame.draw.rect(surface, color, filled, border_radius=4)
 
     def header(self, surface, subtitle, sound):
+        """Draw the game title, subtitle, global control hints, and audio status."""
         self.text(surface, GAME_TITLE.upper(), (28, 18), 32, art.MINT)
         self.text(surface, subtitle, (29, 49), 20, art.MUTED)
         self.text(surface, "F1: guide   R: restart   Esc: quit", (610, 19), 20, art.MUTED)
         self.text(surface, sound, (746, 47), 18, art.MUTED)
 
     def draw(self, surface, game, focused=True):
+        """Render one frame from game onto surface, then add fade/help/pause overlays.
+
+        focused controls only the focus overlay; main.py pauses updates when the
+        window loses focus. This method never advances clocks, consumes input,
+        resolves choices, or changes the encounter RNG.
+        """
         surface.fill(art.INK)
         if game.scene == Scene.WORLD:
             self.draw_world(surface, game)
@@ -103,6 +137,12 @@ class View:
             self.text(surface, "Click the game window to return.", (480, 366), 26, art.MINT, True)
 
     def draw_world(self, surface, game):
+        """Draw terrain, story objects, characters, the student-selected view, and HUD.
+
+        Center smaller rooms in the logical viewport and translate room-pixel
+        positions by that origin. Use choose_player_view(world.facing) every
+        frame so students' mission 1 code changes normal walking immediately.
+        """
         world = game.world
         self.header(surface, world.room.name, game.sound_label)
         left = (WIDTH - len(world.room.tiles[0]) * TILE) // 2
@@ -233,6 +273,11 @@ class View:
             self.draw_story(surface, world.dialogue)
 
     def draw_story(self, surface, dialogue):
+        """Draw a paged world conversation and at most three choices around its selection.
+
+        Read Dialogue state only; its update method commits choices/flags.
+        Dim the world and keep text, choices, and navigation hints in separate areas.
+        """
         veil = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         veil.fill((12, 16, 30, 155))
         surface.blit(veil, (0, 0))
@@ -260,6 +305,11 @@ class View:
         self.text(surface, hint, (112, 680), 18, art.MUTED)
 
     def draw_battle(self, surface, game):
+        """Draw the opponent, progress bars, current battle phase, and action buttons.
+
+        Delegate timing attacks and defenses to their renderers. Other phases
+        show paged messages or menus, scrolling ACT choices when needed.
+        """
         battle = game.battle
         character = battle.character
         self.header(surface, character.description, game.sound_label)
@@ -378,6 +428,11 @@ class View:
         )
 
     def draw_strike(self, surface, strike):
+        """Render a timing mini-game using its read-only StrikeView snapshot.
+
+        Translate normalized cursor/target positions to the on-screen bar.
+        Drawing targets and recorded presses never awards accuracy or damage.
+        """
         view = strike.view()
         self.panel(surface, MESSAGE_RECT, border=art.GOLD)
         self.text(surface, view.title, (126, 338), 22, art.GOLD)
@@ -408,6 +463,12 @@ class View:
         self.text(surface, "Let the cursor meet the light.", (480, 508), 20, art.MUTED, True)
 
     def draw_arena(self, surface, arena, time):
+        """Draw the arena's soul, shield, warnings, projectiles, and remaining time.
+
+        Translate local arena pixels into ARENA_RECT and clip hazards there,
+        keeping hints outside. time is elapsed animation seconds, not an update
+        request; Arena owns motion, warning lifetimes, blocking and damage.
+        """
         rect = ARENA_RECT
         pygame.draw.rect(surface, (11, 18, 34), rect)
         # Clip all hazards to the playfield; hints and health stay outside it.
@@ -471,6 +532,7 @@ class View:
         self.text(surface, f"{remaining:.1f}s", (812, 333), 20, art.GOLD)
 
     def draw_help(self, surface):
+        """Draw the controls/help overlay; Game pauses gameplay while help_open is true."""
         veil = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         veil.fill((9, 13, 25, 220))
         surface.blit(veil, (0, 0))
