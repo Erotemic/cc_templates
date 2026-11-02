@@ -47,8 +47,8 @@ These functions are called in normal gameplay. The Courier initially looks
 down, the light has no effect, Pulse has no sparks, and Echo repeats Ripples.
 Encounter buttons respond to the keyboard until the mouse task is implemented.
 Other rooms, conversations, fountains, and example defenses work immediately.
-The Studio also has a silent floor piano: students implement both key collisions
-and note selection. The game never imports teacher solutions.
+The starting courtyard has a floor piano and a repair sign. C4 works as a
+head start; students generalize its collision and note logic to repair seven keys. The game never imports teacher solutions.
 
 ## Controls and observation
 

@@ -231,11 +231,12 @@ mouse behavior, find that state's input handler and decide its meaning explicitl
 
 ## Floor piano: the student owns collision and the event
 
-The Studio's PianoKey records only define note labels and walkable ground.
+The courtyard's PianoKey records only define note labels and walkable ground.
 They do not join the automatic Trigger system. World.update calls the student's
 update_piano on walking frames. The student must test the player rectangle
 against each key rectangle, select an overlapping key, and remember whether
-that key was already playing. Only their code translates the note label to Hz.
+that key was already playing. A working C4 example supplies a head start; students
+generalize it to all keys and translate the note label to Hz.
 
 world.play_tone queues a ToneRequest. Game drains world requests into its own
 queue; the window adapter passes them to Audio.play_tone and clears the queue.

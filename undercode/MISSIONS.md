@@ -169,28 +169,27 @@ Locate their update and drawing paths yourself; those need additional rules.
 between frames. **Function:** `student_overworld.update_piano`.
 
 ```bash
-python main.py --level studio
+python main.py
 python main.py --check-exercise piano
 ```
 
-The eight floor keys are in the Studio's southeast corner. They are visible but
-silent. They are **not automatic triggers**: you must write the collision check
-as well as select and play the correct tone. The engine supplies rectangles and
-an audio-request helper, not the musical decision or entry detection.
+The eight floor keys are in the starting courtyard's southeast corner, near
+camp. The nearby sign says, "A piano, but most of the keys seem broken. Maybe we
+can fix it?" **C4 works already**, with a complete single-key example of collision,
+playback, and entry memory. The other seven keys are deliberately silent.
 
-1. Find `World.update` calling your function. Loop through `world.piano_keys`.
-   For each key, obtain `world.tile_rect(tile=key.tile)`. Both this rectangle and
-   `world.player_rect` use room pixels, so they can be compared directly.
-2. Use `world.player_rect.colliderect(key_rect)` yourself. Keep the first
-   overlapping key and stop searching. At a shared edge the body may overlap
-   two keys; this rule makes the choice predictable. Print the matched note
-   briefly to verify collision, then remove the repeated diagnostic.
-3. No overlap means clear `world.piano_key` to None and return. Otherwise, compare
-   the placed key's `key.key` ID with `world.piano_key`. If equal, return silently.
-4. Build a dictionary using the following table. Read `key.definition.note`,
-   look up its frequency, then call `world.play_tone(hz=frequency, duration=0.4)`.
-5. Save the placed key ID in `world.piano_key` after playing. This is the memory
-   of which key was active last frame; the musical label is a separate value.
+1. Step on C4 and stand still. Leave and return. Read the worked code and predict
+   which branches run in each case. Both rectangles use room pixels.
+2. Replace `key = keys[0]` with a loop over `world.piano_keys`. Keep the rectangle
+   collision test for every key, but remove the C4-only note-label condition.
+   Stop after the first overlap so touching two neighboring keys is predictable.
+3. Make the dictionary below, then replace the fixed frequency with a lookup of
+   `key.definition.note`. The displayed note label decides which tone to play.
+4. Keep the remembered-ID check so standing still does not replay notes. Clear
+   `world.piano_key` only after the loop finds NO overlapping key. Clearing it
+   after the first miss would forget a later key and replay it each frame.
+5. Use the progress check, then play D4 through C5, leave and return, and restart.
+   The C4 example should keep working after your generalization.
 
 | Label | Frequency in Hz |
 | --- | --- |

@@ -168,12 +168,12 @@ Put the most specific ending first. A Branch can also have choices/set_flags.
 
 ## A floor piano to program
 
-The Studio's southeast corner uses `PianoKey(note="C4")` through C5, placed with
+The starting courtyard's southeast corner uses `PianoKey(note="C4")` through C5, placed with
 letters `1` through `8`. These records are visible, walkable keys, not automatic
-triggers. Mission 7 in MISSIONS.md asks you to write player/key collision tests,
-choose the frequency, and remember which key was playing. The empty
-`student_overworld.update_piano` function is called by World.update each walking
-frame. Until you implement it the piano stays silent.
+triggers. Mission 7 in MISSIONS.md starts with one working C4 key. Generalize its
+player/key collision test, choose the frequency by note label, and preserve the
+entry memory to repair the remaining seven keys. `student_overworld.update_piano`
+is called by World.update each walking frame. A nearby sign introduces the repair.
 
 To add keys to another room, use PianoKey records in its legend and draw their
 letters. The same student rule can handle them because it reads the current

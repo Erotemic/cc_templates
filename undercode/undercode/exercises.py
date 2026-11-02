@@ -154,7 +154,7 @@ def check_piano():
     from .overworld.engine import tile_center
     from .student_overworld import update_piano
 
-    world = Game(level="studio").world
+    world = Game().world
     results = []
     # Being in the room is not enough: collision must actually select a key.
     update_piano(world=world)
@@ -173,7 +173,7 @@ def check_piano():
         world.tones.clear()
         update_piano(world=world)
         results.append((not world.tones, f"standing on {key.definition.note}: no repeated tone"))
-    world.position = tile_center(tile=world.room.spawns["entrance"])
+    world.position = tile_center(tile=world.room.spawns["camp"])
     world.tones.clear()
     update_piano(world=world)
     results.append(
@@ -188,7 +188,7 @@ def check_piano():
             "returning to the same key plays it again",
         )
     )
-    world.position = tile_center(tile=world.room.spawns["entrance"])
+    world.position = tile_center(tile=world.room.spawns["camp"])
     world.tones.clear()
     update_piano(world=world)
     first = world.piano_keys[0]

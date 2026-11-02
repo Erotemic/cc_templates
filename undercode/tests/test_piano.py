@@ -27,7 +27,7 @@ class PianoTests(unittest.TestCase):
             pass
 
         with patch.object(student_overworld, "update_piano", unfinished):
-            game = Game(level="studio")
+            game = Game()
             self.assertEqual(len(game.world.piano_keys), 8)
             game.world.position = tile_center(tile=game.world.piano_keys[0].tile)
             for _ in range(3):
@@ -38,7 +38,7 @@ class PianoTests(unittest.TestCase):
 
     @patch.object(student_overworld, "update_piano", solutions.update_piano)
     def test_completed_collision_rule_distinguishes_body_overlap_from_nearness(self):
-        game = Game(level="studio")
+        game = Game()
         world = game.world
         rect = world.tile_rect(tile=world.piano_keys[0].tile)
         world.position.x = rect.left - 9
@@ -54,7 +54,7 @@ class PianoTests(unittest.TestCase):
     @patch.object(student_overworld, "update_piano", solutions.update_piano)
     def test_each_key_plays_once_until_exit_and_reentry_and_restart_clears_memory(self):
         self.assertTrue(all(ok for ok, _ in check_piano()))
-        game = Game(level="studio")
+        game = Game()
         for key, expected in zip(
             game.world.piano_keys, (261.63, 293.66, 329.63, 349.23, 392, 440, 493.88, 523.25)
         ):
@@ -66,7 +66,7 @@ class PianoTests(unittest.TestCase):
             for _ in range(10):
                 game.update(seconds=1 / 60)
             self.assertFalse(game.tones)
-        game.world.position = tile_center(tile=game.world.room.spawns["entrance"])
+        game.world.position = tile_center(tile=game.world.room.spawns["camp"])
         game.update(seconds=0)
         self.assertIsNone(game.world.piano_key)
         game.world.position = tile_center(tile=game.world.piano_keys[-1].tile)
@@ -75,6 +75,31 @@ class PianoTests(unittest.TestCase):
         game.restart()
         self.assertIsNone(game.world.piano_key)
         self.assertFalse(game.tones)
+
+    def test_worked_c4_and_exact_notice_are_in_the_starting_room(self):
+        """The supplied head start works in normal play, alongside the requested sign."""
+        from undercode.overworld.model import Sign
+
+        game = Game()
+        self.assertEqual(game.world.room_key, "courtyard")
+        notices = [obj for obj in game.world.room.objects if isinstance(obj.definition, Sign)]
+        self.assertTrue(
+            any(
+                obj.definition.dialogue.text
+                == "A piano, but most of the keys seem broken. Maybe we can fix it?"
+                for obj in notices
+            )
+        )
+        # Run the actual student file's function, without replacing it with an answer.
+        game.world.position = tile_center(tile=game.world.piano_keys[0].tile)
+        game.update(seconds=0)
+        self.assertEqual(len(game.tones), 1)
+        self.assertAlmostEqual(game.tones[0].hz, 261.63)
+        game.tones.clear()
+        game.update(seconds=0)
+        self.assertFalse(game.tones)
+        # Remaining keys are intentionally left to students; no assertion freezes
+        # those unfinished answers, so completing the task keeps this suite usable.
 
     def test_audio_adapter_generates_and_reuses_the_requested_pitch_and_respects_mute(self):
         import pygame

@@ -97,41 +97,49 @@ def warm_light(*, world, obj):
 
 
 def update_piano(*, world):
-    """MISSION 7 -- Detect collisions with floor keys and play the matching tone.
+    """MISSION 7 -- Repair the floor piano, starting from a working C4 example.
 
-    Run: python main.py --level studio (piano in the southeast corner).
+    Run: python main.py (piano near camp in the courtyard's southeast corner).
     Check: python main.py --check-exercise piano
-    The piano is drawn, but NONE of its collision/note logic is implemented here.
-    World.update calls this function each walking frame; you supply the rules.
+    C4 already detects collision and plays once on entry. The other seven keys
+    are deliberately broken. Generalize this example without losing its guards.
 
-    YOUR INPUTS:
-      world.piano_keys: placed key objects. key.definition.note is 'C4', 'D4', etc.
-      key.tile: its (column, row); world.tile_rect(tile=key.tile) gives its rectangle.
-      world.player_rect: the player's body rectangle in the SAME room-pixel system.
-      player_rect.colliderect(key_rect): True when those rectangles overlap.
-      world.piano_key: previous playing key's ID, initially None. YOU update it.
-      world.play_tone(hz=..., duration=0.4): queue a pitch; the audio adapter plays it.
+    READ AND PREDICT:
+      world.piano_keys lists placed keys; the first courtyard key is C4.
+      key.tile is (column, row); tile_rect converts it to room-pixel geometry.
+      world.player_rect.colliderect(key_rect) tests actual body overlap.
+      world.piano_key remembers the placed ID last played, not the note label.
+      world.play_tone queues audio; it does not open a mixer inside the engine.
 
     BUILD IN SMALL STEPS:
-    1. Loop over world.piano_keys. Build each key's rectangle with tile_rect.
-       Use colliderect to detect the player overlapping it. First just print its
-       note on collision, then remove the print once you understand the values.
-    2. Keep the first overlapping key (or None if there is no collision). Break
-       after a match: the player can overlap the edge of two neighboring keys.
-    3. If no key overlaps, set world.piano_key = None and return. This remembers
-       leaving the piano and allows that same key to play when you return.
-    4. If its key.key already equals world.piano_key, return without another note.
-       Otherwise standing still would retrigger about 60 notes every second.
-    5. Make a dictionary mapping note labels to Hz; the table is in MISSIONS.md.
-       One entry is 'C4': 261.63. Look up the collided key's note and call play_tone.
-    6. Save key.key to world.piano_key AFTER playing. This is last-frame memory,
-       not the musical label. Different piano keys can have the same pitch.
+    1. Step on C4, stand still, then leave and return. Trace each return below.
+    2. Replace selecting only keys[0] with a loop over ALL keys. Keep the collision
+       test inside that loop and remove the C4-only note check. Stop at the first
+       overlap to resolve shared edges.
+    3. Build a note-to-Hz dictionary using the table in MISSIONS.md. Replace the
+       fixed 261.63 with a lookup of key.definition.note for the collided key.
+    4. Preserve the remembered-ID check: standing should not retrigger each frame.
+       Clear memory only AFTER the loop finds no overlap, not after its first miss.
+    5. Test D4 through C5, all edges, leaving/returning, and rooms with no keys.
 
-    PREDICT/TEST: away from the piano: silence. Enter C4: one C4 tone. Stand:
-    silence. Walk to D4: one D4 tone. Leave/return: the same note plays again.
-    Test all eight keys and restart. Mute/no audio should not change collisions.
-    EXPLAIN: why is checking collision alone insufficient? Who remembers entry?
-    TRANSFER: add black keys, chords, or a melody puzzle using your own rules.
+    EXPLAIN: why is body collision still needed after choosing a note? Why does
+    the no-overlap reset belong after the loop? What does a return inside it do?
+    TRANSFER: add black keys, chords, or your own melody puzzle.
     """
-    # TODO: detect overlap, remember entry/exit, look up Hz, queue the right tone.
-    pass
+    keys = world.piano_keys
+    if not keys:
+        world.piano_key = None
+        return
+
+    # WORKED EXAMPLE: the first key only. TODO: search all keys with a loop.
+    key = keys[0]
+    key_rect = world.tile_rect(tile=key.tile)
+    if key.definition.note == "C4" and world.player_rect.colliderect(key_rect):
+        if world.piano_key != key.key:
+            # TODO: choose the frequency from this key's note, not a fixed pitch.
+            world.play_tone(hz=261.63, duration=0.4)
+            world.piano_key = key.key
+        return  # Staying on this key must not clear its entry memory.
+
+    # With a loop, move this reset AFTER searching every key.
+    world.piano_key = None
