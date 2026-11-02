@@ -4,7 +4,8 @@
 
 UnderCode is an original, Undertale-inspired pygame starter for students who
 want to build characters, conversations, timed attacks, and unusual defense
-sequences. It is a complete playable example with a small editing surface.
+sequences. Walking, rooms and battles work; four guided code missions let
+students add missing features to the game they actually play.
 
 ```bash
 cd undercode
@@ -40,11 +41,30 @@ For story writing, open **[undercode/story/studio.json](undercode/story/studio.j
 and follow **[STORY_GUIDE.md](STORY_GUIDE.md)**. Move a letter, rewrite a line,
 or add a room with its own legend. `python main.py --level studio` previews it.
 
-For the walking-sprite exercise, start with mission 0 in **[MISSIONS.md](MISSIONS.md)**.
+**Start coding:** open **[undercode/student_sprites.py](undercode/student_sprites.py)**.
+The Courier currently always faces down. Mission 1 guides you through choosing
+left/right/up views; each change appears in the normal game. Read the inputs,
+walkthrough, diagnostics and TODOs beside the function, then test with
+`python main.py` and `python main.py --check-sprites`.
+
+The other guided missions add a healing light, implement a new warned defense,
+and make Echo change tactics. See **[MISSIONS.md](MISSIONS.md)**.
 
 For battle mechanics, open **[undercode/student.py](undercode/student.py)**. Change Echo's name,
 colors, greeting, or ripple interval. Run again. Echo lives in the Quiet
 Observatory, through the north doorway.
+
+## What students implement
+
+1. **Directional views:** the Courier starts facing down; add the missing cases.
+2. **Healing light:** the Studio trigger is wired up; implement its healing/message.
+3. **Lantern Pulse:** the pattern is registered but empty; implement its timer,
+   warning and moving projectiles.
+4. **Changing tactics:** add the rule that selects Pulse after Echo's first turn.
+
+These are unfinished student functions called by normal gameplay. The inline
+steps guide implementation, rather than enabling a finished feature with a flag.
+Other rooms, story choices and example defenses remain available while you work.
 
 ## What is already playable
 
@@ -52,7 +72,7 @@ Observatory, through the north doorway.
   conversations, fountains and fades between rooms and encounters.
 - Story-only characters, signs, choices, flags, collectibles and locked gates
   authored in JSON; optional registered Python mechanics.
-- Four directional walking views, plus a separate guided student sprite task.
+- Four supplied walking drawings; students implement choosing their direction.
 - Four original characters: Folio, Ferris, Prism and the editable Echo.
 - FIGHT timing with a single focus strike or a three-beat rhythm strike.
 - ACT choices that build understanding, SPARE, leaving practice, healing items,
@@ -90,9 +110,10 @@ conversation does not also select the first battle action.
 ```bash
 python main.py --list
 python main.py --level studio
-python main.py --sprite-task
+python main.py --check-sprites  # reports progress on mission 1
 python main.py --encounter echo
 python main.py --practice ripples
+python main.py --practice pulse  # empty until you implement mission 3
 python main.py --practice hops
 python main.py --practice shield
 python main.py --practice lanes
@@ -123,9 +144,9 @@ device is reported in the HUD and does not stop play.
 | File | Responsibility |
 | --- | --- |
 | **`undercode/story/*.json`** | Draw levels with letters, place people/doors and write dialogue/choices |
-| **`undercode/student_sprites.py`** | Small directional walking-view exercise |
-| **`undercode/student_mechanics.py`** | Optional world mechanics named by story objects |
-| **`undercode/student.py`** | A complete battle character, portrait, defense pattern and selection hook |
+| **`undercode/student_sprites.py`** | Mission 1: implement directional views in normal play |
+| **`undercode/student_mechanics.py`** | Mission 2: implement the Story Studio healing light |
+| **`undercode/student.py`** | Missions 3–4: implement Lantern Pulse and Echo's changing tactics |
 | `undercode/content.py` | Register battle characters, techniques and practice keys; load story files |
 | `undercode/patterns.py` | Four worked defense-pattern classes |
 | `undercode/attacks.py` | Player timing/ rhythm mini-games and their small extension contract |
@@ -133,7 +154,8 @@ device is reported in the HUD and does not stop play.
 | `undercode/battle.py` | Explicit battle phases, menus, turns, damage and outcomes |
 | `undercode/arena.py` | Shared soul movement, hazard physics, shields and collision rules |
 | `undercode/story.py` | Validate/compile level files and manage paged story dialogue |
-| `undercode/sprites.py` | Completed directional-view reference |
+| `undercode/sprites.py` | Directional-view acceptance examples |
+| `teacher/solutions.py` | Instructor examples, never loaded by gameplay |
 | `undercode/world.py` | Overworld movement, collisions, conversations and doors |
 | `undercode/app.py` | Own the active scene; freeze and swap scenes during fades |
 | `undercode/view.py`, `art.py` | Read-only UI and original portrait/scenery drawing |

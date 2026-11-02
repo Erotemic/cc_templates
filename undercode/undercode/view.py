@@ -9,7 +9,6 @@ from .battle import Phase
 from .content import WEAPONS
 from .world import TILE, tile_center
 from .student import GAME_TITLE
-from .sprites import player_view
 from .student_sprites import choose_player_view
 
 WIDTH, HEIGHT = 960, 720
@@ -192,8 +191,7 @@ class View:
             )
             if person.key in game.session.resolved:
                 art.star(surface, (point.x + 23, point.y - 23), 6, art.MINT)
-        chooser = choose_player_view if game.sprite_task else player_view
-        facing_view = chooser(world.facing)
+        facing_view = choose_player_view(world.facing)
         art.courier(surface, world.position + origin, world.walk_time, world.moving, facing_view)
         nearby = world.interactable()
         if nearby and not world.talking and not world.dialogue:
@@ -231,8 +229,6 @@ class View:
             )
             self.wrapped(surface, message, pygame.Rect(552, 627, 365, 59), 20, art.PAPER)
 
-        if game.sprite_task:
-            self.text(surface, f"SPRITE TASK: {facing_view}", (30, 91), 22, art.GOLD)
         if world.dialogue:
             self.draw_story(surface, world.dialogue)
 

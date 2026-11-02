@@ -17,9 +17,6 @@ def main(argv=None):
     entry.add_argument("--level", metavar="KEY", help="Preview a letter-map level")
     parser.add_argument("--entry", metavar="MARKER", help="Named spawn in --level")
     parser.add_argument(
-        "--sprite-task", action="store_true", help="Use the student walking-view function"
-    )
-    parser.add_argument(
         "--check-sprites", action="store_true", help="Check the directional-sprite exercise"
     )
     parser.add_argument("--seed", type=int, default=7, help="Repeatable encounter randomness")
@@ -28,7 +25,9 @@ def main(argv=None):
         action="store_true",
         help="Validate content and simulate pattern/strike factories",
     )
-    parser.add_argument("--list", action="store_true", help="List character, practice and level keys")
+    parser.add_argument(
+        "--list", action="store_true", help="List character, practice and level keys"
+    )
     parser.add_argument("--mute", action="store_true", help="Do not open an audio device")
     parser.add_argument(
         "--headless", action="store_true", help="Use dummy SDL devices for an automated check"
@@ -126,7 +125,7 @@ def main(argv=None):
         )
     pygame.display.set_caption(GAME_TITLE + " | F1 guide | M sound")
     surface = pygame.Surface((WIDTH, HEIGHT))
-    game = Game(args.seed, args.encounter, args.practice, args.level, args.entry, args.sprite_task)
+    game = Game(args.seed, args.encounter, args.practice, args.level, args.entry)
     view = View()
     audio = Audio(enabled=not args.mute)
     clock = pygame.time.Clock()

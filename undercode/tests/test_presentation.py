@@ -127,11 +127,11 @@ class PresentationTests(unittest.TestCase):
         self.assertLessEqual(len(labels), 4)
         self.assertTrue(all(rect.top >= 378 and rect.bottom < 507 for _, rect in labels))
 
-    def test_story_pages_choices_and_sprite_task_stay_inside_their_panels(self):
+    def test_story_pages_choices_and_default_student_hook_stay_inside_their_panels(self):
         from unittest.mock import patch
         from undercode.story import Dialogue
 
-        game = Game(level="studio", sprite_task=True)
+        game = Game(level="studio")
         game.world.dialogue = Dialogue(
             "Keeper",
             {
@@ -171,6 +171,33 @@ class PresentationTests(unittest.TestCase):
         )
         self.assertTrue(all(pygame.Rect(112, 420, 732, 246).contains(r) for r in rendered))
         self.assertEqual(dialogue.selection, 9)
+
+    def test_completed_direction_mission_changes_normal_walking_and_idle_views(self):
+        from unittest.mock import patch
+        from teacher.solutions import choose_player_view
+        from undercode.controls import Controls
+
+        game = Game()
+        with (
+            patch("undercode.view.choose_player_view", choose_player_view),
+            patch("undercode.view.art.courier") as draw,
+        ):
+            for (x, y), expected in (
+                ((-1, 0), "left"),
+                ((1, 0), "right"),
+                ((0, -1), "up"),
+                ((0, 1), "down"),
+            ):
+                with self.subTest(view=expected):
+                    game.update(0.01, Controls(x=x, y=y))
+                    self.view.draw(self.surface, game)
+                    self.assertEqual(draw.call_args.args[-1], expected)
+                    game.update(0.01)  # Releasing keys preserves that view.
+                    self.view.draw(self.surface, game)
+                    self.assertEqual(draw.call_args.args[-1], expected)
+            game.restart()
+            self.view.draw(self.surface, game)
+            self.assertEqual(draw.call_args.args[-1], "down")
 
     def test_four_walking_views_are_distinct_and_animate(self):
         from undercode.art import courier

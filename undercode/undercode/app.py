@@ -29,13 +29,10 @@ class Transition:
 
 
 class Game:
-    def __init__(
-        self, seed=7, encounter=None, practice=None, level=None, entry=None, sprite_task=False
-    ):
+    def __init__(self, seed=7, encounter=None, practice=None, level=None, entry=None):
         self.seed = seed
         self.initial_level = level
         self.initial_entry = entry
-        self.sprite_task = sprite_task
         self.initial_encounter = encounter
         self.initial_practice = practice
         self.session = Session(Player(name=PLAYER_NAME))
@@ -82,7 +79,6 @@ class Game:
             self.initial_practice,
             self.initial_level,
             self.initial_entry,
-            self.sprite_task,
         )
 
     def begin_transition(self, action):

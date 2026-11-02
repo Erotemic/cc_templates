@@ -19,7 +19,9 @@ from undercode.app import Game, Scene
 from undercode.content import ROOMS
 from undercode.controls import Controls
 from undercode.model import Outcome, Session
-from undercode.sprites import VIEW_CASES, player_view
+from undercode.sprites import VIEW_CASES
+from teacher.solutions import choose_player_view as player_view
+from teacher.solutions import warm_light
 from undercode.story import Dialogue, StoryError, load_story, meets
 from undercode.world import tile_center
 
@@ -157,7 +159,8 @@ class StoryTests(unittest.TestCase):
         self.assertEqual(game.scene, Scene.BATTLE)
         self.assertEqual(game.battle.character.key, person.character)
 
-    def test_mechanic_trigger_runs_on_entry_and_reentry(self):
+    @patch.dict("undercode.world.WORLD_MECHANICS", {"warm_light": warm_light})
+    def test_completed_mechanic_trigger_runs_on_entry_and_reentry(self):
         game = Game(level="studio")
         world = game.world
         trigger = next(o for o in world.room.objects if o.kind == "trigger")
@@ -265,10 +268,9 @@ class SpriteTaskTests(unittest.TestCase):
             game.update(0.1)
             self.assertEqual(game.world.facing, facing)
 
-    def test_preview_mode_restart_and_command_line(self):
-        game = Game(level="studio", entry="entrance", sprite_task=True)
+    def test_normal_game_restart_and_command_line(self):
+        game = Game(level="studio", entry="entrance")
         game.restart()
-        self.assertTrue(game.sprite_task)
         self.assertEqual(game.world.position, tile_center(ROOMS["studio"].spawns["entrance"]))
         result = subprocess.run(
             [
@@ -278,7 +280,6 @@ class SpriteTaskTests(unittest.TestCase):
                 "--mute",
                 "--level",
                 "studio",
-                "--sprite-task",
                 "--frames",
                 "1",
             ],

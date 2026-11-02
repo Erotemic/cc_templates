@@ -1,8 +1,9 @@
-"""START HERE. A complete character + pattern that you can change and extend.
+"""GUIDED MISSIONS 3 AND 4 -- Build a new defense, then give it to Echo.
 
-Try changing the colors, greeting, ACT replies, or spawn_interval. Then add
-another pattern class and choose between them in choose_echo_pattern().
-No engine edits are needed to add a character using this contract.
+The RippleLanes class is a working example. LanternPulse is YOUR new mechanic:
+its update() is called by the game but spawns nothing until you implement it.
+Run --practice pulse to test it, then connect it in choose_echo_pattern().
+Each mission below explains the inputs, small steps, and visible success checks.
 """
 
 import math
@@ -46,6 +47,57 @@ class RippleLanes(DefensePattern):
             self.cooldown += self.spawn_interval
 
 
+class LanternPulse(DefensePattern):
+    """MISSION 3 -- Send warned sparks from the left, one every 0.8 seconds.
+
+    YOUR INPUTS:
+      dt: seconds since the last frame (roughly 1/60).
+      self.cooldown: seconds until the next spark; starts at 0.3.
+      arena.elapsed: seconds since this defense started.
+      arena.width / height: local playfield size, independent of the window.
+      arena.spawn(x, y, vx, vy, warmup=...): add a projectile.
+        x,y are its starting position; vx,vy are pixels per second.
+        warmup is warning time before movement and damage begin.
+
+    WALKTHROUGH (in update below):
+    1. Run --practice pulse. The arena is empty: you are adding its attack.
+       Enable the diagnostic and watch cooldown. Currently it never changes.
+    2. Subtract dt from self.cooldown. Run again: it should decrease.
+    3. When cooldown <= 0 AND arena.elapsed < 3.0, create one spark.
+       Start at x=8, halfway down the arena (arena.height / 2).
+       Use vx=160, vy=0 to move right. Add warmup=0.5 so a warning appears.
+    4. In that SAME branch, add 0.8 to cooldown so sparks do not appear
+       every frame. Try it without this line briefly: why is it so crowded?
+    5. Dodge up/down. Watch the spark warn, move, and leave. The time limit
+       leaves room for the final spark to cross before this phase ends.
+
+    TEST IT: preview twice; sparks should appear at the same times. Try R.
+    STRETCH: alternate heights, add safe gaps, or warn from both sides.
+    """
+
+    name = "Lantern pulse"
+    hint = "Watch the left edge. Step above or below the sparks."
+    duration = 7.5
+
+    def __init__(self):
+        self.cooldown = 0.3
+
+    def update(self, arena, dt):
+        if False:
+            print(
+                "PULSE DEBUG:",
+                "time=",
+                round(arena.elapsed, 2),
+                "cooldown=",
+                round(self.cooldown, 2),
+            )
+
+        # TODO 1: Decrease cooldown by dt.
+        # TODO 2: When ready (and elapsed < 3), spawn a warned right-moving spark.
+        # TODO 3: Add 0.8 to cooldown in that branch.
+        pass
+
+
 def draw_echo(surface, center, scale, time):
     """An original lantern spirit. Replace this with YOUR character's art."""
     x, y = center
@@ -79,8 +131,31 @@ def draw_echo(surface, center, scale, time):
 
 
 def choose_echo_pattern(context):
-    # context.turn, context.enemy_hp, and context.calm are available here.
-    # TRY: return another pattern after two turns or below half health.
+    """MISSION 4 -- Let Echo change patterns after the opening turn.
+
+    YOUR INPUTS:
+      context.turn: 0 for the first defense, 1 for the next, then 2, ...
+      context.calm: understanding earned through ACT choices.
+      context.enemy_hp / enemy_max_hp: Echo's remaining / maximum health.
+
+    WALKTHROUGH:
+    1. Finish mission 3 and preview LanternPulse with --practice pulse.
+    2. Run --encounter echo. Use ITEM or ACT, survive a defense, then repeat.
+       Enable the diagnostic to see how turn changes between defenses.
+    3. Before the fallback, add an if asking whether context.turn >= 1.
+    4. In that branch return LanternPulse(). Keep RippleLanes() as the
+       fallback, so the opening defense still uses the worked example.
+    5. Play two turns again. Is the SECOND defense visibly your new pattern?
+       The name above the arena should change from Ripples to Lantern pulse.
+
+    TEST IT: opening turn = ripples; next turn = pulse. Restart resets it.
+    Return a NEW instance each time: parentheses construct a fresh timer.
+    STRETCH: use calm or HP instead of turn; explain your condition first.
+    """
+    if False:
+        print("ECHO DEBUG:", "turn=", context.turn, "calm=", context.calm, "HP=", context.enemy_hp)
+
+    # TODO: Add the condition and return your new pattern in its branch.
     return RippleLanes()
 
 
@@ -103,6 +178,6 @@ ECHO = Character(
 )
 
 # Registration is ordinary Python data. Add your own keys here and place a new
-# Placement in content.py. The --practice key previews a pattern immediately.
+# character letter in a story JSON legend. --practice previews a pattern.
 EXTRA_CHARACTERS = (ECHO,)
-EXTRA_PATTERNS = {"ripples": RippleLanes}
+EXTRA_PATTERNS = {"ripples": RippleLanes, "pulse": LanternPulse}

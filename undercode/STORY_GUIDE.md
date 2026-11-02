@@ -167,13 +167,16 @@ conversations with flags are often enough to tell a story.
 
 ## Add mechanics when you need them
 
-Open **`undercode/student_mechanics.py`**. `warm_light` is a worked example:
+Open **`undercode/student_mechanics.py`**. Mission 2 gives you the
+`warm_light(world, obj)` function, already connected to the Studio's mint oval.
+Its effect is intentionally unfinished: follow the inputs, diagnostic and
+small steps in its docstring to implement healing and a HUD message. Play
+`python main.py --level studio` after each edit. Ordinary fountains still
+restore HP while this mission is unfinished.
+
+The engine calls a registry function by name:
 
 ```python
-def warm_light(world, obj):
-    healed = world.session.player.heal(3)
-    world.tell(f"{obj.data['name']} restores {healed} HP.")
-
 WORLD_MECHANICS = {"warm_light": warm_light}
 ```
 

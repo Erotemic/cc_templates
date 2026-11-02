@@ -9,27 +9,36 @@ Open the engine when an extension needs it.
 
 ## A first session
 
-For a story-focused class: preview `--level studio`, edit its dialogue and map,
-add a linked level, and explain one flag-driven change. For a conditionals class:
-use mission 0 in `MISSIONS.md`, `--sprite-task`, and `--check-sprites`. The
-exercise's failed checks are intentional until the student completes it. The
-normal game and ordinary test suite use the finished four-view reference.
+For coding, use the four guided missions in [MISSIONS.md](MISSIONS.md).
+Each function includes its inputs, an incremental walkthrough, an opt-in
+`if False:` diagnostic, TODOs and visible acceptance checks, following the
+Infinity Climber format. A student's implementation changes **normal play**:
 
-For a battle-mechanics session:
+| Mission | Function | Starter behavior | Student adds |
+| --- | --- | --- | --- |
+| 1 | `student_sprites.choose_player_view` | Always down | Four directional views |
+| 2 | `student_mechanics.warm_light` | No effect | Healing and feedback on entry |
+| 3 | `student.LanternPulse.update` | Empty arena | Timed, warned moving sparks |
+| 4 | `student.choose_echo_pattern` | Always Ripples | Pulse after the opening turn |
 
-- **5 minutes:** run the game; locate Folio; try ACT, a defense reply, and SPARE.
-- **10 minutes:** change Echo's writing/colors and run `--encounter echo`.
-- **15 minutes:** edit ripple spacing or warnings; use `--practice ripples`.
-- **10 minutes:** explain the pattern's state and `dt`; try two repeatable seeds.
-- **5 minutes:** run `--check`, show a playable change, and describe one limitation.
+Give mission 1 a session of its own: predict x/y values, observe diagnostic
+output, implement one direction, then the other directions, then diagonals.
+Use `--check-sprites` after trying the game. Failed exercise checks are expected
+in the starter. The normal test suite checks the engine independently of
+whether students have completed the missions.
 
-For beginners, keep the character/ACT data as the main surface. Students ready
-for functions can edit `choose_echo_pattern`. Classes and composition become
-useful when they make an independent pattern or player technique.
+Missions 2 and 3 are independent of mission 1; mission 4 builds on mission 3.
+For story authors, edit JSON using [STORY_GUIDE.md](STORY_GUIDE.md) and preview
+`--level studio`. Clearly distinguish story customization from programming new
+behavior. Both are useful, but they teach different things.
 
-`MISSIONS.md` contains guided projects and independent goals. The starting
-content is complete, so a partial student extension does not prevent everyone
-else from running the template.
+**Instructor examples:** `teacher/solutions.py` has completed versions for
+comparison. Gameplay never imports them and there is no flag that substitutes
+them for student work. The tests inject these examples to verify that completing
+the TODOs changes the actual rendering, trigger and battle paths. Consider
+omitting the teacher folder from a student handout after preparing your copy;
+it is not needed to play. Keep it if you want students to run the supplied
+regression suite, which uses the examples as extension fixtures.
 
 ## Architecture to point at
 
@@ -75,9 +84,9 @@ dialogue completion flags commit only on the last confirmed page. Branches
 replace the default dialogue; the first matching branch wins.
 
 `World.facing` remembers the last requested walking direction, including when
-facing a wall. `sprites.player_view` chooses the dominant axis and `art.courier`
-draws a view. `--sprite-task` substitutes the student's selection function;
-restart preserves this choice. Rendering never changes walking state.
+facing a wall. `student_sprites.choose_player_view` chooses the view and `art.courier`
+draws it. The student function is used on every normal world frame, including
+after restart. Rendering never changes walking state.
 
 Put new **rules** in the model that owns them. A story choice should not be checked in drawing code. An attack
 pattern should not read keyboard globals, screen pixels or wall-clock time.
@@ -93,9 +102,9 @@ Call the student's extension explicitly at the boundary where it belongs.
 python main.py --list
 python main.py --check
 python main.py --level studio
-python main.py --sprite-task
-python main.py --check-sprites  # intentionally unfinished student exercise
+python main.py --check-sprites  # mission 1 progress; unfinished in starter
 python main.py --encounter echo
+python main.py --practice pulse  # mission 3; no sparks until implemented
 python main.py --practice shield --seed 7
 python -m unittest discover -s tests -v
 ```

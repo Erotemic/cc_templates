@@ -1,15 +1,5 @@
-"""Working reference for choosing a walking view; drawing lives in art.py."""
+"""Acceptance examples for the walking-view mission (not an implementation)."""
 
-
-def player_view(facing):
-    """Use the dominant axis; ties face vertically. World remembers idle facing."""
-    x, y = facing
-    if abs(x) > abs(y):
-        return "right" if x > 0 else "left"
-    return "up" if y < 0 else "down"
-
-
-# Shared exercise cases, independent of the reference function's implementation.
 VIEW_CASES = (
     ((0, 1), "down"),
     ((0, -1), "up"),

@@ -1,157 +1,131 @@
-# Make UnderCode yours
+# Build the missing features
 
-The normal game works. The sprite exercise has its own opt-in practice mode;
-you can leave it unfinished and still play normally. Make one small change,
-test it, then explain it.
+Run **`python main.py`**. Movement, rooms, conversations, battles and sound work.
+The Courier always looks down, the Story Studio's light does not heal, and the
+new Lantern Pulse defense has no sparks. **You implement those features.**
+The game already calls your functions; finishing a TODO changes normal play.
 
-## 0. Face the direction you walk
+Each mission has **YOUR INPUTS**, a **WALKTHROUGH**, diagnostics you can turn on,
+and **TEST IT** checks directly beside its code. Work on one small step, run
+again, and explain the result. No special exercise mode is needed.
 
-**Task:** show a different view when the Courier walks up, down, left or right.
-Open **`undercode/student_sprites.py`** and run:
+## Mission 0 — Make it yours
 
-```bash
-python main.py --sprite-task
-python main.py --check-sprites
-```
+Change `GAME_TITLE`, `PLAYER_NAME`, and Echo's writing in `undercode/student.py`.
+Run again and find your changes. This is customization; the next four missions
+ask you to implement behavior that is missing from the starter.
 
-The exercise starts with only the down-facing case. Complete
-`choose_player_view(facing)`, returning `"up"`, `"down"`, `"left"`, or `"right"`.
-The drawing code already has all four views: your job is to choose one.
+## Mission 1 — Face the direction you walk
 
-1. Read `x, y = facing`. On a screen, positive x means right and positive y
-   means down. Predict the view for `(0, -1)` and `(-1, 0)` before coding.
-2. Add conditions for up, left and right. The down case is worked for you.
-3. Walk in all four directions, then stop. The idle character should keep
-   looking in the last direction: the world already remembers `facing`.
-4. Handle diagonal movement by choosing the axis with the largest absolute
-   value. When magnitudes tie, use the vertical view. `(0, 0)` falls back to down.
-5. Run `--check-sprites` until all eight checks pass. It exits with a failure
-   status while the exercise is unfinished; ordinary `--check` remains independent.
+**Open:** `undercode/student_sprites.py` → `choose_player_view(facing)`.
+**Goal:** left, right and up walking gain their own views in the actual game.
+The art already exists, but choosing its view is your job.
 
-**Explain:** why use facing rather than position? Why should releasing keys
-not reset the view? What happens if the player faces a wall?
+1. Run `python main.py`. Walk left, then up. Notice the face still looks down.
+2. Read **YOUR INPUT** in the function. Set its diagnostic `if False:` to
+   `if True:` briefly. Compare x and y while pressing each direction.
+3. Write one condition for left: when x is negative, return `"left"`.
+   Run the game. Confirm that you have added a visible feature.
+4. Add right and up. Keep `return "down"` for the remaining direction.
+5. Try diagonals. Use `abs(x)` and `abs(y)` to choose the strongest axis;
+   ties choose vertical. The inline walkthrough explains where this belongs.
+6. Run `python main.py --check-sprites`. All eight examples should pass.
+   This command reports unfinished work; `--check` checks engine/content health.
 
-**Stretch:** customize each drawing in `art.courier`, or add two walking frames
-per view using `time` and `walking`. Keep drawing separate from collision rules.
-The working reference is `undercode/sprites.py`; the normal game uses it.
+**Test it:** all four directions, diagonal movement, stopping, and facing a wall.
+Idle should keep the last view. `World` already remembers facing, so you do not
+need to store another copy in the drawing code.
 
-## 0b. Tell a story before adding mechanics
+**Explain:** why use facing instead of position? Why is up a negative y?
+**Stretch:** change each drawing in `art.courier`, or add walking frames.
 
-Follow [STORY_GUIDE.md](STORY_GUIDE.md). Change the Story Keeper's writing in
-`studio.json`, move the bookmark by moving its letter, and test both choices.
-Then copy the small example into a new JSON file and link a door to its named
-entrance. Add an ending that changes a later conversation with a flag.
+## Mission 2 — Give a place an effect
 
-**Check:** travel both ways, read/close dialogue, try the locked door before
-and after collecting its item, and restart to confirm the story starts fresh.
-Run `--check` after every edit. No coordinate pairs or Python are needed.
+**Open:** `undercode/student_mechanics.py` → `warm_light(world, obj)`.
+**Goal:** entering the mint oval restores up to 3 HP and reports the actual gain.
 
-**Stretch:** copy `warm_light` in `student_mechanics.py`, change its rule, and
-connect its registry name to a trigger or `on_interact` hook in the map legend.
+1. Run `python main.py --level studio`. Walk onto the mint oval below the path.
+   It is connected to your function, but its effect is unfinished.
+2. Enable the diagnostic. Read the function's **YOUR INPUTS** section.
+3. Store the player in a local variable. Call `player.heal(3)` and keep what
+   it returns. The existing method caps HP; you supply when and why it is used.
+4. Show the returned amount with `world.tell(...)` and an f-string.
+5. Test at low HP, near maximum HP, and full HP. The inline walkthrough shows
+   how to make a temporary low-HP experiment; remove the setup line afterward.
 
-## 1. A character with a point of view
+**Test it:** enter at 5/20 → 8/20; stand still → still 8/20; leave and return →
+11/20. At 19/20 it reports 1, and at full HP it reports 0. The engine handles
+entry detection; your function supplies the mechanic.
 
-Open `undercode/student.py` and edit Echo's `name`, `description`, `greeting`,
-`goodbye` and ACT replies. Keep the key `echo` for this first experiment, so its
-room placement continues to work.
+**Explain:** why use the returned healing amount rather than always saying 3?
+**Stretch:** require a flag, charge a snack, or make the light work once per run.
 
-```bash
-python main.py --encounter echo
-```
+## Mission 3 — Create a warned defense
 
-Make one ACT helpful, one neutral and one funny. `calm` controls how much an ACT
-builds understanding. The total needed is `calm_needed` on the character.
+**Open:** `undercode/student.py` → `LanternPulse.update(arena, dt)`.
+**Goal:** sparks warn at the left edge, then travel right at timed intervals.
 
-**Check:** can a player understand how to reach SPARE from the writing? Does a
-combat finish still work? Does Echo have a distinct voice?
+1. Run `python main.py --practice pulse`. At first this arena has no hazards.
+2. Enable the diagnostic and read **YOUR INPUTS**. Subtract `dt` from
+   `self.cooldown`; watch it decrease instead of staying at 0.3.
+3. When the cooldown reaches zero, call `arena.spawn(...)`. The inline
+   walkthrough gives a starting position, velocity and warning time to try.
+4. In the same branch, add 0.8 seconds to the cooldown. Otherwise the function
+   creates a spark every frame instead of one per interval.
+5. Add the `arena.elapsed < 3.0` condition so there is time for sparks to cross
+   and leave before the defense ends. Test moving above/below their path.
 
-## 2. A readable attack pattern
+`RippleLanes` in the same file is a worked example to investigate. You implement
+**LanternPulse**, whose timer and projectile code are intentionally unfinished.
+The factory is registered already, so you can see each change immediately.
 
-In `RippleLanes`, change `spawn_interval`, projectile speed, colors, or which
-lanes are left open. The interval must stay positive. `warmup` shows a warning
-before a projectile becomes dangerous.
+**Test it:** warnings before movement, repeated sparks at a steady interval,
+room to dodge, eventual cleanup, and R restarting the timer. Run `--check`.
+**Explain:** why subtract seconds instead of a fixed amount per frame?
+**Stretch:** alternate heights or edges, or leave gaps between several sparks.
 
-```bash
-python main.py --practice ripples --seed 7
-python main.py --check
-```
+## Mission 4 — Let a character change tactics
 
-`dt` is elapsed **seconds**, not frames. `arena.width` and `arena.height` describe
-the local playfield; do not hard-code window coordinates into a pattern.
+**Open:** `undercode/student.py` → `choose_echo_pattern(context)`.
+**Goal:** Echo uses Ripples first, then your Lantern Pulse on later turns.
 
-**Check:** can you show where the player can safely move before each wave? Try
-the same seed twice. A difficult pattern should still be readable and possible.
+1. Complete mission 3 first. Run `python main.py --encounter echo`.
+2. Use ITEM or ACT, survive a defense, then take another turn. Enable the
+   selector's diagnostic and notice that `context.turn` starts at 0.
+3. Before the existing fallback, add a condition for `context.turn >= 1`.
+4. Return a **new** `LanternPulse()` in that branch. Keep `RippleLanes()` for
+   the opening turn. The inline walkthrough explains the other context fields.
+5. Play again: the arena title and hazards should change on the second defense.
 
-## 3. A character that changes their reply
+**Test it:** opening defense = Ripples; next defense = Pulse. Restart returns
+to Ripples. Each call constructs a fresh instance so timers do not leak.
+**Explain:** how is selecting a pattern different from updating its projectiles?
+**Stretch:** respond to understanding (`calm`) or remaining HP instead of turn.
 
-Add a selection rule to `choose_echo_pattern`. `context` contains `turn`,
-`enemy_hp`, `enemy_max_hp` and `calm`.
+## Story project — Build a new place
 
-For example, import `ClockworkHops` from `.patterns` and return it after a turn
-threshold, while returning `RippleLanes()` before that threshold. Or make the
-pattern gentler when the player has built understanding.
+Follow [STORY_GUIDE.md](STORY_GUIDE.md). This project uses story data rather than
+implementing engine rules. Move letters, write conversations and choices, add a
+level file, and connect a door to its named entrance. Set a flag in one place
+and use it to change a later conversation or open a gate.
 
-**Check:** each selection must return a **new instance**. Reusing one pattern
-object carries old cooldowns into the next turn. Describe the rule in words
-before writing the condition. `--check` exercises several turn contexts.
+**Test it:** travel both ways, close/read dialogue, try locked gates before and
+after collecting an item, and restart for a fresh story. Run `--check`.
 
-## 4. Your own special defense
+## After the guided missions — Independent projects
 
-Create another `DefensePattern` class in `student.py`. Copy the shape of
-`RippleLanes`, then replace the actual mechanic. A few ideas:
+These projects give you a goal; finding and connecting the code is part of the
+work. Start with a small playable version and explain how you tested it.
 
-- Alternating left/right projectiles with one clear safe lane.
-- A beam that warns first, then sweeps a small area.
-- A gravity/jump sequence with an occasional high projectile to stand under.
-- A shield sequence whose direction order follows a musical phrase.
+- **A new neighbor:** define a character, register it in `EXTRA_CHARACTERS`,
+  and place it using a letter in a level legend. Give it distinctive ACT choices
+  and a new defense sequence. Check peaceful, combat, leave and loss outcomes.
+- **A special player technique:** investigate the `Strike` contract in
+  `attacks.py`. Implement a timing mechanic, register its `Weapon` in `content.py`,
+  and test misses, perfect timing and repeated inputs. Tab selects weapons.
+- **A bigger adventure:** a dash with a cooldown, moving world characters,
+  scrolling levels, a multi-stage boss, remappable controls, a nested dialogue
+  editor, or saved progress with a versioned format.
 
-Register a preview key in `EXTRA_PATTERNS` and connect the factory to a character
-through `choose_pattern`. Adding a registry entry alone makes the preview
-available; it does not put the pattern into someone's battle.
-
-**Check:** ensure hazards expire, warnings precede danger, and the hint matches
-the control mode. Test losing, retrying and returning to the menu.
-
-## 5. A new technique for the player
-
-Read `TimingStrike` and `RhythmStrike` in `attacks.py`. Both expose the same
-contract while implementing different timing rules.
-
-Start with a faster/slower focus strike, then make a different target layout or
-beat sequence. Keep the result in `[0, 1]`. A missed input must finish eventually
-and score zero; one beat must not award points repeatedly when Z is spammed.
-
-Register a new `Weapon` in `content.py` and select it with Tab in the overworld.
-Damage stays in `battle.py`; the sequence supplies accuracy, not direct HP edits.
-
-**Check:** compare no input, early input, perfect input, late input and repeated
-input. Can another character use your technique without special engine code?
-
-## 6. A new neighbor and a new place
-
-Copy a character definition, choose a unique key, and add it to
-`EXTRA_CHARACTERS`. In a level's JSON map, draw a new letter and give it a legend:
-
-```json
-"N": {"kind": "character", "id": "my_neighbor", "character": "my_character_key"}
-```
-
-Add a new level file and doors using named markers if the story needs another
-place. The character key chooses the battle definition; `id` remembers this
-neighbor's outcome. Use `"requires": "spared:my_neighbor"` in a later dialogue
-branch or on a door. See [STORY_GUIDE.md](STORY_GUIDE.md) for examples.
-
-Run `--check` for malformed maps, duplicate IDs, invalid doors, unknown symbols
-and pattern/strike factory errors.
-
-**Check:** go there on foot, decline the invitation, accept it, spare the
-character, return, and speak again. Repeat with a combat finish and with leaving
-practice. Do transitions preserve the right player position and story state?
-
-## Independent projects
-
-Choose a goal and find the right connection points yourself: a dash with a
-cooldown, a parry window, a moving arena boundary, a multi-stage boss, a party
-member, a scrolling overworld, accessible remappable controls, a nested dialogue editor,
-or a save format with a version number. Keep the smallest playable version and
-add a regression check that would catch a real mistake in your new rule.
+All files are editable. The guided functions give you a first place to work;
+you can extend the game beyond them once you understand their boundaries.
