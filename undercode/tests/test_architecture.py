@@ -17,7 +17,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 from undercode.app import Game
 from undercode.controls import Controls
 from undercode.contracts import EncounterRequest, EncounterResult, Outcome
-from undercode.encounters.engine import Phase
+from undercode.encounters.encounter import Phase
 from undercode.exercises import check_exercises
 from undercode import student_overworld, student_encounters
 from teacher import solutions

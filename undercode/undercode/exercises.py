@@ -37,7 +37,7 @@ def check_sprint():
 
 def check_healing():
     """Call the actual healing function at low, near-full and full HP."""
-    from .overworld.engine import World
+    from .overworld.world import World
     from .overworld.maps import compile_rooms
     from .overworld.model import Room, Spawn, Trigger
     from .student_overworld import warm_light
@@ -151,7 +151,7 @@ def check_mouse():
 def check_piano():
     """Test the student's entire collision/note rule, without opening an audio device."""
     from .app import Game
-    from .overworld.engine import tile_center
+    from .overworld.world import tile_center
     from .student_overworld import update_piano
 
     world = Game().world

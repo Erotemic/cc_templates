@@ -13,7 +13,7 @@ os.environ["SDL_AUDIODRIVER"] = "dummy"
 from undercode.app import Game
 from undercode.audio import Audio
 from undercode import student_overworld
-from undercode.overworld.engine import tile_center
+from undercode.overworld.world import tile_center
 from undercode.exercises import check_piano
 from teacher import solutions
 

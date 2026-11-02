@@ -19,7 +19,8 @@ no downloads, SVG/Cairo dependencies, or build steps. Use `--mute` when desired.
 ## Choose where to begin
 
 - **Explore code:** read [ENGINE_GUIDE.md](ENGINE_GUIDE.md), then follow one frame
-  through `runtime.py`, `app.py` and the selected engine's `update` method.
+  through `runtime.py` and `app.py`, then [World.update](undercode/overworld/world.py)
+  or [Encounter.update](undercode/encounters/encounter.py).
 - **Learn by building:** open [MISSIONS.md](MISSIONS.md). Overworld tasks
   use ordinary functions; encounter tasks introduce timers, tactics and mouse hit tests.
 - **Tell a story:** all rooms, dialogue, choices and door links are in
@@ -105,8 +106,10 @@ Python files. `--list` lists room, encounter and practice IDs. `--level studio
 | `undercode/contracts.py` | Small records used to connect the two systems |
 | `undercode/model.py` | The one persistent Player and this run's story progress |
 | `undercode/controls.py` | Held directions versus one-frame presses |
-| `undercode/overworld/` | Room records, map placement, walking/interactions, and world drawing |
-| `undercode/encounters/` | Opponent definitions, phases, attacks, defense physics, and encounter drawing |
+| **`undercode/overworld/world.py`** | Read `World.update` first: walking, collisions, interactions and room requests |
+| `undercode/overworld/` | Room records, map placement and world drawing |
+| **`undercode/encounters/encounter.py`** | Read `Encounter.update` first: phases, choices, turns and outcomes |
+| `undercode/encounters/` | Opponent definitions, attacks, defense physics and encounter drawing |
 | `undercode/dialogue.py` | Conversation definitions, pages, choices and completion flags |
 | `undercode/student_world.py` | All rooms and story writing in one file |
 | `undercode/student_overworld.py` | Guided world behavior functions |

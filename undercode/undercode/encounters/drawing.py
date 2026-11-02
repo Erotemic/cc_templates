@@ -9,7 +9,7 @@ import pygame
 from .. import art
 from ..presentation import UI
 from .arena import Mode
-from .engine import Phase
+from .encounter import Phase
 from .menu import main_buttons, option_buttons
 
 ARENA_RECT = pygame.Rect(180, 332, 600, 196)

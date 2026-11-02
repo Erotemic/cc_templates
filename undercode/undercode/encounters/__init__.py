@@ -1,1 +1,1 @@
-"""The encounters system. Read engine.py first, then drawing.py."""
+"""The encounters system. Read encounter.py first, then drawing.py."""

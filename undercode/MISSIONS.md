@@ -13,7 +13,7 @@ them off after observing. All implementations affect normal play.
 ## Overworld route
 
 Run `python main.py --overworld`. Open `student_overworld.py` beside
-`overworld/engine.py`. These tasks use ordinary functions; no pattern class is
+`overworld/world.py`. These tasks use ordinary functions; no pattern class is
 needed. The supplied engine still supports walking, rooms and conversations.
 
 ### 1. A different view for each direction

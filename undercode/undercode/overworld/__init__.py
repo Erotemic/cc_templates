@@ -1,1 +1,1 @@
-"""The overworld system. Read engine.py first, then drawing.py."""
+"""The overworld system. Read world.py first, then drawing.py."""

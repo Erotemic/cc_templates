@@ -5,7 +5,7 @@ import pygame
 from .. import art
 from ..presentation import UI
 from ..settings import WIDTH, HEIGHT
-from .engine import TILE, tile_center
+from .world import TILE, tile_center
 from .model import Rest, Sign, Item, Trigger, PianoKey
 
 

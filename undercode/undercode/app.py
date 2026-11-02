@@ -71,7 +71,7 @@ class Game:
         """Compile the author's rooms and start at a named marker; no opponents needed."""
         from .student_world import LEVELS, START_LEVEL, START_ENTRY
         from .overworld.maps import compile_rooms, validate_start
-        from .overworld.engine import World
+        from .overworld.world import World
 
         rooms = compile_rooms(definitions=LEVELS)
         room_key = level or START_LEVEL
@@ -86,7 +86,7 @@ class Game:
     def make_encounter(self, *, opponent):
         """Borrow the same Player for an encounter with the currently selected technique."""
         from .encounters.content import WEAPONS
-        from .encounters.engine import Encounter
+        from .encounters.encounter import Encounter
 
         self.technique_name = WEAPONS[self.session.player.weapon].name
         return Encounter(
@@ -110,7 +110,7 @@ class Game:
         """Create an isolated defense lab; it imports no rooms and starts in DEFEND."""
         from .encounters.content import OPPONENTS, PATTERNS
         from .encounters.model import Act
-        from .encounters.engine import Phase
+        from .encounters.encounter import Phase
 
         if pattern_id not in PATTERNS:
             raise ValueError(f"Unknown pattern {pattern_id!r}. Choose: {', '.join(PATTERNS)}")

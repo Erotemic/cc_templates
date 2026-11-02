@@ -2,7 +2,7 @@
 
 These classes contain data, not a hidden scripting language. Room's legend maps
 letters to records. maps.py walks the letters to place them. Add behavior in
-engine.py or an ordinary Python callback; drawing.py reads the resulting state.
+world.py or an ordinary Python callback; drawing.py reads the resulting state.
 """
 
 from dataclasses import dataclass, field

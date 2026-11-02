@@ -22,7 +22,7 @@ ROOMS = compile_rooms(definitions=LEVELS)
 
 from undercode.app import Game
 from undercode.audio import Audio
-from undercode.encounters.engine import Phase
+from undercode.encounters.encounter import Phase
 from undercode.encounters.content import OPPONENTS, PATTERNS
 from undercode.encounters.model import Act
 from undercode.view import View

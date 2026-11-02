@@ -2,7 +2,7 @@
 
 The RippleLanes class is a working example. LanternPulse is YOUR new mechanic:
 its update() is called by the game but spawns nothing until you implement it.
-Read encounters/engine.py and its phase handlers to understand the caller.
+Read encounters/encounter.py and its phase handlers to understand the caller.
 Run --practice pulse to test it, then connect it in choose_echo_pattern().
 F2 shows phase/turn state. --check-exercise pulse/tactics runs YOUR implementation.
 Mission 6 adds menu hit testing in clicked_button; it is independent of the

@@ -14,7 +14,7 @@ from teacher import solutions
 from undercode import student_encounters
 from undercode.app import Game
 from undercode.controls import Controls
-from undercode.encounters.engine import Phase
+from undercode.encounters.encounter import Phase
 from undercode.encounters.menu import main_buttons, option_buttons
 from undercode.encounters.model import Act
 from undercode.exercises import check_mouse

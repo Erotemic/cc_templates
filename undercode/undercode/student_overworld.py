@@ -1,7 +1,7 @@
 """OVERWORLD LEARNING ROUTE -- facing, sprinting, and one-time interactions.
 
 The NORMAL game already calls choose_player_view(). No mode switch is needed.
-Read overworld/engine.py alongside these functions; F2 shows current state.
+Read overworld/world.py alongside these functions; F2 shows current state.
 At first the Courier always faces down. You implement the missing directions.
 Run ``python main.py --overworld`` after each change. Check one task with
 ``--check-exercise facing`` (or sprint/healing). Checks run YOUR code.
@@ -47,7 +47,7 @@ def movement_speed(*, controls):
     """MISSION 2 -- Hold Shift to sprint. This return value is used by World.move.
 
     READ THE ENGINE FIRST:
-      Find 'movement = direction * speed * seconds' in overworld/engine.py.
+      Find 'movement = direction * speed * seconds' in overworld/world.py.
       direction chooses where; speed chooses pixels/second; seconds chooses time.
       Multiplying these gives distance for this frame, not a teleport amount.
 

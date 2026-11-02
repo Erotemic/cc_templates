@@ -26,12 +26,12 @@ ROOMS = compile_rooms(definitions=LEVELS)
 from undercode.model import Player
 from undercode.app import Game
 from undercode.encounters.arena import Arena
-from undercode.encounters.engine import Phase
+from undercode.encounters.encounter import Phase
 from undercode.controls import Controls
 
 from undercode.encounters.model import TurnContext
 from undercode.student_encounters import LanternPulse, RippleLanes
-from undercode.overworld.engine import tile_center
+from undercode.overworld.world import tile_center
 
 
 class CompletedMissionTests(unittest.TestCase):

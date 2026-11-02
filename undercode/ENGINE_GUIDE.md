@@ -79,7 +79,7 @@ encounter request or Tab technique selection asks the coordinator to load it.
 
 ## 4. Trace a walking frame
 
-Read `overworld/engine.py`, beginning with `World.update`, then follow `move`.
+Read `overworld/world.py`, beginning with `World.update`, then follow `move`.
 
 Suppose you hold Right for a frame lasting 0.02 seconds:
 
@@ -136,7 +136,7 @@ made. See `Conversation.update` for the exact branches and return points.
 
 ## 6. Trace an entire encounter turn
 
-Read `encounters/engine.py`: `update`, its four handlers, then `choose`.
+Read `encounters/encounter.py`: `update`, its four handlers, then `choose`.
 
 ```mermaid
 stateDiagram-v2

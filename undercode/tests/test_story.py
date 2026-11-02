@@ -16,7 +16,7 @@ from undercode.model import Session
 from undercode.dialogue import Conversation, Dialogue, Choice, Branch, available
 from undercode.overworld.model import Room, Spawn, Person, Door, Sign, Item, Trigger, Tile
 from undercode.overworld.maps import compile_rooms, validate_start, MapError
-from undercode.overworld.engine import World, tile_center
+from undercode.overworld.world import World, tile_center
 from undercode.art import folio
 from teacher import solutions
 

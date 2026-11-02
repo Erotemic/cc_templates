@@ -16,14 +16,14 @@ ROOMS = compile_rooms(definitions=LEVELS)
 from undercode.app import Game, Scene
 from undercode.encounters.arena import Arena, DefensePattern, Mode, Vec
 from undercode.encounters.attacks import TimingStrike, RhythmStrike
-from undercode.encounters.engine import Encounter as Battle, Phase
+from undercode.encounters.encounter import Encounter as Battle, Phase
 from undercode.encounters.content import OPPONENTS, WEAPONS, PATTERNS
 from undercode.controls import Controls
 from undercode.model import Player, Session
 from undercode.contracts import Outcome, EncounterRequest
 from undercode.encounters.model import TurnContext
 from undercode.encounters.validate import validate_encounters
-from undercode.overworld.engine import World, tile_center
+from undercode.overworld.world import World, tile_center
 
 
 class QuietPattern(DefensePattern):
