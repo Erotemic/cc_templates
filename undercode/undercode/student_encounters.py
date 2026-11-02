@@ -1,18 +1,17 @@
-"""GUIDED MISSIONS 3 AND 4 -- Build a new defense, then give it to Echo.
+"""ENCOUNTER LEARNING ROUTE -- GUIDED MISSIONS 4 AND 5 -- Build a new defense, then give it to Echo.
 
 The RippleLanes class is a working example. LanternPulse is YOUR new mechanic:
 its update() is called by the game but spawns nothing until you implement it.
+Read encounters/engine.py and its phase handlers to understand the caller.
 Run --practice pulse to test it, then connect it in choose_echo_pattern().
+F2 shows phase/turn state. --check-exercise pulse/tactics runs YOUR implementation.
 Each mission below explains the inputs, small steps, and visible success checks.
 """
 
 import math
-import pygame
-from .arena import DefensePattern
-from .model import Act, Character
-
-GAME_TITLE = "UnderCode"
-PLAYER_NAME = "Courier"
+from .encounters.arena import DefensePattern
+from .encounters.model import Act, Opponent
+from .student_art import draw_echo
 
 
 class RippleLanes(DefensePattern):
@@ -28,25 +27,25 @@ class RippleLanes(DefensePattern):
         self.wave = 0
         self.spawn_interval = 0.7  # TRY: .9 is calmer; .5 is busier.
 
-    def update(self, arena, dt):
-        """Consume dt seconds and create any ripple rows due during the spawn window.
+    def update(self, *, arena, seconds):
+        """Consume the elapsed seconds and create any ripple rows due during the spawn window.
 
         Compute a sliding gap from the wave counter and warn before projectiles
         fall. Arena moves and removes them; this method only schedules hazards.
         """
         if self.spawn_interval <= 0:
             raise ValueError("Ripple spawn_interval must be positive.")
-        self.cooldown -= dt
+        self.cooldown -= seconds
         while self.cooldown <= 0 and arena.elapsed < 3.8:
             # The opening slides left/right instead of being completely random.
             gap = 2 + round(math.sin(self.wave * 0.9) * 2)
             for lane in range(7):
                 if lane not in (gap, gap + 1):
                     arena.spawn(
-                        (lane + 0.5) * arena.width / 7,
-                        5,
-                        0,
-                        105,
+                        x=(lane + 0.5) * arena.width / 7,
+                        y=5,
+                        vx=0,
+                        vy=105,
                         radius=6,
                         color=(137, 235, 202),
                         warmup=0.4,
@@ -56,21 +55,21 @@ class RippleLanes(DefensePattern):
 
 
 class LanternPulse(DefensePattern):
-    """MISSION 3 -- Send warned sparks from the left, one every 0.8 seconds.
+    """MISSION 4 -- Send warned sparks from the left, one every 0.8 seconds.
 
     YOUR INPUTS:
-      dt: seconds since the last frame (roughly 1/60).
+      seconds: seconds since the last frame (roughly 1/60).
       self.cooldown: seconds until the next spark; starts at 0.3.
       arena.elapsed: seconds since this defense started.
       arena.width / height: local playfield size, independent of the window.
-      arena.spawn(x, y, vx, vy, warmup=...): add a projectile.
+      arena.spawn(x=..., y=..., vx=..., vy=..., warmup=...): add a projectile.
         x,y are its starting position; vx,vy are pixels per second.
         warmup is warning time before movement and damage begin.
 
     WALKTHROUGH (in update below):
     1. Run --practice pulse. The arena is empty: you are adding its attack.
        Enable the diagnostic and watch cooldown. Currently it never changes.
-    2. Subtract dt from self.cooldown. Run again: it should decrease.
+    2. Subtract seconds from self.cooldown. Run again: it should decrease.
     3. When cooldown <= 0 AND arena.elapsed < 3.0, create one spark.
        Start at x=8, halfway down the arena (arena.height / 2).
        Use vx=160, vy=0 to move right. Add warmup=0.5 so a warning appears.
@@ -88,13 +87,13 @@ class LanternPulse(DefensePattern):
     duration = 7.5
 
     def __init__(self):
-        """Initialize this turn's timer; mission 3 supplies the code that counts it down."""
+        """Initialize this turn's timer; mission 4 supplies the code that counts it down."""
         self.cooldown = 0.3
 
-    def update(self, arena, dt):
-        """MISSION 3: implement the timer and warned sparks described above.
+    def update(self, *, arena, seconds):
+        """MISSION 4: implement the timer and warned sparks described above.
 
-        Arena calls this once per defense update with dt in seconds. Keep state
+        Arena calls this once per defense update with seconds in seconds. Keep state
         on self and create projectiles through arena.spawn; the starter has no
         effect until you replace the TODOs with your own implementation.
         """
@@ -107,54 +106,22 @@ class LanternPulse(DefensePattern):
                 round(self.cooldown, 2),
             )
 
-        # TODO 1: Decrease cooldown by dt.
+        # TODO 1: Decrease cooldown by seconds.
         # TODO 2: When ready (and elapsed < 3), spawn a warned right-moving spark.
         # TODO 3: Add 0.8 to cooldown in that branch.
         pass
 
 
-def draw_echo(surface, center, scale, time):
-    """An original lantern spirit. Replace this with YOUR character's art."""
-    x, y = center
-    y += math.sin(time * 2) * 5 * scale
-    rect = pygame.Rect(x - 29 * scale, y - 34 * scale, 58 * scale, 65 * scale)
-    pygame.draw.rect(surface, (115, 227, 193), rect, border_radius=max(1, round(17 * scale)))
-    inside = rect.inflate(-13 * scale, -13 * scale)
-    pygame.draw.rect(surface, (26, 52, 59), inside, border_radius=max(1, round(12 * scale)))
-    for side in (-1, 1):
-        pygame.draw.circle(
-            surface,
-            (255, 205, 126),
-            (round(x + side * 11 * scale), round(y - 3 * scale)),
-            max(2, round(4 * scale)),
-        )
-    pygame.draw.arc(
-        surface,
-        (237, 235, 220),
-        (x - 15 * scale, y - 51 * scale, 30 * scale, 26 * scale),
-        0,
-        math.pi,
-        max(1, round(4 * scale)),
-    )
-    pygame.draw.line(
-        surface,
-        (237, 235, 220),
-        (x - 9 * scale, y + 13 * scale),
-        (x + 9 * scale, y + 13 * scale),
-        max(1, round(2 * scale)),
-    )
-
-
-def choose_echo_pattern(context):
-    """MISSION 4 -- Let Echo change patterns after the opening turn.
+def choose_echo_pattern(*, context):
+    """MISSION 5 -- Let Echo change patterns after the opening turn.
 
     YOUR INPUTS:
       context.turn: 0 for the first defense, 1 for the next, then 2, ...
       context.calm: understanding earned through ACT choices.
-      context.enemy_hp / enemy_max_hp: Echo's remaining / maximum health.
+      context.opponent_hp / opponent_max_hp: Echo's remaining / maximum health.
 
     WALKTHROUGH:
-    1. Finish mission 3 and preview LanternPulse with --practice pulse.
+    1. Finish mission 4 and preview LanternPulse with --practice pulse.
     2. Run --encounter echo. Use ITEM or ACT, survive a defense, then repeat.
        Enable the diagnostic to see how turn changes between defenses.
     3. Before the fallback, add an if asking whether context.turn >= 1.
@@ -168,23 +135,28 @@ def choose_echo_pattern(context):
     STRETCH: use calm or HP instead of turn; explain your condition first.
     """
     if False:
-        print("ECHO DEBUG:", "turn=", context.turn, "calm=", context.calm, "HP=", context.enemy_hp)
+        print(
+            "ECHO DEBUG:", "turn=", context.turn, "calm=", context.calm, "HP=", context.opponent_hp
+        )
 
     # TODO: Add the condition and return your new pattern in its branch.
     return RippleLanes()
 
 
-ECHO = Character(
+ECHO = Opponent(
     key="echo",
     name="Echo",
     description="A lantern spirit learning to listen.",
-    invitation="I made a little pattern. Want to try it? Z: yes. X: later.",
     color=(115, 227, 193),
     portrait=draw_echo,
     acts=(
-        Act("Listen", "You wait. Echo finds the words they were looking for.", calm=2),
-        Act("Share a story", "Your story makes their light a little warmer.", calm=1),
-        Act("Make a face", "Echo makes a face right back. It is a very good face.", calm=0),
+        Act(name="Listen", reply="You wait. Echo finds the words they were looking for.", calm=2),
+        Act(name="Share a story", reply="Your story makes their light a little warmer.", calm=1),
+        Act(
+            name="Make a face",
+            reply="Echo makes a face right back. It is a very good face.",
+            calm=0,
+        ),
     ),
     choose_pattern=choose_echo_pattern,
     max_hp=20,
@@ -194,5 +166,5 @@ ECHO = Character(
 
 # Registration is ordinary Python data. Add your own keys here and place a new
 # character letter in a Python level legend. --practice previews a pattern.
-EXTRA_CHARACTERS = (ECHO,)
+EXTRA_OPPONENTS = (ECHO,)
 EXTRA_PATTERNS = {"ripples": RippleLanes, "pulse": LanternPulse}

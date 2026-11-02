@@ -12,7 +12,7 @@ LILAC = (187, 164, 247)
 MUTED = (146, 158, 182)
 
 
-def star(surface, center, radius, color=GOLD, points=4):
+def star(*, surface, center, radius, color=GOLD, points=4):
     """Draw an alternating-radius star on surface, using pixel center/radius and RGB color."""
     x, y = center
     vertices = []
@@ -23,7 +23,7 @@ def star(surface, center, radius, color=GOLD, points=4):
     pygame.draw.polygon(surface, color, vertices)
 
 
-def folio(surface, center, scale, time):
+def folio(*, surface, center, scale, time):
     """Draw Folio's book portrait at center on surface.
 
     scale multiplies local drawing sizes; time is elapsed seconds for bobbing.
@@ -32,16 +32,16 @@ def folio(surface, center, scale, time):
     x, y = center
     y += math.sin(time * 2.2) * 3 * scale
 
-    def polygon(points, color):
+    def polygon(*, points, color):
         """Scale local book vertices around the bobbing center and draw a filled polygon."""
         pygame.draw.polygon(surface, color, [(x + a * scale, y + b * scale) for a, b in points])
 
     polygon(
-        [(-49, -26), (-8, -33), (0, -25), (8, -33), (49, -26), (45, 32), (0, 38), (-45, 32)],
-        (87, 134, 161),
+        points=[(-49, -26), (-8, -33), (0, -25), (8, -33), (49, -26), (45, 32), (0, 38), (-45, 32)],
+        color=(87, 134, 161),
     )
-    polygon([(-44, -29), (-7, -34), (0, -26), (0, 29), (-41, 22)], PAPER)
-    polygon([(44, -29), (7, -34), (0, -26), (0, 29), (41, 22)], (218, 223, 215))
+    polygon(points=[(-44, -29), (-7, -34), (0, -26), (0, 29), (-41, 22)], color=PAPER)
+    polygon(points=[(44, -29), (7, -34), (0, -26), (0, 29), (41, 22)], color=(218, 223, 215))
     pygame.draw.line(
         surface, INK, (x, y - 25 * scale), (x, y + 30 * scale), max(1, round(2 * scale))
     )
@@ -60,10 +60,10 @@ def folio(surface, center, scale, time):
                 (x + side * 32 * scale, y + (7 + line * 5) * scale),
                 max(1, round(scale)),
             )
-    star(surface, (x + 38 * scale, y - 42 * scale), 10 * scale, MINT)
+    star(surface=surface, center=(x + 38 * scale, y - 42 * scale), radius=10 * scale, color=MINT)
 
 
-def ferris(surface, center, scale, time):
+def ferris(*, surface, center, scale, time):
     """Draw Ferris at pixel center with scale-sized details animated by time in seconds."""
     x, y = center
     y += math.sin(time * 2.8) * 2 * scale
@@ -95,7 +95,7 @@ def ferris(surface, center, scale, time):
         (x + 8 * scale, y - 48 * scale),
         max(1, round(3 * scale)),
     )
-    star(surface, (x + 9 * scale, y - 49 * scale), 6 * scale, CORAL)
+    star(surface=surface, center=(x + 9 * scale, y - 49 * scale), radius=6 * scale, color=CORAL)
     pygame.draw.circle(surface, INK, (round(x), round(y + 20 * scale)), max(2, round(7 * scale)))
     pygame.draw.line(
         surface,
@@ -106,7 +106,7 @@ def ferris(surface, center, scale, time):
     )
 
 
-def prism(surface, center, scale, time):
+def prism(*, surface, center, scale, time):
     """Draw Prism at pixel center with scale-sized details animated by time in seconds."""
     x, y = center
     y += math.sin(time * 2) * 4 * scale
@@ -125,10 +125,10 @@ def prism(surface, center, scale, time):
             max(2, round(3 * scale)),
         )
         star(
-            surface,
-            (x + side * 56 * scale, y + math.sin(time * 2 + side) * 16 * scale),
-            7 * scale,
-            GOLD,
+            surface=surface,
+            center=(x + side * 56 * scale, y + math.sin(time * 2 + side) * 16 * scale),
+            radius=7 * scale,
+            color=GOLD,
         )
     pygame.draw.arc(
         surface,
@@ -140,7 +140,7 @@ def prism(surface, center, scale, time):
     )
 
 
-def courier(surface, center, time, walking=False, view="down"):
+def courier(*, surface, center, time, walking=False, view="down"):
     """Draw the Courier's supplied walking art on surface at pixel center.
 
     view is 'up', 'down', 'left', or 'right', chosen by the student function.
@@ -174,7 +174,7 @@ def courier(surface, center, time, walking=False, view="down"):
         pygame.draw.rect(surface, GOLD, (x - 12, y - 3, 5, 12), border_radius=2)
 
 
-def soul(surface, center, color=CORAL, radius=8):
+def soul(*, surface, center, color=CORAL, radius=8):
     """Draw the player marker at pixel center with an RGB color and radius in pixels."""
     x, y = center
     pygame.draw.polygon(

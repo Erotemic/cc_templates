@@ -57,7 +57,7 @@ class Audio:
                 "transition": (260, 0.18),
             }
             self.effects = {name: self.tone(hz, seconds) for name, (hz, seconds) in notes.items()}
-            self.music = {"WORLD": self.theme(False), "BATTLE": self.theme(True)}
+            self.music = {"WORLD": self.theme(False), "ENCOUNTER": self.theme(True)}
         except pygame.error as error:
             print(f"Audio unavailable; continuing silently: {error}")
             self.enabled = False

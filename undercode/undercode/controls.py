@@ -1,25 +1,28 @@
-"""Input for one update: held movement and one-shot menu/action presses."""
+"""Separate held directions from one-frame button presses.
+
+main.py's window adapter creates one Controls record per frame. An arrow held
+for ten frames keeps move_x/move_y active ten times. Confirm is True only in
+the frame of its KEYDOWN, so holding Z cannot make ten menu choices.
+"""
 
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class Controls:
-    """Snapshot held movement and single-press actions for one update.
+    """Input for one frame: signed movement axes and individual action/menu presses."""
 
-    x/y are horizontal/vertical movement amounts, usually -1, 0 or 1.
-    menu_x/menu_y are direction presses, while confirm/cancel are action presses.
-    Holding a key keeps movement active without repeatedly confirming a menu.
-    """
-
-    x: float = 0
-    y: float = 0
+    move_x: float = 0
+    move_y: float = 0
     menu_x: int = 0
     menu_y: int = 0
-    confirm: bool = False
-    cancel: bool = False
+    confirm_pressed: bool = False
+    cancel_pressed: bool = False
+    sprint_held: bool = False
 
     @property
     def menu_step(self):
-        """Return a signed menu step, preferring a horizontal press if both axes changed."""
-        return self.menu_x or self.menu_y
+        """Return one signed menu step; prefer horizontal when both arrows changed."""
+        if self.menu_x:
+            return self.menu_x
+        return self.menu_y

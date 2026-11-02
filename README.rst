@@ -12,8 +12,8 @@ Start with the project folder that matches the student's comfort level:
 * ``platformer``: a 2D pygame platformer.
 * ``rpg``: a larger pygame RPG with more structure.
 * ``undercode``: UnderCode, a pygame overworld and encounter template with
-  letter-map story levels, a directional-sprite exercise, extensible characters,
-  timed attacks, dodging, jumping and shield patterns.
+  separate overworld and encounter engines, Python letter-map stories, guided
+  implementation exercises, and independent game-design challenges.
 * ``fpx3d``: Prism Vault, a first-person 3D Panda3D treasure hunt with
   guided student missions and independent challenges.
 * ``rts``: a real-time strategy game ported from a high school project.

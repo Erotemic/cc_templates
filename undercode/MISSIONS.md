@@ -1,131 +1,133 @@
-# Build the missing features
+# Guided work: predict, build, observe, explain
 
-Run **`python main.py`**. Movement, rooms, conversations, battles and sound work.
-The Courier always looks down, the Story Studio's light does not heal, and the
-new Lantern Pulse defense has no sparks. **You implement those features.**
-The game already calls your functions; finishing a TODO changes normal play.
+You own the game. Rename it in `settings.py`, change some writing in
+`student_world.py`, and choose a feature you want to add. The exercises below
+teach different ideas; they are not a list you must finish before inventing one.
 
-Each mission has **YOUR INPUTS**, a **WALKTHROUGH**, diagnostics you can turn on,
-and **TEST IT** checks directly beside its code. Work on one small step, run
-again, and explain the result. No special exercise mode is needed.
+For each mission: predict the result, change a small piece of code, run it,
+inspect F2 state or a brief diagnostic, and explain what you observed. The
+inline walkthroughs identify inputs and outputs; [ENGINE_GUIDE.md](ENGINE_GUIDE.md)
+shows the caller and the surrounding rules. Keep diagnostics short and turn
+them off after observing. All implementations affect normal play.
 
-## Mission 0 — Make it yours
+## Overworld route
 
-Change `GAME_TITLE`, `PLAYER_NAME`, and Echo's writing in `undercode/student.py`.
-Run again and find your changes. This is customization; the next four missions
-ask you to implement behavior that is missing from the starter.
+Run `python main.py --overworld`. Open `student_overworld.py` beside
+`overworld/engine.py`. These tasks use ordinary functions; no pattern class is
+needed. The supplied engine still supports walking, rooms and conversations.
 
-## Mission 1 — Face the direction you walk
+### 1. A different view for each direction
 
-**Open:** `undercode/student_sprites.py` → `choose_player_view(facing)`.
-**Goal:** left, right and up walking gain their own views in the actual game.
-The art already exists, but choosing its view is your job.
+**Concept:** conditionals and return values. **Function:** `choose_player_view`.
 
-1. Run `python main.py`. Walk left, then up. Notice the face still looks down.
-2. Read **YOUR INPUT** in the function. Set its diagnostic `if False:` to
-   `if True:` briefly. Compare x and y while pressing each direction.
-3. Write one condition for left: when x is negative, return `"left"`.
-   Run the game. Confirm that you have added a visible feature.
-4. Add right and up. Keep `return "down"` for the remaining direction.
-5. Try diagonals. Use `abs(x)` and `abs(y)` to choose the strongest axis;
-   ties choose vertical. The inline walkthrough explains where this belongs.
-6. Run `python main.py --check-sprites`. All eight examples should pass.
-   This command reports unfinished work; `--check` checks engine/content health.
+Predict x/y while walking left and up. Find the call in `World.move`. Add the
+left case first, run, then add right and up. Keep down as a fallback. For
+diagonals, select the stronger absolute axis; equal strengths use vertical.
 
-**Test it:** all four directions, diagonal movement, stopping, and facing a wall.
-Idle should keep the last view. `World` already remembers facing, so you do not
-need to store another copy in the drawing code.
+```bash
+python main.py --check-exercise facing
+```
 
-**Explain:** why use facing instead of position? Why is up a negative y?
-**Stretch:** change each drawing in `art.courier`, or add walking frames.
+Test four directions, diagonals, idle, and facing a wall. Explain why position
+alone cannot tell you which way a stationary person faces. The function should
+return a view name; it should not move the character or read keyboard globals.
 
-## Mission 2 — Give a place an effect
+**Transfer:** change the supplied art in `art.courier`, or add walking frames.
 
-**Open:** `undercode/student_mechanics.py` → `warm_light(world, obj)`.
-**Goal:** entering the mint oval restores up to 3 HP and reports the actual gain.
+### 2. Sprint while holding Shift
 
-1. Run `python main.py --level studio`. Walk onto the mint oval below the path.
-   It is connected to your function, but its effect is unfinished.
-2. Enable the diagnostic. Read the function's **YOUR INPUTS** section.
-3. Store the player in a local variable. Call `player.heal(3)` and keep what
-   it returns. The existing method caps HP; you supply when and why it is used.
-4. Show the returned amount with `world.tell(...)` and an f-string.
-5. Test at low HP, near maximum HP, and full HP. The inline walkthrough shows
-   how to make a temporary low-HP experiment; remove the setup line afterward.
+**Concept:** held input, units, and separating a decision from its application.
+**Function:** `movement_speed`.
 
-**Test it:** enter at 5/20 → 8/20; stand still → still 8/20; leave and return →
-11/20. At 19/20 it reports 1, and at full HP it reports 0. The engine handles
-entry detection; your function supplies the mechanic.
+Read the multiplication in `World.move`. Predict distance for 0.1 seconds at
+155 pixels/second. Return 230 when `controls.sprint_held` is true; preserve 155
+otherwise. The engine applies the returned speed to the same collision rules.
 
-**Explain:** why use the returned healing amount rather than always saying 3?
-**Stretch:** require a flag, charge a snack, or make the light work once per run.
+```bash
+python main.py --check-exercise sprint
+```
 
-## Mission 3 — Create a warned defense
+Compare walking and sprinting, release Shift, move diagonally and against a
+wall. Explain why speed should be multiplied by seconds exactly once.
 
-**Open:** `undercode/student.py` → `LanternPulse.update(arena, dt)`.
-**Goal:** sparks warn at the left edge, then travel right at timed intervals.
+**Transfer:** add stamina by locating appropriate state and update code yourself.
 
-1. Run `python main.py --practice pulse`. At first this arena has no hazards.
-2. Enable the diagnostic and read **YOUR INPUTS**. Subtract `dt` from
-   `self.cooldown`; watch it decrease instead of staying at 0.3.
-3. When the cooldown reaches zero, call `arena.spawn(...)`. The inline
-   walkthrough gives a starting position, velocity and warning time to try.
-4. In the same branch, add 0.8 seconds to the cooldown. Otherwise the function
-   creates a spark every frame instead of one per interval.
-5. Add the `arena.elapsed < 3.0` condition so there is time for sparks to cross
-   and leave before the defense ends. Test moving above/below their path.
+### 3. Heal once on entry
 
-`RippleLanes` in the same file is a worked example to investigate. You implement
-**LanternPulse**, whose timer and projectile code are intentionally unfinished.
-The factory is registered already, so you can see each change immediately.
+**Concept:** shared mutable state and an event that occurs between frames.
+**Function:** `warm_light`. Run `python main.py --level studio`.
 
-**Test it:** warnings before movement, repeated sparks at a steady interval,
-room to dodge, eventual cleanup, and R restarting the timer. Run `--check`.
-**Explain:** why subtract seconds instead of a fixed amount per frame?
-**Stretch:** alternate heights or edges, or leave gaps between several sparks.
+The mint oval is wired to your unfinished function. Find `update_triggers` in
+the world engine before editing. Store the player, call `heal(amount=3)`, keep
+the returned gain, and show it through `world.tell(text=...)`.
 
-## Mission 4 — Let a character change tactics
+```bash
+python main.py --check-exercise healing
+```
 
-**Open:** `undercode/student.py` → `choose_echo_pattern(context)`.
-**Goal:** Echo uses Ripples first, then your Lantern Pulse on later turns.
+At 5/20 HP, enter → 8; stand still → 8; leave/return → 11. At 19/20 report 1,
+and at full HP report 0. For a temporary low-HP experiment, assign HP once in
+your function, observe, then remove that setup line. Or visit after damage.
+Explain what remembers last frame's occupancy and why a callback should not
+run on every frame merely because the player is still nearby.
 
-1. Complete mission 3 first. Run `python main.py --encounter echo`.
-2. Use ITEM or ACT, survive a defense, then take another turn. Enable the
-   selector's diagnostic and notice that `context.turn` starts at 0.
-3. Before the existing fallback, add a condition for `context.turn >= 1`.
-4. Return a **new** `LanternPulse()` in that branch. Keep `RippleLanes()` for
-   the opening turn. The inline walkthrough explains the other context fields.
-5. Play again: the arena title and hazards should change on the second defense.
+**Transfer:** require a story flag or design a one-use reward.
 
-**Test it:** opening defense = Ripples; next defense = Pulse. Restart returns
-to Ripples. Each call constructs a fresh instance so timers do not leak.
-**Explain:** how is selecting a pattern different from updating its projectiles?
-**Stretch:** respond to understanding (`calm`) or remaining HP instead of turn.
+## Encounter route
 
-## Story project — Build a new place
+Run `python main.py --encounter echo`. Read the turn trace in ENGINE_GUIDE and
+watch its phases with F2. Before coding, change an ACT's `reply` and `calm` in
+Echo's definition; predict when SPARE becomes available. Trace `choose` to find
+where the values affect the turn. This is a reading experiment, not a new hook.
 
-Follow [STORY_GUIDE.md](STORY_GUIDE.md). This project uses story data rather than
-implementing engine rules. Move letters, write conversations and choices, add a
-room entry in `student_world.py`, and connect a door to its named entrance. Set a flag in one place and use it to change a later conversation
-or open a gate.
+### 4. Build the empty Lantern Pulse pattern
 
-**Test it:** travel both ways, close/read dialogue, try locked gates before and
-after collecting an item, and restart for a fresh story. Run `--check`.
+**Concept:** an instance's timer, elapsed time, and repeated events.
+**Class:** `student_encounters.LanternPulse`. Read a worked pattern alongside it.
 
-## After the guided missions — Independent projects
+```bash
+python main.py --practice pulse
+python main.py --check-exercise pulse
+```
 
-These projects give you a goal; finding and connecting the code is part of the
-work. Start with a small playable version and explain how you tested it.
+The arena initially has no sparks. Subtract `seconds` from its cooldown. When
+the cooldown is ready and `arena.elapsed < 3.0`, spawn a right-moving spark at
+x=8, y=arena.height/2, vx=160, vy=0, warmup=0.5. Use named arguments. Add 0.8 to
+the cooldown in that same branch so another spark waits for its interval.
 
-- **A new neighbor:** define a character, register it in `EXTRA_CHARACTERS`,
-  and place it using a letter in a level legend. Give it distinctive ACT choices
-  and a new defense sequence. Check peaceful, combat, leave and loss outcomes.
-- **A special player technique:** investigate the `Strike` contract in
-  `attacks.py`. Implement a timing mechanic, register its `Weapon` in `content.py`,
-  and test misses, perfect timing and repeated inputs. Tab selects weapons.
-- **A bigger adventure:** a dash with a cooldown, moving world characters,
-  scrolling levels, a multi-stage boss, remappable controls, a nested dialogue
-  editor, or saved progress with a versioned format.
+Test warning before movement, repeated sparks, a dodge route, final cleanup,
+and R resetting the timer. Explain why the pattern creates hazards while Arena
+moves/removes them. Explain what `self` refers to and why two instances must
+have separate cooldowns. Try another direction or height after this works.
 
-All files are editable. The guided functions give you a first place to work;
-you can extend the game beyond them once you understand their boundaries.
+### 5. Let Echo change tactics
+
+**Concept:** functions returning new objects from read-only context.
+**Function:** `choose_echo_pattern`. This builds on the previous mission.
+
+Use ITEM or ACT and survive two turns. Observe `context.turn` starting at zero.
+Before the fallback, return a new `LanternPulse()` when the turn is at least 1.
+Keep `RippleLanes()` for the opening. Play again and observe the title/hazards.
+
+```bash
+python main.py --check-exercise tactics
+```
+
+Test the opening, next turn, restart, and fresh pattern instances. Explain why
+the selector does not advance projectiles. Then choose a rule of your own using
+understanding or remaining opponent HP instead of turn number.
+
+## Fading the scaffolding
+
+Pick one task with fewer instructions: make a sign change its writing after a
+choice, create a peaceful person, add a linked room, or build a second pattern
+with different warnings. Use the record docstrings and the engine tour to find
+what you need, then write a small test/example in the style of `tests/test_story.py`.
+
+Next pick an independent project from [CHALLENGES.md](CHALLENGES.md). Those tasks
+do not supply a hooked-up function. Choosing where a rule belongs is part of
+learning to extend an engine.
+
+`--check` checks content/engine health. `--check-exercise ...` runs your actual
+code and reports unfinished behavior. Regression tests that inject teacher
+examples do not certify a student's solution. Explain and demonstrate yours.

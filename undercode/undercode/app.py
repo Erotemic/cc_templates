@@ -1,211 +1,221 @@
-"""Scene ownership and transitions. World and Battle remain independent models."""
+"""Connect the two engines. Read Game.update to see the complete scene handoff.
+
+Construction imports ONLY the content the chosen mode needs. --encounter and
+--practice work even if student_world.py has an unfinished edit. --overworld
+never loads encounter definitions. Game stores requests during a fade, applies
+one change under its covered midpoint, then resumes the destination engine.
+"""
 
 from dataclasses import dataclass, replace
 from enum import Enum, auto
-from typing import Callable
-from .battle import Battle, Phase
+from .contracts import EncounterRequest, EncounterResult, RoomRequest, Outcome
 from .controls import Controls
-from .model import Act, Outcome, Player, Session
-from .world import World
-from .content import CHARACTERS, WEAPONS, PATTERNS, ROOMS, START_LEVEL, START_ENTRY
-from .student import PLAYER_NAME
+from .model import Player, Session
+from .settings import PLAYER_NAME
 
 
 class Scene(Enum):
-    """Name which model currently owns player input: the world or a battle."""
+    """The active engine; the window chooses its music and renderer from this name."""
 
     WORLD = auto()
-    BATTLE = auto()
+    ENCOUNTER = auto()
 
 
-@dataclass
+@dataclass(kw_only=True)
 class Transition:
-    """Track a fade that hides one scene change at its midpoint.
+    """Store a concrete request during a fade, rather than a hidden callback closure."""
 
-    on_covered is a no-argument function that Game.update calls once when the
-    screen is covered. elapsed and duration are seconds; swapped remembers
-    that the callback already ran so subsequent frames cannot run it again.
-    """
-
-    on_covered: Callable[[], None]
+    request: EncounterRequest | EncounterResult | RoomRequest
     elapsed: float = 0
     duration: float = 0.72
-    swapped: bool = False
+    applied: bool = False
 
     @property
     def opacity(self):
-        """Return fade strength from 0 (clear) to 1 (covered), then back to 0."""
+        """Cover the scene at the middle, then uncover the new one."""
         return max(0, min(1, 1 - abs(self.elapsed / self.duration * 2 - 1)))
 
 
 class Game:
-    """Coordinate the world, battles, transitions, and shared session state.
+    """Own the active mode and persistent session, not walking or encounter rules."""
 
-    main.py calls update once per active frame; View only reads this model.
-    World and Battle request changes, while Game decides when to swap scenes.
-    cues stores sound names for the main loop to play and clear.
-    """
-
-    def __init__(self, seed=7, encounter=None, practice=None, level=None, entry=None):
-        """Start a fresh session using registered character, pattern, and level keys.
-
-        seed makes battle randomness repeatable. encounter starts a character
-        battle; practice starts a defense immediately. Otherwise level/entry
-        choose a room and named arrival marker, with story defaults when omitted.
-        The launcher checks keys before calling this constructor.
-        """
+    def __init__(self, *, seed=7, encounter=None, practice=None, level=None, entry=None):
+        """Start one mode; rooms and encounters are loaded separately when needed."""
         self.seed = seed
-        self.initial_level = level
-        self.initial_entry = entry
         self.initial_encounter = encounter
         self.initial_practice = practice
-        self.session = Session(Player(name=PLAYER_NAME))
-        self.characters = {c.key: c for c in CHARACTERS}
-        start = level or START_LEVEL
-        spawn = entry or (START_ENTRY if start == START_LEVEL else next(iter(ROOMS[start].spawns)))
-        self.world = World(ROOMS, self.session, start, spawn)
-        self.scene = Scene.WORLD
-        self.battle = None
+        self.initial_level = level
+        self.initial_entry = entry
+        self.session = Session(player=Player(name=PLAYER_NAME))
+        self.world = None
+        self.encounter = None
+        self.finished_result = None
         self.encounter_key = None
         self.transition = None
         self.time = 0.0
         self.help_open = False
+        self.debug_open = False
         self.cues = []
         self.sound_label = "M: sound"
-        if encounter:
-            self.encounter_key = encounter
-            self.battle = self.make_battle(self.characters[encounter])
-            self.scene = Scene.BATTLE
-        elif practice:
-            factory = PATTERNS[practice]
-            trainer = replace(
-                CHARACTERS[0],
-                key="practice",
-                name="Pattern Lab",
-                description="A place to try one pattern without walking through the world.",
-                choose_pattern=lambda context: factory(),
-                max_hp=999,
-                acts=(Act("Try the pattern again", "Here it comes. Watch the warnings.", 0),),
-            )
-            self.battle = self.make_battle(trainer)
-            self.battle.set_phase(Phase.DEFEND)
-            self.scene = Scene.BATTLE
+        self.technique_name = "choose technique"
+        self.scene = Scene.WORLD
+        if encounter is not None:
+            self.start_encounter(encounter_id=encounter)
+        elif practice is not None:
+            self.start_practice(pattern_id=practice)
+        else:
+            self.create_world(level=level, entry=entry)
 
-    def make_battle(self, character):
-        """Return a new Battle using this session's player and selected weapon.
+    def create_world(self, *, level=None, entry=None):
+        """Compile the author's rooms and start at a named marker; no opponents needed."""
+        from .student_world import LEVELS, START_LEVEL, START_ENTRY
+        from .overworld.maps import compile_rooms, validate_start
+        from .overworld.engine import World
 
-        character is a Character definition, not a placement on the map.
-        The battle shares Player so damage, healing, and snacks persist.
-        """
-        return Battle(
-            character, self.session.player, WEAPONS[self.session.player.weapon], self.seed
+        rooms = compile_rooms(definitions=LEVELS)
+        room_key = level or START_LEVEL
+        if room_key not in rooms:
+            raise ValueError(f"Unknown level {room_key!r}. Choose: {', '.join(rooms)}")
+        spawn = entry
+        if spawn is None:
+            spawn = START_ENTRY if room_key == START_LEVEL else next(iter(rooms[room_key].spawns))
+        validate_start(rooms=rooms, room_key=room_key, spawn_name=spawn)
+        self.world = World(rooms=rooms, session=self.session, room_key=room_key, spawn=spawn)
+
+    def make_encounter(self, *, opponent):
+        """Borrow the same Player for an encounter with the currently selected technique."""
+        from .encounters.content import WEAPONS
+        from .encounters.engine import Encounter
+
+        self.technique_name = WEAPONS[self.session.player.weapon].name
+        return Encounter(
+            opponent=opponent,
+            player=self.session.player,
+            weapon=WEAPONS[self.session.player.weapon],
+            seed=self.seed,
         )
+
+    def start_encounter(self, *, encounter_id):
+        """Load an opponent by ID; this needs no overworld definition or window."""
+        from .encounters.content import OPPONENTS
+
+        characters = {character.key: character for character in OPPONENTS}
+        if encounter_id not in characters:
+            raise ValueError(f"Unknown character {encounter_id!r}. Choose: {', '.join(characters)}")
+        self.encounter = self.make_encounter(opponent=characters[encounter_id])
+        self.scene = Scene.ENCOUNTER
+
+    def start_practice(self, *, pattern_id):
+        """Create an isolated defense lab; it imports no rooms and starts in DEFEND."""
+        from .encounters.content import OPPONENTS, PATTERNS
+        from .encounters.model import Act
+        from .encounters.engine import Phase
+
+        if pattern_id not in PATTERNS:
+            raise ValueError(f"Unknown pattern {pattern_id!r}. Choose: {', '.join(PATTERNS)}")
+        factory = PATTERNS[pattern_id]
+
+        # A named function shows why each retry gets NEW timers. The factory
+        # is a class/function to call later, not an already-running pattern.
+        def choose_practice_pattern(*, context):
+            """Return a fresh lab pattern on every defense turn."""
+            return factory()
+
+        trainer = replace(
+            OPPONENTS[0],
+            key="practice",
+            name="Pattern Lab",
+            max_hp=999,
+            choose_pattern=choose_practice_pattern,
+            acts=(Act(name="Try the pattern again", reply="Watch the warnings.", calm=0),),
+        )
+        self.encounter = self.make_encounter(opponent=trainer)
+        self.encounter.set_phase(phase=Phase.DEFEND)
+        self.scene = Scene.ENCOUNTER
 
     def restart(self):
-        """Clear this run's progress and recreate its original launch setup.
-
-        Keep the seed and initial encounter, practice pattern, or level/entry.
-        Player health, snacks, story flags, and remembered outcomes start over.
-        """
+        """Recreate this launch setup with a new Session; Python files reload on relaunch."""
         self.__init__(
-            self.seed,
-            self.initial_encounter,
-            self.initial_practice,
-            self.initial_level,
-            self.initial_entry,
+            seed=self.seed,
+            encounter=self.initial_encounter,
+            practice=self.initial_practice,
+            level=self.initial_level,
+            entry=self.initial_entry,
         )
 
-    def begin_transition(self, action):
-        """Schedule action for the midpoint of a fade, if no fade is running.
-
-        action takes no arguments. Gameplay pauses until the fade finishes;
-        its scene-changing work runs once under the opaque part of the fade.
-        """
+    def begin_transition(self, *, request):
+        """Pause gameplay while covering one concrete room/encounter change."""
         if self.transition is None:
-            self.transition = Transition(action)
+            self.transition = Transition(request=request)
             self.cues.append("transition")
 
-    def encounter(self, person):
-        """Fade into a battle for person, a character placement from the world.
+    def apply_request(self, *, request):
+        """Apply one message. This is the only place that connects the two engines."""
+        if isinstance(request, EncounterRequest):
+            self.encounter_key = request.person_id
+            self.start_encounter(encounter_id=request.encounter_id)
+        elif isinstance(request, RoomRequest):
+            self.world.change_room(
+                destination=request.destination_room, landing=request.destination_spawn
+            )
+        elif isinstance(request, EncounterResult):
+            if request.outcome in (Outcome.SPARED, Outcome.DEFEATED) and self.encounter_key:
+                self.session.resolved[self.encounter_key] = request.outcome
+            if self.world is None:
+                self.create_world()
+            if request.outcome == Outcome.LOST:
+                from .student_world import START_LEVEL, START_ENTRY
 
-        Remember its placement key so this particular neighbor can later
-        remember being spared or defeated, even if other NPCs share its art.
-        """
-
-        def enter():
-            """Create the battle and switch scenes when the fade reaches its midpoint."""
-            self.encounter_key = person.key
-            self.battle = self.make_battle(self.characters[person.character])
-            self.scene = Scene.BATTLE
-
-        self.begin_transition(enter)
-
-    def leave_battle(self):
-        """Schedule the return from a finished battle to the overworld.
-
-        Remember spare/combat outcomes on the placement. A loss restores the
-        player at the story's starting marker; other outcomes keep position.
-        The actual state change waits for the fade's covered midpoint.
-        """
-        outcome = self.battle.outcome
-        name = self.battle.character.name
-
-        def leave():
-            """Apply the captured outcome and restore the world under the fade."""
-            if outcome in (Outcome.SPARED, Outcome.DEFEATED) and self.encounter_key:
-                self.session.resolved[self.encounter_key] = outcome
-            if outcome == Outcome.LOST:
                 self.session.player.rest()
-                self.world.change_room(START_LEVEL, START_ENTRY)
-                self.world.tell("A fresh start. HP and cocoa restored at camp.")
+                self.world.change_room(destination=START_LEVEL, landing=START_ENTRY)
+                self.world.tell(text="A fresh start. HP and cocoa restored at camp.")
             else:
-                self.world.tell(f"{name}: until next time. You can return for a rematch.")
+                self.world.tell(text=f"{request.opponent_name}: until next time.")
             self.world.talking = None
-            self.battle = None
+            self.encounter = None
             self.scene = Scene.WORLD
 
-        self.begin_transition(leave)
-
     def change_weapon(self):
-        """Cycle the selected technique in the world and queue feedback, unless fading."""
-        if self.scene == Scene.WORLD and not self.transition:
-            player = self.session.player
-            player.weapon = (player.weapon + 1) % len(WEAPONS)
-            self.world.tell(f"Technique: {WEAPONS[player.weapon].name}")
-            self.cues.append("select")
-
-    def update(self, dt, controls=Controls()):
-        """Advance the active scene by dt seconds using this frame's Controls.
-
-        The help overlay pauses gameplay. During a fade, advance only its
-        clock and run the scene swap once. Otherwise update World or Battle,
-        handle its requests/results, and collect sound cues for main.py.
-        """
-        self.time += dt
-        if self.help_open:
+        """Cycle an encounter technique only when the player asks for it with Tab."""
+        if self.scene != Scene.WORLD or self.transition is not None:
             return
-        if self.transition:
+        from .encounters.content import WEAPONS
+
+        player = self.session.player
+        player.weapon = (player.weapon + 1) % len(WEAPONS)
+        self.technique_name = WEAPONS[player.weapon].name
+        self.world.tell(text=f"Technique: {self.technique_name}")
+        self.cues.append("select")
+
+    def update(self, *, seconds, controls=Controls()):
+        """Read the whole frame: help pause → fade → active engine → request.
+
+        Returning during a fade is important: the Z press that accepted an
+        invitation must not also pick FIGHT in the encounter's first frame.
+        """
+        self.time += seconds
+        if self.finished_result is not None or self.help_open:
+            return
+        if self.transition is not None:
             transition = self.transition
-            transition.elapsed += dt
-            if transition.elapsed >= transition.duration / 2 and not transition.swapped:
-                transition.swapped = True
-                transition.on_covered()
+            transition.elapsed += seconds
+            if transition.elapsed >= transition.duration / 2 and not transition.applied:
+                self.apply_request(request=transition.request)
+                transition.applied = True
             if transition.elapsed >= transition.duration:
                 self.transition = None
-            return  # Freeze both scenes; the interaction key cannot leak into battle.
+            return
         if self.scene == Scene.WORLD:
-            request = self.world.update(dt, controls)
-            if request:
-                kind, payload = request
-                if kind == "encounter":
-                    self.encounter(payload)
-                else:
-                    self.begin_transition(
-                        lambda: self.world.change_room(payload.destination, payload.landing)
-                    )
+            request = self.world.update(seconds=seconds, controls=controls)
         else:
-            self.battle.update(dt, controls)
-            self.cues.extend(self.battle.cues)
-            self.battle.cues.clear()
-            if self.battle.phase == Phase.FINISHED:
-                self.leave_battle()
+            self.encounter.update(seconds=seconds, controls=controls)
+            self.cues.extend(self.encounter.cues)
+            self.encounter.cues.clear()
+            request = self.encounter.result
+        if isinstance(request, EncounterResult) and self.world is None:
+            # A standalone exercise ends in its own system. Loading rooms here
+            # would make an unrelated unfinished map break a completed encounter.
+            self.finished_result = request
+            return
+        if request is not None:
+            self.begin_transition(request=request)

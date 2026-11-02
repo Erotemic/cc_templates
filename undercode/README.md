@@ -1,227 +1,128 @@
-# UnderCode
+# UnderCode: learn how a game works, then make it yours
 
-**A small world. A conversation. A pattern to learn.**
-
-UnderCode is an original, Undertale-inspired pygame starter for students who
-want to build characters, conversations, timed attacks, and unusual defense
-sequences. Walking, rooms and battles work; four guided code missions let
-students add missing features to the game they actually play.
+A pygame learning project with two independently runnable systems: a tile-based
+overworld and an Undertale-inspired encounter system. The starter supplies
+walking, collisions, dialogue, turn menus and worked attack patterns. Students
+implement missing behavior, trace the engine, and build their own mechanics.
 
 ```bash
-cd undercode
-python main.py
+python main.py --overworld
+python main.py --encounter echo
+python main.py --practice pulse
 ```
 
-Requires **Python 3.10+** and **pygame or pygame-ce**. Use an existing pygame
-installation. If pygame is missing and installing packages is allowed:
+Requires Python 3.10+ and pygame or pygame-ce. An existing pygame installation is
+fine. If needed: `python -m pip install pygame-ce`. Copy this whole folder to use
+it as a separate project. Art, fonts and synthesized sound are local; there are
+no downloads, SVG/Cairo dependencies, or build steps. Use `--mute` when desired.
 
-```bash
-python -m pip install pygame-ce
-```
+## Choose where to begin
 
-The folder runs by itself, including when launched from another working
-directory. No package installation of UnderCode, build step, Internet access,
-SVG/Cairo library, NumPy, Pillow, asset downloads, or system fonts are needed.
-All portraits, scenery, music and sound cues are drawn or synthesized in Python.
-Audio is optional; `python main.py --mute` does not open an audio device.
+- **Explore code:** read [ENGINE_GUIDE.md](ENGINE_GUIDE.md), then follow one frame
+  through `runtime.py`, `app.py` and the selected engine's `update` method.
+- **Learn by building:** open [MISSIONS.md](MISSIONS.md). Three overworld tasks
+  use ordinary functions; two encounter tasks introduce objects with timers.
+- **Tell a story:** all rooms, dialogue, choices and door links are in
+  [student_world.py](undercode/student_world.py). Follow [STORY_GUIDE.md](STORY_GUIDE.md).
+- **Go beyond exercises:** [CHALLENGES.md](CHALLENGES.md) asks you to locate and
+  extend the engine yourself. Every source file is editable.
 
-## Your first five minutes
+The learner is expected to know variables, conditionals, loops and basic
+functions. The engine guide introduces records, methods, callbacks and phases
+when there is a concrete game problem for them to solve.
 
-1. Walk upward from camp to **Folio**, the open-book librarian. Press **Z** to
-   talk, then **Z** to accept a practice encounter. **X** declines.
-2. Read the introduction. **Z** first reveals the text, then advances it.
-3. Choose **FIGHT**, **ACT**, **ITEM**, or **SPARE**. Try ACT → Listen.
-4. During the reply, follow the defense hint. Hazards signal their arrival.
-5. Listening twice fills the understanding bar. Choose SPARE → Spare to make
-   a friend, or try the timed FIGHT sequence to finish the practice match.
-6. The fade returns you to exactly where you were walking. The lantern fountain
-   near camp restores HP and cocoa. The north path leads to two more neighbors.
+## What is unfinished on purpose?
 
-For story writing, open **[undercode/student_world.py](undercode/student_world.py)**
-and follow **[STORY_GUIDE.md](STORY_GUIDE.md)**. Move a letter, rewrite a line,
-or add a room with its own legend. `python main.py --level studio` previews it.
+| Task | Student implementation | Visible addition |
+| --- | --- | --- |
+| Facing | `student_overworld.choose_player_view` | Left, right and back views while walking |
+| Sprint | `student_overworld.movement_speed` | Shift changes speed; releasing it restores walking |
+| Healing | `student_overworld.warm_light` | The Studio's mint oval restores HP on entry |
+| Pulse | `student_encounters.LanternPulse.update` | Warned, timed sparks cross the defense arena |
+| Tactics | `student_encounters.choose_echo_pattern` | Echo changes patterns on later turns |
 
-**Start coding:** open **[undercode/student_sprites.py](undercode/student_sprites.py)**.
-The Courier currently always faces down. Mission 1 guides you through choosing
-left/right/up views; each change appears in the normal game. Read the inputs,
-walkthrough, diagnostics and TODOs beside the function, then test with
-`python main.py` and `python main.py --check-sprites`.
+These functions are called in normal gameplay. The Courier initially looks
+down, the light has no effect, Pulse has no sparks, and Echo repeats Ripples.
+Other rooms, conversations, fountains, and example defenses work immediately.
+The game never imports teacher solutions.
 
-The other guided missions add a healing light, implement a new warned defense,
-and make Echo change tactics. See **[MISSIONS.md](MISSIONS.md)**.
+## Controls and observation
 
-For battle mechanics, open **[undercode/student.py](undercode/student.py)**. Change Echo's name,
-colors, greeting, or ripple interval. Run again. Echo lives in the Quiet
-Observatory, through the north doorway.
-
-## What students implement
-
-1. **Directional views:** the Courier starts facing down; add the missing cases.
-2. **Healing light:** the Studio trigger is wired up; implement its healing/message.
-3. **Lantern Pulse:** the pattern is registered but empty; implement its timer,
-   warning and moving projectiles.
-4. **Changing tactics:** add the rule that selects Pulse after Echo's first turn.
-
-These are unfinished student functions called by normal gameplay. The inline
-steps guide implementation, rather than enabling a finished feature with a flag.
-Other rooms, story choices and example defenses remain available while you work.
-
-## What is already playable
-
-- Four connected letter-map rooms with collisions, named door destinations,
-  conversations, fountains and fades between rooms and encounters.
-- Story-only characters, signs, choices, flags, collectibles and locked gates
-  authored with Python helper calls; direct function hooks for new mechanics.
-- Four supplied walking drawings; students implement choosing their direction.
-- Four original characters: Folio, Ferris, Prism and the editable Echo.
-- FIGHT timing with a single focus strike or a three-beat rhythm strike.
-- ACT choices that build understanding, SPARE, leaving practice, healing items,
-  combat victories, and a forgiving return to camp after a loss.
-- Free movement through falling pages; gravity/jump defense against low gears;
-  a directional shield against incoming sparks; and telegraphed beam lanes.
-- Seeded pattern randomness, damage cooldowns and swept projectile collision.
-- Original procedural portraits, overworld art, a quiet soundtrack and cues.
-- Pause-on-focus-loss, a help overlay, resizing with preserved aspect ratio,
-  and explicit display/audio diagnostics for classroom machines.
-
-Each encounter can be resolved by combat or by understanding the character.
-Neighbors remember the outcome for this run and offer rematches. There are no
-on-disk saves; **R starts a fresh run**.
-
-## Controls
-
-| Key | Action |
+| Input | Meaning |
 | --- | --- |
-| Arrows / WASD | Walk; navigate menus; move or face a shield during defense |
-| Z / Enter / Space | Talk, confirm, reveal/advance text, time a strike, jump in gravity mode |
-| X / Backspace | Cancel a conversation; go back in a submenu; reveal dialogue |
-| Tab, in the overworld | Switch Focus / Three Beat attack techniques |
-| F1 | Open/close the guide; gameplay pauses while it is open |
-| M | Mute/unmute when audio is available |
-| R | Fresh run, or restart the encounter/pattern chosen on the command line |
+| Arrows / WASD | Held movement; single presses navigate menus |
+| Z / Enter / Space | Talk, read, confirm, time a strike; jump in gravity defense |
+| X / Backspace | Close world dialogue; go back in menus; reveal encounter text |
+| Shift | Sprint after implementing its task |
+| F1 | Controls guide; pauses gameplay |
+| F2 | Inspect mode, phase/room, HP, facing and story flags |
+| Tab | Select an encounter technique while walking |
+| M | Mute/unmute |
+| R | Fresh run, or restart the isolated encounter/pattern |
 | Escape | Quit |
 
-Menu actions and jumps respond to **presses**. Movement and shield direction
-respond to **held keys**. A transition freezes both scenes, so accepting a
-conversation does not also select the first battle action.
+Start by walking up from camp to Folio. Z opens an invitation; a second press
+accepts it. In the encounter, ACT → Listen builds understanding. After two
+helpful replies, SPARE can end it peacefully. FIGHT uses a timing mini-game.
+The fountain restores HP/cocoa. The north path reaches the observatory; its east
+path reaches the Studio quest. Story progress is remembered only for this run.
+An isolated encounter ends on a result screen; R retries without loading rooms.
 
-## Test your idea without walking there
-
-```bash
-python main.py --list
-python main.py --level studio
-python main.py --check-sprites  # reports progress on mission 1
-python main.py --encounter echo
-python main.py --practice ripples
-python main.py --practice pulse  # empty until you implement mission 3
-python main.py --practice hops
-python main.py --practice shield
-python main.py --practice lanes
-python main.py --seed 42
-python main.py --check
-```
-
-`--practice` goes straight into one defense pattern; R retries it. Afterward,
-ACT → Try the pattern again repeats it. `--check` validates room/content data
-and simulates registered pattern and attack factories, including character
-pattern choices. Importing the package does not open a window/mixer or run a
-student pattern.
-
-For machines or CI without a desktop:
+## Three different checks
 
 ```bash
-python main.py --headless --mute --practice shield --frames 90 --screenshot preview.png
-python -m unittest discover -s tests -v
+python main.py --check                     # engine/content health
+python main.py --overworld --check         # rooms only
+python main.py --encounter echo --check    # encounters only
+python main.py --check-exercise facing     # YOUR task implementation
+python main.py --check-exercise all
+python -m unittest discover -s tests -v    # regression suite
 ```
 
-Normal play needs a real desktop. An SSH terminal without display forwarding
-cannot display a window; the launcher explains that instead of running
-invisibly. Headless runs intentionally have no visible window. A missing audio
-device is reported in the HUD and does not stop play.
+Exercise checks intentionally report unfinished work in the starter. Engine
+checks can pass before any task is complete. The regression suite uses teacher
+examples in some tests to verify that extension points work; that is separate
+from checking your own solution. `--check-sprites` is a shortcut for facing.
 
-## Where to edit
+Stop and launch again after editing code. R resets state but does not re-import
+Python files. `--list` lists room, encounter and practice IDs. `--level studio
+--entry entrance` previews a named room/marker.
 
-| File | Responsibility |
+## How the source is organized
+
+| File / folder | Responsibility |
 | --- | --- |
-| **`undercode/student_world.py`** | All room maps, legends, story writing, door links and starting-room settings |
-| `undercode/building.py` | Documented helpers for writing levels, objects and dialogue |
-| **`undercode/student_sprites.py`** | Mission 1: implement directional views in normal play |
-| **`undercode/student_mechanics.py`** | Mission 2: implement the Story Studio healing light |
-| **`undercode/student.py`** | Missions 3–4: implement Lantern Pulse and Echo's changing tactics |
-| `undercode/content.py` | Register battle characters, techniques and practice keys; compile the Python story |
-| `undercode/patterns.py` | Four worked defense-pattern classes |
-| `undercode/attacks.py` | Player timing/ rhythm mini-games and their small extension contract |
-| `undercode/model.py` | Character, ACT, weapon, room, player and session data |
-| `undercode/battle.py` | Explicit battle phases, menus, turns, damage and outcomes |
-| `undercode/arena.py` | Shared soul movement, hazard physics, shields and collision rules |
-| `undercode/story.py` | Validate/compile Python level definitions and manage paged story dialogue |
-| `undercode/sprites.py` | Directional-view acceptance examples |
-| `teacher/solutions.py` | Instructor examples, never loaded by gameplay |
-| `undercode/world.py` | Overworld movement, collisions, conversations and doors |
-| `undercode/app.py` | Own the active scene; freeze and swap scenes during fades |
-| `undercode/view.py`, `art.py` | Read-only UI and original portrait/scenery drawing |
-| `undercode/audio.py` | Optional synthesized audio, isolated from game rules |
-| `main.py` | Input → update → draw loop and launch options |
+| `main.py` | Select a mode or check; hand over to the window adapter |
+| `undercode/runtime.py` | pygame input → update → draw → audio |
+| `undercode/app.py` | Active mode, fades, and explicit request/result handoffs |
+| `undercode/contracts.py` | Small records used to connect the two systems |
+| `undercode/model.py` | The one persistent Player and this run's story progress |
+| `undercode/controls.py` | Held directions versus one-frame presses |
+| `undercode/overworld/` | Room records, map placement, walking/interactions, and world drawing |
+| `undercode/encounters/` | Opponent definitions, phases, attacks, defense physics, and encounter drawing |
+| `undercode/dialogue.py` | Conversation definitions, pages, choices and completion flags |
+| `undercode/student_world.py` | All rooms and story writing in one file |
+| `undercode/student_overworld.py` | Guided world behavior functions |
+| `undercode/student_encounters.py` | Echo and guided encounter behavior |
+| `undercode/student_art.py`, `art.py` | Editable portrait and supplied drawing examples |
+| `undercode/settings.py` | Title, player name, and logical screen size |
+| `undercode/presentation.py`, `view.py` | Shared drawing tools and selection of the active renderer |
+| `undercode/audio.py` | Optional generated sound, outside the rule engines |
 
-The template uses ordinary dataclasses, enums, functions and small classes.
-Characters choose patterns through a function; a new pattern does not need a
-new branch in the battle engine. There is no custom scripting language, global
-broadcast system, or thread scheduler to learn before making a character.
+A peaceful Person is independent of an Opponent. It can have an optional
+`encounter_id` to connect them. Player HP has one owner shared by world and
+encounter; the arena does not copy health back and forth.
 
-See **[MISSIONS.md](MISSIONS.md)** for extension steps and
-**[TEACHER_GUIDE.md](TEACHER_GUIDE.md)** for classroom use and architecture.
+## Classroom machines
 
-## Reading the code
+Normal play needs a desktop. A missing audio device does not stop the game.
+For a VM, SSH session or automated check without a display:
 
-Start at `main.main`: it converts keys to `Controls`, calls `Game.update`, then
-calls `View.draw`. Follow `Game.update` into `World.update` for walking/story
-interactions or `Battle.update` for encounters. During defense, `Arena.update`
-calls your pattern's `update(arena, dt)`; during world drawing, `View.draw_world`
-calls your `choose_player_view(facing)`.
+```bash
+python main.py --headless --mute --frames 60 --screenshot preview.png
+```
 
-Classes and methods document their inputs, results and state changes in place.
-`dt` means elapsed seconds. World positions use room pixels; defense positions
-use arena pixels; tile pairs mean (column, row). Render methods translate these
-positions into the logical screen and leave game rules unchanged. Use the
-inline mission walkthroughs when implementing the student functions.
-
-## Extending the game
-
-**A character:** copy `ECHO` in `student.py`, give it a unique `key`, add it to
-`EXTRA_CHARACTERS`, then add a character letter in a Python level legend.
-Its `character` selects the definition; an optional unique `id` remembers that
-specific neighbor's battle outcome. Run `--check`, then `--encounter your_key`.
-
-**A defense:** subclass `DefensePattern`. Give it a name, hint, duration and
-optional `Mode.GRAVITY` or `Mode.SHIELD`. Keep its clock/state on `self`.
-`update(arena, dt)` can use `arena.spawn(...)`, `arena.beam(...)`, `arena.rng`,
-and the soul's local position. Add a key to `EXTRA_PATTERNS` to preview it with
-`--practice`. Return a new instance from the character's `choose_pattern` hook.
-The examples show cooldowns, reachable safe lanes, warnings and mode changes.
-
-**A special player attack:** implement the `Strike` contract in `attacks.py`:
-`update(dt, controls)`, `done`, a `score` from 0 to 1, and `view()` returning a
-`StrikeView`. Add a `Weapon` with that factory in `content.py`. Tab selects it in
-the overworld; the battle controller applies damage without knowing its class.
-
-**A room/story:** add a room entry to `LEVELS` in `student_world.py`, draw its
-letter map, and use helpers such as `person(...)`, `door(...)` and `sign(...)` in
-its legend. Every room stays in this file. Doors link to named spawn markers. Choices, flags and branches use ordinary Python calls and lists.
-Follow [STORY_GUIDE.md](STORY_GUIDE.md), and pass functions from
-`student_mechanics.py` to `trigger(...)` or `on_interact` to add new rules.
-
-## Scope and validation
-
-This is an original teaching template with practice encounters, not a finished
-long-form RPG. It has no inventory editor, pathfinding, online features,
-automatic saves or external asset pipeline. Those can be student projects.
-
-The tests cover complete peaceful/combat routes through the real patterns,
-transitions, loss/leave behavior, timed strikes, item limits, shield direction,
-jumping, warned hazards, fast-bullet collisions, seeded spawns, extension
-registration, every portrait/menu/mode, audio samples/muting, and launch paths.
-Regular pygame 2.6.1 and pygame-ce 2.5.8 are checked on Linux/Python 3.13;
-school Windows/macOS installations should get a local smoke check.
-
-Original UnderCode code, character designs, dialogue, art and synthesized music
-are included under the repository's [Apache 2.0 license](LICENSE).
+Regular pygame and pygame-ce are checked on Linux; test your classroom's actual
+interpreter and display setup. See [TEACHER_GUIDE.md](TEACHER_GUIDE.md) for lesson
+planning, deployment, and how to separate student handouts from answer examples.
+Original code, art, writing and synthesized music use the [Apache 2.0 license](LICENSE).

@@ -10,23 +10,23 @@ class FallingPages(DefensePattern):
     hint = "Move freely. Find the gaps between the falling pages."
     duration = 5.2
 
-    def __init__(self, gentle=False):
+    def __init__(self, *, gentle=False):
         """Start a fresh spawn timer; gentle lowers projectile speed for calmer turns."""
         self.cooldown = 0.25
         self.speed = 90 if gentle else 115
 
-    def update(self, arena, dt):
-        """Consume dt seconds and add due page rows until 3.4 seconds into the defense."""
-        self.cooldown -= dt
+    def update(self, *, arena, seconds):
+        """Consume the elapsed seconds and add due page rows until 3.4 seconds into the defense."""
+        self.cooldown -= seconds
         while self.cooldown <= 0 and arena.elapsed < 3.4:
             gap = arena.rng.randrange(6)
             for lane in range(7):
                 if lane not in (gap, gap + 1):
                     arena.spawn(
-                        (lane + 0.5) * arena.width / 7,
-                        5,
-                        0,
-                        self.speed,
+                        x=(lane + 0.5) * arena.width / 7,
+                        y=5,
+                        vx=0,
+                        vy=self.speed,
                         radius=7,
                         color=(172, 220, 255),
                         warmup=0.35,
@@ -47,16 +47,16 @@ class ClockworkHops(DefensePattern):
         self.cooldown = 0.15
         self.wave = 0
 
-    def update(self, arena, dt):
-        """Consume dt seconds, alternating warned gears from the left and right edges."""
-        self.cooldown -= dt
+    def update(self, *, arena, seconds):
+        """Consume the elapsed seconds, alternating warned gears from the left and right edges."""
+        self.cooldown -= seconds
         while self.cooldown <= 0 and arena.elapsed < 3.6:
             from_left = self.wave % 2 == 0
             arena.spawn(
-                8 if from_left else arena.width - 8,
-                arena.height - 10,
-                215 if from_left else -215,
-                0,
+                x=8 if from_left else arena.width - 8,
+                y=arena.height - 10,
+                vx=215 if from_left else -215,
+                vy=0,
                 radius=8,
                 color=(255, 194, 115),
                 warmup=0.5,
@@ -78,9 +78,9 @@ class ShieldWaltz(DefensePattern):
         self.cooldown = 0.2
         self.wave = 0
 
-    def update(self, arena, dt):
-        """Use dt seconds to schedule due sparks, aiming each at the arena center."""
-        self.cooldown -= dt
+    def update(self, *, arena, seconds):
+        """Use the elapsed seconds to schedule due sparks, aiming each at the arena center."""
+        self.cooldown -= seconds
         while self.cooldown <= 0 and arena.elapsed < 3.7:
             center = Vec(arena.width / 2, arena.height / 2)
             entrances = (
@@ -92,10 +92,10 @@ class ShieldWaltz(DefensePattern):
             start = entrances[self.wave % 4]
             velocity = (center - start) / 0.95
             arena.spawn(
-                start.x,
-                start.y,
-                velocity.x,
-                velocity.y,
+                x=start.x,
+                y=start.y,
+                vx=velocity.x,
+                vy=velocity.y,
                 radius=7,
                 color=(199, 169, 255),
                 warmup=0.55,
@@ -115,13 +115,13 @@ class SafeLanes(DefensePattern):
         """Start a fresh clock for the first set of beam warnings."""
         self.cooldown = 0.2
 
-    def update(self, arena, dt):
-        """Consume dt seconds and schedule beam sets near the soul's current lane.
+    def update(self, *, arena, seconds):
+        """Consume the elapsed seconds and schedule beam sets near the soul's current lane.
 
         Use arena.rng to pick a nearby gap, rather than making the player cross
         the entire arena. Arena owns warning timers, damage, and beam removal.
         """
-        self.cooldown -= dt
+        self.cooldown -= seconds
         while self.cooldown <= 0 and arena.elapsed < 4.1:
             lane = min(5, int(arena.soul.position.x / 100))
             # Put a reachable opening near the current player, not across the
@@ -129,5 +129,12 @@ class SafeLanes(DefensePattern):
             gap = arena.rng.randint(max(0, lane - 2), min(4, lane + 1))
             for index in range(6):
                 if index not in (gap, gap + 1):
-                    arena.beam(index * 100, 0, 100, arena.height, warmup=0.85, duration=0.25)
+                    arena.beam(
+                        x=index * 100,
+                        y=0,
+                        width=100,
+                        height=arena.height,
+                        warmup=0.85,
+                        duration=0.25,
+                    )
             self.cooldown += 1.25

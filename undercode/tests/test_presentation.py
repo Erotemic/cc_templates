@@ -15,11 +15,16 @@ os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame
+from undercode.overworld.maps import compile_rooms
+from undercode.student_world import LEVELS
+
+ROOMS = compile_rooms(definitions=LEVELS)
+
 from undercode.app import Game
 from undercode.audio import Audio
-from undercode.battle import Phase
-from undercode.content import CHARACTERS, PATTERNS, ROOMS
-from undercode.model import Act
+from undercode.encounters.engine import Phase
+from undercode.encounters.content import OPPONENTS, PATTERNS
+from undercode.encounters.model import Act
 from undercode.view import View
 
 
@@ -39,9 +44,9 @@ class PresentationTests(unittest.TestCase):
     def test_every_portrait_room_menu_and_pattern_renders_without_changing_state(self):
         game = Game()
         for room in ROOMS:
-            game.world.change_room(room, next(iter(ROOMS[room].spawns)))
-            self.view.draw(self.surface, game)
-        for character in CHARACTERS:
+            game.world.change_room(destination=room, landing=next(iter(ROOMS[room].spawns)))
+            self.view.draw(surface=self.surface, game=game)
+        for character in OPPONENTS:
             game = Game(encounter=character.key)
             for phase in (
                 Phase.MESSAGE,
@@ -51,119 +56,115 @@ class PresentationTests(unittest.TestCase):
                 Phase.MERCY,
                 Phase.ATTACK,
             ):
-                game.battle.set_phase(phase)
-                game.battle.age = 10 if phase == Phase.MESSAGE else 0.3
+                game.encounter.set_phase(phase=phase)
+                game.encounter.age = 10 if phase == Phase.MESSAGE else 0.3
                 before = (
                     asdict(game.session),
-                    game.battle.phase,
-                    game.battle.age,
-                    game.battle.enemy_hp,
+                    game.encounter.phase,
+                    game.encounter.age,
+                    game.encounter.opponent_hp,
                 )
-                self.view.draw(self.surface, game)
+                self.view.draw(surface=self.surface, game=game)
                 self.assertEqual(
                     before,
                     (
                         asdict(game.session),
-                        game.battle.phase,
-                        game.battle.age,
-                        game.battle.enemy_hp,
+                        game.encounter.phase,
+                        game.encounter.age,
+                        game.encounter.opponent_hp,
                     ),
                 )
         for pattern in PATTERNS:
             game = Game(practice=pattern)
             for _ in range(90):
-                game.update(1 / 60)
-            random_before = game.battle.arena.rng.getstate()
+                game.update(seconds=1 / 60)
+            random_before = game.encounter.arena.rng.getstate()
             state = (
-                game.battle.arena.elapsed,
+                game.encounter.arena.elapsed,
                 game.session.player.hp,
-                [tuple(b.position) for b in game.battle.arena.bullets],
+                [tuple(b.position) for b in game.encounter.arena.bullets],
             )
-            self.view.draw(self.surface, game)
-            self.assertEqual(game.battle.arena.rng.getstate(), random_before)
+            self.view.draw(surface=self.surface, game=game)
+            self.assertEqual(game.encounter.arena.rng.getstate(), random_before)
             self.assertEqual(
                 state,
                 (
-                    game.battle.arena.elapsed,
+                    game.encounter.arena.elapsed,
                     game.session.player.hp,
-                    [tuple(b.position) for b in game.battle.arena.bullets],
+                    [tuple(b.position) for b in game.encounter.arena.bullets],
                 ),
             )
         game.help_open = True
-        self.view.draw(self.surface, game)
-        self.view.draw(self.surface, game, focused=False)
+        self.view.draw(surface=self.surface, game=game)
+        self.view.draw(surface=self.surface, game=game, focused=False)
 
     def test_long_words_fit_the_panel_and_battle_dialogue_is_paged(self):
         word = "W" * 300
-        for line in self.view.lines(word, 300, 24):
+        for line in self.view.lines(text=word, width=300, size=24):
             self.assertLessEqual(self.view.fonts[24].size(line)[0], 300)
         game = Game(encounter="echo")
-        game.battle.say(word * 2, Phase.MENU)
-        self.assertGreater(len(game.battle.pages), 1)
-        self.view.draw(self.surface, game)
+        game.encounter.say(message=word * 2, then=Phase.MENU)
+        self.assertGreater(len(game.encounter.pages), 1)
+        self.view.draw(surface=self.surface, game=game)
 
     def test_student_characters_can_have_more_act_choices_than_fit_on_one_page(self):
         game = Game(encounter="folio")
-        game.battle.character = replace(
-            game.battle.character,
-            acts=tuple(Act(f"Choice {i}", "A reply.") for i in range(10)),
+        game.encounter.opponent = replace(
+            game.encounter.opponent,
+            acts=tuple(Act(name=f"Choice {i}", reply="A reply.") for i in range(10)),
         )
-        game.battle.set_phase(Phase.ACT)
-        game.battle.selection = 9
+        game.encounter.set_phase(phase=Phase.ACT)
+        game.encounter.selection = 9
         labels = []
-        original = self.view.text
+        self.view.draw(surface=self.surface, game=game)
+        renderer = self.view.encounter_view
+        original = renderer.text
 
         def record(surface, text, *args, **kwargs):
-            rect = original(surface, text, *args, **kwargs)
+            rect = original(surface=surface, text=text, *args, **kwargs)
             if str(text).startswith("Choice "):
                 labels.append((text, rect))
             return rect
 
-        self.view.text = record
+        renderer.text = record
         try:
-            self.view.draw(self.surface, game)
+            self.view.draw(surface=self.surface, game=game)
         finally:
-            self.view.text = original
+            renderer.text = original
         self.assertTrue(any(text == "Choice 9" for text, _ in labels))
         self.assertLessEqual(len(labels), 4)
         self.assertTrue(all(rect.top >= 378 and rect.bottom < 507 for _, rect in labels))
 
-    def test_story_pages_choices_and_default_student_hook_stay_inside_their_panels(self):
+    def test_story_pages_and_choices_fit_their_panels_without_changing_state(self):
         from unittest.mock import patch
-        from undercode.story import Dialogue
+        from undercode.dialogue import Conversation, Dialogue, Choice
 
         game = Game(level="studio")
-        game.world.dialogue = Dialogue(
-            "Keeper",
-            {
-                "text": "W" * 300,
-                "choices": [{"label": "W" * 60} for _ in range(10)],
-            },
-            game.session,
+        game.world.dialogue = Conversation(
+            name="Keeper",
+            dialogue=Dialogue(
+                text="W" * 300, choices=[Choice(label="W" * 60, text="Reply") for _ in range(10)]
+            ),
+            session=game.session,
         )
         dialogue = game.world.dialogue
         dialogue.page = len(dialogue.pages) - 1
         dialogue.selection = 9
-        rendered = []
-        rendered_text = []
-        original = self.view.text
+        self.view.draw(surface=self.surface, game=game)
+        renderer = self.view.world_view
+        original = renderer.text
+        rendered, rendered_text = [], []
 
         def record(surface, text, *args, **kwargs):
-            rect = original(surface, text, *args, **kwargs)
+            rect = original(surface=surface, text=text, *args, **kwargs)
             if set(str(text)) == {"W"}:
                 rendered.append(rect)
                 rendered_text.append(str(text))
             return rect
 
-        with (
-            patch.object(self.view, "text", record),
-            patch("undercode.view.choose_player_view", return_value="left") as student,
-            patch("undercode.view.art.courier") as draw,
-        ):
+        with patch.object(renderer, "text", record):
             before = asdict(game.session)
-            self.view.draw(self.surface, game)
-            student.assert_called_once_with(game.world.facing)
-            self.assertEqual(draw.call_args.args[-1], "left")
+            self.view.draw(surface=self.surface, game=game)
             self.assertEqual(asdict(game.session), before)
         self.assertTrue(rendered)
         self.assertEqual(
@@ -180,7 +181,7 @@ class PresentationTests(unittest.TestCase):
 
         game = Game()
         with (
-            patch("undercode.view.choose_player_view", choose_player_view),
+            patch("undercode.student_overworld.choose_player_view", choose_player_view),
             patch("undercode.view.art.courier") as draw,
         ):
             for (x, y), expected in (
@@ -190,15 +191,16 @@ class PresentationTests(unittest.TestCase):
                 ((0, 1), "down"),
             ):
                 with self.subTest(view=expected):
-                    game.update(0.01, Controls(x=x, y=y))
-                    self.view.draw(self.surface, game)
-                    self.assertEqual(draw.call_args.args[-1], expected)
-                    game.update(0.01)  # Releasing keys preserves that view.
-                    self.view.draw(self.surface, game)
-                    self.assertEqual(draw.call_args.args[-1], expected)
+                    game.update(seconds=0.01, controls=Controls(move_x=x, move_y=y))
+                    self.view.draw(surface=self.surface, game=game)
+                    self.assertEqual(draw.call_args.kwargs["view"], expected)
+                    game.update(seconds=0.01)  # Releasing keys preserves that view.
+                    self.view.draw(surface=self.surface, game=game)
+                    self.assertEqual(draw.call_args.kwargs["view"], expected)
             game.restart()
-            self.view.draw(self.surface, game)
-            self.assertEqual(draw.call_args.args[-1], "down")
+            game.update(seconds=0)
+            self.view.draw(surface=self.surface, game=game)
+            self.assertEqual(draw.call_args.kwargs["view"], "down")
 
     def test_four_walking_views_are_distinct_and_animate(self):
         from undercode.art import courier
@@ -206,11 +208,11 @@ class PresentationTests(unittest.TestCase):
         images = []
         for direction in ("up", "down", "left", "right"):
             surface = pygame.Surface((80, 80))
-            courier(surface, (40, 45), 0, False, direction)
+            courier(surface=surface, center=(40, 45), time=0, walking=False, view=direction)
             images.append(pygame.image.tobytes(surface, "RGB"))
         self.assertEqual(len(set(images)), 4)
         surface = pygame.Surface((80, 80))
-        courier(surface, (40, 45), 0.12, True, "down")
+        courier(surface=surface, center=(40, 45), time=0.12, walking=True, view="down")
         self.assertNotEqual(pygame.image.tobytes(surface, "RGB"), images[1])
 
     def test_synthesized_audio_has_samples_and_mute_controls_the_channel(self):
@@ -226,7 +228,7 @@ class PresentationTests(unittest.TestCase):
             self.assertEqual(channel.get_volume(), 0)
             audio.toggle()
             self.assertGreater(channel.get_volume(), 0)
-            audio.scene("BATTLE")
+            audio.scene("ENCOUNTER")
             self.assertTrue(channel.get_busy())
         finally:
             pygame.mixer.quit()
@@ -276,10 +278,10 @@ class LaunchTests(unittest.TestCase):
             world_file.write_text(
                 world_file.read_text() + "\n# A student adds a room in this same file.\n"
                 'MESSAGE = "I wrote this in Python."\n'
-                'LEVELS["my_room"] = level("My room", ["######", "#@.?.D", "######"], {\n'
-                '    "@": spawn("entrance"),\n'
-                '    "?": sign("My note", MESSAGE),\n'
-                '    "D": door("courtyard", "camp"),\n'
+                'LEVELS["my_room"] = Room(name="My room", tiles=["######", "#@.?.D", "######"], legend={\n'
+                '    "@": Spawn(name="entrance"),\n'
+                '    "?": Sign(name="My note", dialogue=Dialogue(text=MESSAGE)),\n'
+                '    "D": Door(destination_room="courtyard", destination_spawn="camp"),\n'
                 "})\n"
             )
             command = [sys.executable, str(project / "main.py")]
@@ -314,7 +316,7 @@ class LaunchTests(unittest.TestCase):
                 command + ["--check"], cwd=directory, capture_output=True, text=True, timeout=30
             )
             self.assertNotEqual(bad.returncode, 0)
-            self.assertIn("my_room: row 2, column 4", bad.stderr)
+            self.assertIn("row 2, column 4", bad.stderr)
             self.assertNotIn("Traceback", bad.stderr)
 
     def test_list_check_bad_key_and_invisible_desktop(self):

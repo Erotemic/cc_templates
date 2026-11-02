@@ -5,7 +5,7 @@ Rendering reads the same normalized cursor/targets; it does not decide damage.
 """
 
 from dataclasses import dataclass
-from .controls import Controls
+from ..controls import Controls
 
 
 def clamp(value, low=0.0, high=1.0):
@@ -13,7 +13,7 @@ def clamp(value, low=0.0, high=1.0):
     return max(low, min(high, value))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class StrikeView:
     """Describe a timing mini-game for the renderer without exposing its rules.
 
@@ -34,14 +34,14 @@ class Strike:
     """Define a player timing mini-game without applying battle damage.
 
     Subclasses update done and score (0..1), and return a StrikeView for drawing.
-    Battle owns damage calculation and uses a fresh strike from Weapon.factory.
+    Encounter owns damage calculation and uses a fresh strike from Weapon.factory.
     """
 
     done = False
     score = 0.0
 
-    def update(self, dt: float, controls: Controls):
-        """Consume dt seconds and this frame's Controls; update done and score.
+    def update(self, *, seconds: float, controls: Controls):
+        """Consume the elapsed seconds and this frame's Controls; update done and score.
 
         Subclasses must finish eventually even without input. This base method
         raises NotImplementedError; implement it before registering a new Weapon.
@@ -68,17 +68,17 @@ class TimingStrike(Strike):
         self.score = 0.0
         self.mark = None
 
-    def update(self, dt, controls):
-        """Move the cursor with dt seconds; finish on confirm or timeout.
+    def update(self, *, seconds, controls):
+        """Move the cursor with the elapsed seconds; finish on confirm or timeout.
 
         A press nearer the center earns a higher 0..1 score. No press earns
         zero, and calls after completion leave the result unchanged.
         """
         if self.done:
             return
-        self.elapsed += dt
+        self.elapsed += seconds
         cursor = clamp(self.elapsed / self.duration)
-        if controls.confirm:
+        if controls.confirm_pressed:
             self.score = clamp(1 - abs(cursor - 0.5) / 0.35)
             self.mark = (cursor, self.score)
             self.done = True
@@ -89,12 +89,12 @@ class TimingStrike(Strike):
     def view(self):
         """Return the current normalized cursor, center target, and optional press mark."""
         return StrikeView(
-            "FOCUS STRIKE",
-            "Z / Enter: stop the cursor near the center",
-            clamp(self.elapsed / self.duration),
-            (0.5,),
-            0.09,
-            () if self.mark is None else (self.mark,),
+            title="FOCUS STRIKE",
+            instruction="Z / Enter: stop the cursor near the center",
+            cursor=clamp(self.elapsed / self.duration),
+            targets=(0.5,),
+            window=0.09,
+            marks=() if self.mark is None else (self.mark,),
         )
 
 
@@ -112,17 +112,17 @@ class RhythmStrike(Strike):
         self.done = False
         self.score = 0.0
 
-    def update(self, dt, controls):
-        """Advance by dt seconds and try to match confirm to the nearest unused beat.
+    def update(self, *, seconds, controls):
+        """Advance by the elapsed seconds and try to match confirm to the nearest unused beat.
 
         Accept hits only inside that beat's timing window. Average their scores
         over all three beats; finish when time expires or all beats are hit.
         """
         if self.done:
             return
-        self.elapsed += dt
+        self.elapsed += seconds
         cursor = clamp(self.elapsed / self.duration)
-        if controls.confirm:
+        if controls.confirm_pressed:
             available = [i for i in range(3) if i not in self.hits]
             if available:
                 index = min(available, key=lambda i: abs(cursor - self.targets[i]))
@@ -137,10 +137,10 @@ class RhythmStrike(Strike):
     def view(self):
         """Return a drawing snapshot containing the three targets and accepted hit marks."""
         return StrikeView(
-            "THREE BEAT STRIKE",
-            "Z / Enter: tap once on each of the three beats",
-            clamp(self.elapsed / self.duration),
-            self.targets,
-            self.window,
-            tuple(self.marks),
+            title="THREE BEAT STRIKE",
+            instruction="Z / Enter: tap once on each of the three beats",
+            cursor=clamp(self.elapsed / self.duration),
+            targets=self.targets,
+            window=self.window,
+            marks=tuple(self.marks),
         )
