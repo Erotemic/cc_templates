@@ -229,7 +229,7 @@ class MapAuthorTests(unittest.TestCase):
         self.level["legend"]["g"] = self.level["legend"].pop("Q")
         rooms, _, _ = self.build()
         self.assertEqual(rooms["fresh"].people[0].character, "echo")
-        # New levels are ordinary values registered with a key in student_world.py.
+        # New rooms are ordinary entries in student_world.LEVELS.
         second = level(
             "A second place",
             ["#####", "#@..D", "#####"],

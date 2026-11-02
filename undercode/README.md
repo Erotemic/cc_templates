@@ -37,7 +37,7 @@ Audio is optional; `python main.py --mute` does not open an audio device.
 6. The fade returns you to exactly where you were walking. The lantern fountain
    near camp restores HP and cocoa. The north path leads to two more neighbors.
 
-For story writing, open **[undercode/levels/studio.py](undercode/levels/studio.py)**
+For story writing, open **[undercode/student_world.py](undercode/student_world.py)**
 and follow **[STORY_GUIDE.md](STORY_GUIDE.md)**. Move a letter, rewrite a line,
 or add a room with its own legend. `python main.py --level studio` previews it.
 
@@ -143,8 +143,7 @@ device is reported in the HUD and does not stop play.
 
 | File | Responsibility |
 | --- | --- |
-| **`undercode/levels/*.py`** | Draw levels with letters, place people/doors and write dialogue/choices |
-| **`undercode/student_world.py`** | Register levels and choose the starting room/marker |
+| **`undercode/student_world.py`** | All room maps, legends, story writing, door links and starting-room settings |
 | `undercode/building.py` | Documented helpers for writing levels, objects and dialogue |
 | **`undercode/student_sprites.py`** | Mission 1: implement directional views in normal play |
 | **`undercode/student_mechanics.py`** | Mission 2: implement the Story Studio healing light |
@@ -205,10 +204,9 @@ The examples show cooldowns, reachable safe lanes, warnings and mode changes.
 `StrikeView`. Add a `Weapon` with that factory in `content.py`. Tab selects it in
 the overworld; the battle controller applies damage without knowing its class.
 
-**A room/story:** copy a Python module in `undercode/levels/`, draw its letter
-map, and use helpers such as `person(...)`, `door(...)` and `sign(...)` in its
-legend. Import/register it in `student_world.py`. Doors link to named spawn
-markers. Choices, flags and branches use ordinary Python calls and lists.
+**A room/story:** add a room entry to `LEVELS` in `student_world.py`, draw its
+letter map, and use helpers such as `person(...)`, `door(...)` and `sign(...)` in
+its legend. Every room stays in this file. Doors link to named spawn markers. Choices, flags and branches use ordinary Python calls and lists.
 Follow [STORY_GUIDE.md](STORY_GUIDE.md), and pass functions from
 `student_mechanics.py` to `trigger(...)` or `on_interact` to add new rules.
 

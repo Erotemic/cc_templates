@@ -82,10 +82,10 @@ def check_dialogue(data):
 
 
 def build_story(levels, start_level, start_entry, character_keys):
-    """Compile registered Python level dictionaries and validate their links.
+    """Compile Python room dictionaries and validate their links.
 
-    levels maps keys to definitions built with building.level. The explicit
-    registry and starting marker live in student_world.py; character_keys comes
+    levels maps keys to definitions built with building.level. All room definitions
+    and the starting marker live in student_world.py; character_keys comes
     from the battle cast. Return (rooms_by_key, start_level, start_entry).
     Raise StoryError with a level key for invalid maps, legends or links.
     This reads definitions only; it never runs interaction callbacks.

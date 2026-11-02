@@ -261,8 +261,8 @@ class LaunchTests(unittest.TestCase):
             image = pygame.image.load(str(path))
             self.assertEqual(image.get_size(), (960, 720))
 
-    def test_copied_game_registers_a_new_python_level_and_reports_map_mistakes(self):
-        """A student can import a Python level and launch it outside this repository."""
+    def test_copied_game_adds_a_room_in_student_world_and_reports_map_mistakes(self):
+        """Adding a room needs one edit in the same file as all existing rooms."""
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory) / "student_game"
             project.mkdir()
@@ -272,21 +272,15 @@ class LaunchTests(unittest.TestCase):
                 project / "undercode",
                 ignore=shutil.ignore_patterns("__pycache__"),
             )
-            module = project / "undercode" / "levels" / "my_room.py"
-            module.write_text(
-                '"""A new level written in Python."""\n'
-                "from ..building import level, spawn, door, sign\n"
+            world_file = project / "undercode" / "student_world.py"
+            world_file.write_text(
+                world_file.read_text() + "\n# A student adds a room in this same file.\n"
                 'MESSAGE = "I wrote this in Python."\n'
-                'LEVEL = level("My room", ["######", "#@.?.D", "######"], {\n'
+                'LEVELS["my_room"] = level("My room", ["######", "#@.?.D", "######"], {\n'
                 '    "@": spawn("entrance"),\n'
                 '    "?": sign("My note", MESSAGE),\n'
                 '    "D": door("courtyard", "camp"),\n'
                 "})\n"
-            )
-            registry = project / "undercode" / "student_world.py"
-            registry.write_text(
-                registry.read_text()
-                + '\nfrom .levels import my_room\nLEVELS["my_room"] = my_room.LEVEL\n'
             )
             command = [sys.executable, str(project / "main.py")]
             checked = subprocess.run(
@@ -312,10 +306,9 @@ class LaunchTests(unittest.TestCase):
                 timeout=30,
             )
             self.assertEqual(played.returncode, 0, played.stderr)
-            # Change the file size too: Python can reuse bytecode for same-size
-            # edits made within one filesystem timestamp second.
-            module.write_text(
-                module.read_text().replace('"#@.?.D"', '"#@.!.D"') + "\n# Map edited.\n"
+            # A changed size avoids stale bytecode for same-second test edits.
+            world_file.write_text(
+                world_file.read_text().replace('"#@.?.D"', '"#@.!.D"') + "\n# Map edited.\n"
             )
             bad = subprocess.run(
                 command + ["--check"], cwd=directory, capture_output=True, text=True, timeout=30

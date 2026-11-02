@@ -9,7 +9,7 @@ def level(name, tiles, legend):
     """Describe a level using a display name, list of map strings, and symbol legend.
 
     Rows must be equally wide, at most 30 columns and 16 rows. The dictionary
-    is compiled later, after all levels are registered in student_world.LEVELS.
+    is compiled later, after student_world.LEVELS defines all rooms.
     """
     return {"name": name, "map": tiles, "legend": legend}
 

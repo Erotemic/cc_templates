@@ -1,7 +1,7 @@
 # Build your story in Python
 
-Open **`undercode/levels/studio.py`**. It describes a small quest using Python
-function calls: meet the Story Keeper, collect a bookmark, open the east gate,
+Open **`undercode/student_world.py`**. All four rooms live here. Find the
+`"studio"` entry in `LEVELS` for a small quest built with Python function calls: meet the Story Keeper, collect a bookmark, open the east gate,
 read the ending, and return to hear a different greeting.
 
 ```bash
@@ -14,16 +14,13 @@ dictionaries and functions as you learn them.
 
 ## Your first new level
 
-Save this as **`undercode/levels/my_room.py`**:
+Add this at the bottom of **`undercode/student_world.py`**, keeping the existing
+rooms. The helper functions are already imported at the top of that file:
 
 ```python
-"""My first story level."""
-
-from ..building import level, spawn, person, sign, door
-
 LIBRARIAN_NAME = "The Librarian"  # Change this and run again.
 
-LEVEL = level(
+LEVELS["my_room"] = level(
     "My first room",
     tiles=[
         "############",
@@ -51,23 +48,9 @@ connects each letter to its meaning. A **function call**, such as
 `door("courtyard", "camp")`, describes the object to put there. Named arguments
 such as `battle=False` let you change just the options you need.
 
-Open **`undercode/student_world.py`**. Add `my_room` to the existing import:
-
-```python
-from .levels import courtyard, garden, nook, studio, my_room
-```
-
-Add one entry to `LEVELS`, keeping the existing entries:
-
-```python
-LEVELS = {
-    "courtyard": courtyard.LEVEL,
-    "garden": garden.LEVEL,
-    "nook": nook.LEVEL,
-    "studio": studio.LEVEL,
-    "my_room": my_room.LEVEL,
-}
-```
+`LEVELS["my_room"] = ...` adds another entry to the existing dictionary.
+You can also copy one of its existing room entries and change its key. All maps,
+legends, conversations and door links stay in this one file.
 
 ```bash
 python main.py --check
@@ -108,7 +91,8 @@ alias terrain with any letter:
 "F": person("folio", tile="g"),
 ```
 
-Import the helpers you use from `..building` at the top of the level file.
+Most helpers are already imported at the top of `student_world.py`. If you
+use `terrain`, add it to that file's `from .building import ...` line.
 Every helper has a docstring explaining its arguments.
 
 | Function call | What the player finds |
@@ -217,12 +201,10 @@ Mission 2 in **`undercode/student_mechanics.py`** provides an unfinished
 oval; follow the inline walkthrough to implement healing and feedback.
 Ordinary fountains work while this mission is unfinished.
 
-Connect your function in a level with a normal import and function argument:
+The same file already imports `warm_light`. Connect it in a room's legend
+by passing it as a function argument:
 
 ```python
-from ..building import trigger
-from ..student_mechanics import warm_light
-
 # Inside your legend:
 "s": trigger(warm_light, name="Warm light"),
 ```
@@ -236,7 +218,7 @@ heal, or show `world.tell(...)`; it does not draw a frame.
 For an action when Z is pressed, pass an `on_interact` function:
 
 ```python
-from ..student_mechanics import your_action
+from .student_mechanics import your_action  # Add at the top of student_world.py.
 
 "?": sign("A curious sign", "Something happened.", on_interact=your_action),
 ```
