@@ -163,6 +163,61 @@ the submenu it just opened. No teacher solution is used during normal play.
 **Transfer:** add hover feedback, wheel scrolling, or clickable story choices.
 Locate their update and drawing paths yourself; those need additional rules.
 
+### 7. Make a floor piano: collision, pitch, and memory
+
+**Concept:** rectangle collisions, a dictionary lookup, and detecting a change
+between frames. **Function:** `student_overworld.update_piano`.
+
+```bash
+python main.py --level studio
+python main.py --check-exercise piano
+```
+
+The eight floor keys are in the Studio's southeast corner. They are visible but
+silent. They are **not automatic triggers**: you must write the collision check
+as well as select and play the correct tone. The engine supplies rectangles and
+an audio-request helper, not the musical decision or entry detection.
+
+1. Find `World.update` calling your function. Loop through `world.piano_keys`.
+   For each key, obtain `world.tile_rect(tile=key.tile)`. Both this rectangle and
+   `world.player_rect` use room pixels, so they can be compared directly.
+2. Use `world.player_rect.colliderect(key_rect)` yourself. Keep the first
+   overlapping key and stop searching. At a shared edge the body may overlap
+   two keys; this rule makes the choice predictable. Print the matched note
+   briefly to verify collision, then remove the repeated diagnostic.
+3. No overlap means clear `world.piano_key` to None and return. Otherwise, compare
+   the placed key's `key.key` ID with `world.piano_key`. If equal, return silently.
+4. Build a dictionary using the following table. Read `key.definition.note`,
+   look up its frequency, then call `world.play_tone(hz=frequency, duration=0.4)`.
+5. Save the placed key ID in `world.piano_key` after playing. This is the memory
+   of which key was active last frame; the musical label is a separate value.
+
+| Label | Frequency in Hz |
+| --- | --- |
+| C4 | 261.63 |
+| D4 | 293.66 |
+| E4 | 329.63 |
+| F4 | 349.23 |
+| G4 | 392.00 |
+| A4 | 440.00 |
+| B4 | 493.88 |
+| C5 | 523.25 |
+
+**Predict and test:** near but outside the piano → silence; overlap C4 → one
+C4 note; stand still → no new notes; walk onto D4 → one D4 note; step off and
+return → the same key can play again. Test all eight keys. The occupied key can
+light up using the same remembered ID. No Z press is needed. Mute/no audio must
+not change collision or memory. A body touching an edge without overlapping
+area does not collide, following pygame's rectangle convention.
+
+**Explain:** why would collision alone play about 60 notes a second? Why must
+leaving reset the memory? Why does the rule queue an audio request instead of
+opening a mixer? Trace World → Game → runtime → Audio after your code works.
+
+**Transfer:** implement playable black keys, chords, a melody puzzle, or another
+instrument. The current keyboard is eight natural notes; black bars are visual
+orientation. Those extensions need additional student-designed rules.
+
 ## Fading the scaffolding
 
 Pick one task with fewer instructions: make a sign change its writing after a

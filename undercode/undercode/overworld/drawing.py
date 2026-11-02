@@ -6,7 +6,7 @@ from .. import art
 from ..presentation import UI
 from ..settings import WIDTH, HEIGHT
 from .engine import TILE, tile_center
-from .model import Rest, Sign, Item, Trigger
+from .model import Rest, Sign, Item, Trigger, PianoKey
 
 
 class WorldView(UI):
@@ -77,7 +77,24 @@ class WorldView(UI):
             pygame.draw.line(surface, art.PAPER, (x - 3, y - 3), (x - 3, y + 4), 2)
         for obj in world.visible_objects():
             point = tile_center(tile=obj.tile) + origin
-            if isinstance(obj.definition, Rest):
+            if isinstance(obj.definition, PianoKey):
+                key_rect = world.tile_rect(tile=obj.tile).move(origin)
+                pressed = world.piano_key == obj.key
+                pygame.draw.rect(
+                    surface, art.GOLD if pressed else art.PAPER, key_rect.inflate(-2, -2)
+                )
+                pygame.draw.rect(surface, (40, 45, 57), key_rect.inflate(-2, -2), 1)
+                if obj.definition.note in ("C4", "D4", "F4", "G4", "A4"):
+                    pygame.draw.rect(surface, art.INK, (key_rect.right - 8, key_rect.y + 1, 7, 12))
+                self.text(
+                    surface=surface,
+                    text=obj.definition.note,
+                    position=(key_rect.centerx, key_rect.y + 22),
+                    size=18,
+                    color=art.INK,
+                    center=True,
+                )
+            elif isinstance(obj.definition, Rest):
                 pygame.draw.ellipse(surface, (39, 62, 73), (point.x - 20, point.y - 5, 40, 20))
                 pygame.draw.ellipse(
                     surface, (110, 179, 170), (point.x - 16, point.y - 8, 32, 15), 3

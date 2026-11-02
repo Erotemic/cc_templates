@@ -1,4 +1,4 @@
-"""Instructor examples for the six guided missions. Gameplay never imports this.
+"""Instructor examples for the seven guided missions. Gameplay never imports this.
 
 Compare with a student's work after they have made an attempt. These examples
 are also used to test that completing a TODO really changes normal gameplay.
@@ -54,3 +54,29 @@ def clicked_button(*, mouse_position, buttons):
         if button.rect.collidepoint(mouse_position):
             return button.index
     return None
+
+
+def update_piano(*, world):
+    """Instructor example: the student owns collision, frequency selection and entry memory."""
+    touching = None
+    for key in world.piano_keys:
+        if world.player_rect.colliderect(world.tile_rect(tile=key.tile)):
+            touching = key
+            break
+    if touching is None:
+        world.piano_key = None
+        return
+    if touching.key == world.piano_key:
+        return
+    frequencies = {
+        "C4": 261.63,
+        "D4": 293.66,
+        "E4": 329.63,
+        "F4": 349.23,
+        "G4": 392.00,
+        "A4": 440.00,
+        "B4": 493.88,
+        "C5": 523.25,
+    }
+    world.play_tone(hz=frequencies[touching.definition.note], duration=0.4)
+    world.piano_key = touching.key

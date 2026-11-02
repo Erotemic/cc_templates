@@ -119,6 +119,7 @@ class ExerciseChecksTests(unittest.TestCase):
             patch.object(student_overworld, "choose_player_view", solutions.choose_player_view),
             patch.object(student_overworld, "movement_speed", solutions.movement_speed),
             patch.object(student_overworld, "warm_light", solutions.warm_light),
+            patch.object(student_overworld, "update_piano", solutions.update_piano),
             patch.object(student_encounters.LanternPulse, "update", solutions.update_lantern_pulse),
             patch.object(student_encounters, "choose_echo_pattern", solutions.choose_echo_pattern),
             patch.object(student_encounters, "clicked_button", solutions.clicked_button),

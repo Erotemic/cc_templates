@@ -56,6 +56,7 @@ class Game:
         self.help_open = False
         self.debug_open = False
         self.cues = []
+        self.tones = []
         self.sound_label = "M: sound"
         self.technique_name = "choose technique"
         self.scene = Scene.WORLD
@@ -207,6 +208,8 @@ class Game:
             return
         if self.scene == Scene.WORLD:
             request = self.world.update(seconds=seconds, controls=controls)
+            self.tones.extend(self.world.tones)
+            self.world.tones.clear()
         else:
             self.encounter.update(seconds=seconds, controls=controls)
             self.cues.extend(self.encounter.cues)

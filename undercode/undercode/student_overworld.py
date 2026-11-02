@@ -94,3 +94,44 @@ def warm_light(*, world, obj):
 
     # TODO: heal by 3, keep the actual gain, then show it with world.tell().
     pass
+
+
+def update_piano(*, world):
+    """MISSION 7 -- Detect collisions with floor keys and play the matching tone.
+
+    Run: python main.py --level studio (piano in the southeast corner).
+    Check: python main.py --check-exercise piano
+    The piano is drawn, but NONE of its collision/note logic is implemented here.
+    World.update calls this function each walking frame; you supply the rules.
+
+    YOUR INPUTS:
+      world.piano_keys: placed key objects. key.definition.note is 'C4', 'D4', etc.
+      key.tile: its (column, row); world.tile_rect(tile=key.tile) gives its rectangle.
+      world.player_rect: the player's body rectangle in the SAME room-pixel system.
+      player_rect.colliderect(key_rect): True when those rectangles overlap.
+      world.piano_key: previous playing key's ID, initially None. YOU update it.
+      world.play_tone(hz=..., duration=0.4): queue a pitch; the audio adapter plays it.
+
+    BUILD IN SMALL STEPS:
+    1. Loop over world.piano_keys. Build each key's rectangle with tile_rect.
+       Use colliderect to detect the player overlapping it. First just print its
+       note on collision, then remove the print once you understand the values.
+    2. Keep the first overlapping key (or None if there is no collision). Break
+       after a match: the player can overlap the edge of two neighboring keys.
+    3. If no key overlaps, set world.piano_key = None and return. This remembers
+       leaving the piano and allows that same key to play when you return.
+    4. If its key.key already equals world.piano_key, return without another note.
+       Otherwise standing still would retrigger about 60 notes every second.
+    5. Make a dictionary mapping note labels to Hz; the table is in MISSIONS.md.
+       One entry is 'C4': 261.63. Look up the collided key's note and call play_tone.
+    6. Save key.key to world.piano_key AFTER playing. This is last-frame memory,
+       not the musical label. Different piano keys can have the same pitch.
+
+    PREDICT/TEST: away from the piano: silence. Enter C4: one C4 tone. Stand:
+    silence. Walk to D4: one D4 tone. Leave/return: the same note plays again.
+    Test all eight keys and restart. Mute/no audio should not change collisions.
+    EXPLAIN: why is checking collision alone insufficient? Who remembers entry?
+    TRANSFER: add black keys, chords, or a melody puzzle using your own rules.
+    """
+    # TODO: detect overlap, remember entry/exit, look up Hz, queue the right tone.
+    pass

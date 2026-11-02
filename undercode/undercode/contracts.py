@@ -40,3 +40,11 @@ class RoomRequest:
 
     destination_room: str
     destination_spawn: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ToneRequest:
+    """Ask the audio adapter for a frequency in Hz and a duration in seconds."""
+
+    hz: float
+    duration: float = 0.4

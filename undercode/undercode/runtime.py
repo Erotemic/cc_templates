@@ -154,6 +154,9 @@ def run(*, game, headless=False, mute=False, frames=None, screenshot=None):
             for cue in game.cues:
                 audio.play(cue)
             game.cues.clear()
+            for tone in game.tones:
+                audio.play_tone(hz=tone.hz, duration=tone.duration)
+            game.tones.clear()
             audio.scene(game.scene.name)
             game.sound_label = audio.label
             view.draw(surface=surface, game=game, focused=focused)

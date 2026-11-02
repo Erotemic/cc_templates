@@ -6,7 +6,7 @@ To add a room, copy a LEVELS entry, give it a new key, then link a Door to a Spa
 The overworld can run this file without importing any encounter definitions.
 """
 
-from .overworld.model import Room, Spawn, Person, Door, Sign, Item, Rest, Trigger
+from .overworld.model import Room, Spawn, Person, Door, Sign, Item, Rest, Trigger, PianoKey
 from .dialogue import Dialogue, Choice, Branch
 from .art import folio, ferris, prism
 from .student_art import draw_echo
@@ -93,7 +93,7 @@ LEVELS = {
             "#gggggggggggggggggg#",
             "#gg?ggggggKgggggggg#",
             "#gggggggggggggggggg#",
-            "#gggggggsgggggggggg#",
+            "#gggggggsg12345678g#",
             "#gggggggggggggggggg#",
             "####################",
         ],
@@ -150,6 +150,15 @@ LEVELS = {
                 required_flag="bookmark",
             ),
             "s": Trigger(on_enter=warm_light, name="Warm light"),
+            # Visible floor keys: mission 7 supplies collision and note logic.
+            "1": PianoKey(note="C4"),
+            "2": PianoKey(note="D4"),
+            "3": PianoKey(note="E4"),
+            "4": PianoKey(note="F4"),
+            "5": PianoKey(note="G4"),
+            "6": PianoKey(note="A4"),
+            "7": PianoKey(note="B4"),
+            "8": PianoKey(note="C5"),
             "b": Spawn(name="east"),
         },
     ),

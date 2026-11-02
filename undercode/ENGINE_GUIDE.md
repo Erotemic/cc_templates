@@ -229,6 +229,20 @@ Only menu phases invoke hit testing. A click cannot automatically advance a
 message, stop a strike, jump, or bypass a paused/help/fade frame. To add another
 mouse behavior, find that state's input handler and decide its meaning explicitly.
 
+## Floor piano: the student owns collision and the event
+
+The Studio's PianoKey records only define note labels and walkable ground.
+They do not join the automatic Trigger system. World.update calls the student's
+update_piano on walking frames. The student must test the player rectangle
+against each key rectangle, select an overlapping key, and remember whether
+that key was already playing. Only their code translates the note label to Hz.
+
+world.play_tone queues a ToneRequest. Game drains world requests into its own
+queue; the window adapter passes them to Audio.play_tone and clears the queue.
+Audio synthesizes/caches the buffer and respects mute or unavailable devices.
+This lets collision and note selection be tested without a speaker or mixer.
+The highlighted key reads world.piano_key; drawing never decides what to play.
+
 ## 8. Find a place for your own rule
 
 Ask which state must change and who owns that state. Read that owner's update

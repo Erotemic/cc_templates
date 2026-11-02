@@ -148,6 +148,66 @@ def check_mouse():
     return results
 
 
+def check_piano():
+    """Test the student's entire collision/note rule, without opening an audio device."""
+    from .app import Game
+    from .overworld.engine import tile_center
+    from .student_overworld import update_piano
+
+    world = Game(level="studio").world
+    results = []
+    # Being in the room is not enough: collision must actually select a key.
+    update_piano(world=world)
+    results.append((not world.tones, "away from every key: silence"))
+    frequencies = (261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25)
+    for key, expected in zip(world.piano_keys, frequencies):
+        world.tones.clear()
+        world.position = tile_center(tile=key.tile)
+        update_piano(world=world)
+        results.append(
+            (
+                len(world.tones) == 1 and abs(world.tones[0].hz - expected) < 0.1,
+                f"overlap {key.definition.note}: one {expected} Hz tone",
+            )
+        )
+        world.tones.clear()
+        update_piano(world=world)
+        results.append((not world.tones, f"standing on {key.definition.note}: no repeated tone"))
+    world.position = tile_center(tile=world.room.spawns["entrance"])
+    world.tones.clear()
+    update_piano(world=world)
+    results.append(
+        (world.piano_key is None and not world.tones, "leaving clears the remembered key")
+    )
+    key = world.piano_keys[-1]
+    world.position = tile_center(tile=key.tile)
+    update_piano(world=world)
+    results.append(
+        (
+            len(world.tones) == 1 and abs(world.tones[0].hz - 523.25) < 0.1,
+            "returning to the same key plays it again",
+        )
+    )
+    world.position = tile_center(tile=world.room.spawns["entrance"])
+    world.tones.clear()
+    update_piano(world=world)
+    first = world.piano_keys[0]
+    bounds = world.tile_rect(tile=first.tile)
+    world.position.x = bounds.left - 9
+    world.position.y = bounds.centery
+    update_piano(world=world)
+    results.append((not world.tones, "body touching a key edge without overlap stays silent"))
+    world.position.x += 1
+    update_piano(world=world)
+    results.append(
+        (
+            len(world.tones) == 1 and abs(world.tones[0].hz - 261.63) < 0.1,
+            "body overlap plays C4 even before its center reaches the key",
+        )
+    )
+    return results
+
+
 def check_exercises(*, exercise):
     """Print actionable results and return 0 only when the chosen student's checks pass."""
     checks = {
@@ -157,6 +217,7 @@ def check_exercises(*, exercise):
         "pulse": check_pulse,
         "tactics": check_tactics,
         "mouse": check_mouse,
+        "piano": check_piano,
     }
     selected = checks if exercise == "all" else {exercise: checks[exercise]}
     failed = False

@@ -103,6 +103,18 @@ class Trigger:
 
 
 @dataclass(kw_only=True)
+class PianoKey:
+    """A visible floor key. Mission 7 must detect overlap and choose its note's frequency.
+
+    This record does not contain an automatic trigger or a frequency lookup.
+    note is a musical label such as 'C4'; ground is the walkable tile beneath it.
+    """
+
+    note: str
+    ground: str = "."
+
+
+@dataclass(kw_only=True)
 class Tile:
     """Alias a map letter to terrain, such as 'T': Tile(ground='#')."""
 
@@ -124,7 +136,7 @@ class PlacedObject:
 
     key: str
     tile: tuple[int, int]
-    definition: Person | Sign | Item | Rest | Trigger | Door
+    definition: Person | Sign | Item | Rest | Trigger | Door | PianoKey
 
 
 @dataclass(kw_only=True)

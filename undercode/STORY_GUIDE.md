@@ -166,6 +166,20 @@ dialogue=Dialogue(
 
 Put the most specific ending first. A Branch can also have choices/set_flags.
 
+## A floor piano to program
+
+The Studio's southeast corner uses `PianoKey(note="C4")` through C5, placed with
+letters `1` through `8`. These records are visible, walkable keys, not automatic
+triggers. Mission 7 in MISSIONS.md asks you to write player/key collision tests,
+choose the frequency, and remember which key was playing. The empty
+`student_overworld.update_piano` function is called by World.update each walking
+frame. Until you implement it the piano stays silent.
+
+To add keys to another room, use PianoKey records in its legend and draw their
+letters. The same student rule can handle them because it reads the current
+room's `world.piano_keys`. Audio playback is requested with
+`world.play_tone(hz=..., duration=0.4)` and remains optional on school machines.
+
 ## Write a condition in ordinary Python
 
 For more than one flag, or a remembered encounter outcome, define a named

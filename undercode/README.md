@@ -20,7 +20,7 @@ no downloads, SVG/Cairo dependencies, or build steps. Use `--mute` when desired.
 
 - **Explore code:** read [ENGINE_GUIDE.md](ENGINE_GUIDE.md), then follow one frame
   through `runtime.py`, `app.py` and the selected engine's `update` method.
-- **Learn by building:** open [MISSIONS.md](MISSIONS.md). Three overworld tasks
+- **Learn by building:** open [MISSIONS.md](MISSIONS.md). Overworld tasks
   use ordinary functions; encounter tasks introduce timers, tactics and mouse hit tests.
 - **Tell a story:** all rooms, dialogue, choices and door links are in
   [student_world.py](undercode/student_world.py). Follow [STORY_GUIDE.md](STORY_GUIDE.md).
@@ -41,12 +41,14 @@ when there is a concrete game problem for them to solve.
 | Pulse | `student_encounters.LanternPulse.update` | Warned, timed sparks cross the defense arena |
 | Tactics | `student_encounters.choose_echo_pattern` | Echo changes patterns on later turns |
 | Mouse | `student_encounters.clicked_button` | Click action buttons and visible submenu rows |
+| Piano | `student_overworld.update_piano` | Detect floor-key collisions and play matching pitches |
 
 These functions are called in normal gameplay. The Courier initially looks
 down, the light has no effect, Pulse has no sparks, and Echo repeats Ripples.
 Encounter buttons respond to the keyboard until the mouse task is implemented.
 Other rooms, conversations, fountains, and example defenses work immediately.
-The game never imports teacher solutions.
+The Studio also has a silent floor piano: students implement both key collisions
+and note selection. The game never imports teacher solutions.
 
 ## Controls and observation
 
@@ -79,6 +81,7 @@ python main.py --overworld --check         # rooms only
 python main.py --encounter echo --check    # encounters only
 python main.py --check-exercise facing     # YOUR task implementation
 python main.py --check-exercise mouse      # mission 6: mouse buttons
+python main.py --check-exercise piano      # mission 7: collisions and notes
 python main.py --check-exercise all
 python -m unittest discover -s tests -v    # regression suite
 ```

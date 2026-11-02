@@ -19,6 +19,12 @@ A peaceful Person has its own art/writing and no Opponent dependency. All rooms
 remain together in `student_world.py`. Opponent definitions and their examples
 are in the encounter catalog, with editable Echo in `student_encounters.py`.
 The named records use keyword arguments, so their data can be read at each call.
+Piano mission 7 asks students to implement collision AND note selection.
+PianoKey is a visible record, not an automatic trigger. The student owns the
+previous-key memory too; compare this with the supplied light-trigger machinery.
+Audio generation is provided so the exercise focuses on loops, geometry, lookup
+and event state. The piano checker runs without opening an audio device.
+
 Mouse mission 6 is independent of the pattern tasks. The adapter supplies logical
 click coordinates; the student implements hit testing. Ask them to predict a hit,
 a miss, a boundary, and a scrolled index before enabling the mouse behavior.

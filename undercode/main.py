@@ -27,7 +27,7 @@ def main(argv=None):
     )
     parser.add_argument(
         "--check-exercise",
-        choices=("facing", "sprint", "healing", "pulse", "tactics", "mouse", "all"),
+        choices=("facing", "sprint", "healing", "pulse", "tactics", "mouse", "piano", "all"),
     )
     parser.add_argument(
         "--check-sprites", action="store_true", help="Shortcut for --check-exercise facing"

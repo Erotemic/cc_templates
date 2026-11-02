@@ -7,7 +7,20 @@ There is no encounter import: a story-only map can run on its own.
 """
 
 from ..dialogue import Dialogue
-from .model import Room, RoomMap, Spawn, Tile, Person, Door, Sign, Item, Rest, Trigger, PlacedObject
+from .model import (
+    Room,
+    RoomMap,
+    Spawn,
+    Tile,
+    Person,
+    Door,
+    Sign,
+    Item,
+    Rest,
+    Trigger,
+    PlacedObject,
+    PianoKey,
+)
 
 TERRAIN = "#~.gd "
 
@@ -84,7 +97,7 @@ def compile_rooms(*, definitions):
                 record = definition.legend[letter]
                 require(
                     condition=isinstance(
-                        record, (Spawn, Tile, Person, Door, Sign, Item, Rest, Trigger)
+                        record, (Spawn, Tile, Person, Door, Sign, Item, Rest, Trigger, PianoKey)
                     ),
                     message=f"{here}: use a room object record",
                 )
@@ -130,15 +143,16 @@ def compile_rooms(*, definitions):
                             condition=callable(record.on_enter),
                             message=f"{here}: on_enter must be a function",
                         )
-                    elif not isinstance(record, Door):
+                    elif not isinstance(record, (Door, PianoKey)):
                         require(
                             condition=record.on_interact is None or callable(record.on_interact),
                             message=f"{here}: on_interact must be a function",
                         )
-                    require(
-                        condition=record.when is None or callable(record.when),
-                        message=f"{here}: when must be a function",
-                    )
+                    if not isinstance(record, PianoKey):
+                        require(
+                            condition=record.when is None or callable(record.when),
+                            message=f"{here}: when must be a function",
+                        )
                     objects.append(PlacedObject(key=object_id, tile=position, definition=record))
             terrain.append(ground_row)
         require(condition=bool(spawns), message=f"{location}: add a Spawn marker")

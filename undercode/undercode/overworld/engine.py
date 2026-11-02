@@ -7,10 +7,10 @@ opens a window, or imports encounters. It reports requests for Game to handle.
 
 import math
 import pygame
-from ..contracts import EncounterRequest, RoomRequest, Outcome
+from ..contracts import EncounterRequest, RoomRequest, Outcome, ToneRequest
 from ..dialogue import Conversation, Dialogue, available
 from .. import student_overworld
-from .model import Person, Door, Item, Rest, Trigger
+from .model import Person, Door, Item, Rest, Trigger, PianoKey
 
 TILE = 32
 
@@ -37,6 +37,8 @@ class World:
         self.dialogue = None
         self.dialogue_target = None
         self.trigger_tiles = set()
+        self.piano_key = None  # Student-owned memory: which key was playing last frame?
+        self.tones = []
         self.door_cooldown = 0.4
         self.toast = "Arrows: walk. Z: talk, read or rest."
         self.toast_time = 5.0
@@ -55,6 +57,32 @@ class World:
                 if person.definition.encounter_id is not None:
                     count += 1
         return count
+
+    @property
+    def piano_keys(self):
+        """List placed piano records; this locates objects, NOT player/key collisions."""
+        return [obj for obj in self.room.objects if isinstance(obj.definition, PianoKey)]
+
+    @property
+    def player_rect(self):
+        """Expose the player's 18-pixel body for students' collision experiments."""
+        rect = pygame.Rect(0, 0, 18, 18)
+        rect.center = (round(self.position.x), round(self.position.y))
+        return rect
+
+    @staticmethod
+    def tile_rect(*, tile):
+        """Convert a (column, row) to a room-pixel rectangle; no collision decision here."""
+        column, row = tile
+        return pygame.Rect(column * TILE, row * TILE, TILE, TILE)
+
+    def play_tone(self, *, hz, duration=0.4):
+        """Queue an audio request without importing a mixer into the rule engine."""
+        if not math.isfinite(hz) or not 20 <= hz <= 20000:
+            raise ValueError("Tone frequency must be between 20 and 20000 Hz.")
+        if not math.isfinite(duration) or not 0 < duration <= 5:
+            raise ValueError("Tone duration must be between 0 and 5 seconds.")
+        self.tones.append(ToneRequest(hz=hz, duration=duration))
 
     def passable(self, *, position):
         """Test the player's four corners against room edges, walls and water."""
@@ -106,6 +134,7 @@ class World:
         self.dialogue = None
         self.dialogue_target = None
         self.trigger_tiles.clear()
+        self.piano_key = None
         self.door_cooldown = 0.5  # Arriving must not immediately take a door back.
         self.tell(text=self.room.name)
 
@@ -132,7 +161,7 @@ class World:
         """Find the closest Z-usable object within 55 pixels, or return None."""
         closest, distance = None, 55
         for obj in self.visible_objects():
-            if isinstance(obj.definition, (Door, Trigger)):
+            if isinstance(obj.definition, (Door, Trigger, PianoKey)):
                 continue
             candidate = self.position.distance_to(tile_center(tile=obj.tile))
             if candidate < distance:
@@ -250,6 +279,7 @@ class World:
             speed=student_overworld.movement_speed(controls=controls),
         )
         self.update_triggers()
+        student_overworld.update_piano(world=self)
         door_request = self.check_doors()
         if door_request is not None:
             return door_request

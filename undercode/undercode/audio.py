@@ -26,6 +26,7 @@ class Audio:
         self.current_scene = None
         self.effects = {}
         self.music = {}
+        self.note_sounds = {}
         if not enabled:
             return
         if sys.platform.startswith("linux") and not os.environ.get("SDL_AUDIODRIVER"):
@@ -123,6 +124,21 @@ class Audio:
         """Play a known cue on an effect channel when audio is available and unmuted."""
         if self.enabled and not self.muted and cue in self.effects:
             self.effects[cue].play()
+
+    def play_tone(self, *, hz, duration=0.4):
+        """Play a requested pitch with the same optional/muted behavior as sound cues.
+
+        Synthesize on first use and reuse the buffer. Bound the cache for students
+        experimenting with many frequencies. Channel 0 remains reserved for music.
+        """
+        if not self.enabled or self.muted:
+            return
+        key = (hz, duration)
+        if key not in self.note_sounds:
+            if len(self.note_sounds) >= 64:
+                self.note_sounds.clear()
+            self.note_sounds[key] = self.tone(hz=hz, duration=duration)
+        self.note_sounds[key].play()
 
     def toggle(self):
         """Switch mute state, update music volume, and stop effects when muting."""
