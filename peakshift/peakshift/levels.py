@@ -1,18 +1,18 @@
-"""Authored, readable levels: edit the letters, not a procedural generator.
+"""Hand-authored climbing rooms, with open-air drops and tall rock walls.
 
-Each character is a 32-pixel tile. Rooms have 24 columns and 15 rows.
+Every character is a 32-pixel tile. All rooms are 24 columns wide but can
+have DIFFERENT HEIGHTS; the camera follows the climber up the mountain.
 
-    .  empty space           #  solid rock
-    =  jump-through ledge    P  player spawn          G  exit to next room
-    ^  spikes (danger)       C  checkpoint (respawn here)
-    *  optional berry        R  dash-refill crystal (student mission)
-    m  moving platform (student makes it move; solid from above already)
-    b  crumble ledge (student makes it crumble; solid from above)
-    w  wind (student makes it push; decorative until implemented)
+    .  air / abyss         #  grabbable solid rock
+    =  jump-through ledge  P  player spawn         G  room exit
+    ^  spikes              C  checkpoint           *  optional berry
+    R  dash crystal        m  moving platform       b  crumble ledge
+    w  wind zone
 
-Adjacent 'm' cells on one row form one horizontal moving platform.
-The exit needs no key or berries: students can finish every room immediately.
-For a new room, copy a Room below, choose a unique key, and connect an exit.
+There is no implicit floor: dots below a ledge mean a bottomless pit. When
+editing a level, keep at least 15 rows so it fits the initial view. The first
+four levels can be cleared with only the supplied movement code; students
+need not implement any optional mission to reach the exit.
 """
 
 from __future__ import annotations
@@ -30,100 +30,140 @@ class Room:
     next_room: str | None
 
 
-# Each ledge and obstacle is placed intentionally. No random generation.
-# Room 1: easy jumps with optional pickup and a dormant crumble shortcut.
+# Four hand-built rooms, from short cliff crossing to tall vertical ascent.
+
 WELCOME = Room(
-    name="Trailhead",
-    hint="A / D: move   SPACE: jump   X or SHIFT: dash",
-    next_room="switchbacks",
+    name='Trailhead',
+    hint='Hold C + UP to climb walls.',
+    next_room='switchbacks',
     tiles=(
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "............*...........",
-        "..........====..........",
-        ".....*..........b.......",
-        "..P......^^...........G.",
-        "########################",
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '...........*.......#....',
+        '............#......#....',
+        '............#......#.*..',
+        '............#....R.#....',
+        '........==..#....b.#..G.',
+        '..P..^......#..C...#####',
+        '######......######......',
+        '........................',
     ),
 )
 
-# Room 2: staggered ledges; wall slides and wall jumps are already playable.
 SWITCHBACKS = Room(
-    name="Switchbacks",
-    hint="Push into a wall to slide. Jump again to kick away.",
-    next_room="divide",
+    name='Switchbacks',
+    hint='Wall-jump between cliffs; use ledges.',
+    next_room='divide',
     tiles=(
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "....................*.G.",
-        ".................======.",
-        "..............R.........",
-        "#..........======.......",
-        "#....*..................",
-        "#....======.............",
-        "#.P.........^^..........",
-        "########################",
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '....####.........*......',
+        '....####................',
+        '....####.............G..',
+        '....####....############',
+        '....####.*..####........',
+        '....####..R.####........',
+        '....####....####........',
+        '....####.==.####........',
+        '....####....####........',
+        '....####....####........',
+        '....####....####........',
+        '....####....####........',
+        '....####..C.####........',
+        '....####.==.####........',
+        '....####....####........',
+        '....####....####........',
+        '....####....####........',
+        '....####....####........',
+        '....####.P..####........',
+        '........####............',
+        '........................',
     ),
 )
 
-# Room 3: a real void makes the midair dash useful (not just a speed boost).
 DIVIDE = Room(
-    name="Skybridge",
-    hint="Jump toward the gap, then dash through the air. C saves progress.",
-    next_room="ridge",
+    name='Skybridge',
+    hint='Jump + dash across the abyss.',
+    next_room='ridge',
     tiles=(
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "..................*.....",
-        "................mmmm....",
-        "........................",
-        ".....R..........C.......",
-        "..P..................G..",
-        "#########......#########",
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '.......*.....C.....*....',
+        '............###.........',
+        '..........R.###.......G.',
+        '............###...mm.###',
+        '............###.........',
+        '..P.....==..###.........',
+        '######......###.........',
+        '........................',
+        '........................',
     ),
 )
 
-# Room 4: short ascent + optional wind, berries, and breakable tiles.
 RIDGE = Room(
-    name="Lantern Ridge",
-    hint="Dash comes back on landing. Checkpoints survive your falls.",
+    name='Lantern Ridge',
+    hint='C + UP climbs; flags save progress.',
     next_room=None,
     tiles=(
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        "........................",
-        ".....................*.G",
-        "..................=====.",
-        ".................w......",
-        ".............======.....",
-        ".........C..............",
-        "......bbbbbb............",
-        "....*...................",
-        "....====................",
-        "..P..........^^.........",
-        "########################",
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '........................',
+        '..................*.....',
+        '...................##.G.',
+        '...................#####',
+        '...................##...',
+        '...................##...',
+        '...................##...',
+        '.................==##...',
+        '...............C...##...',
+        '..............###..##...',
+        '..............###..##...',
+        '...........*..###..##...',
+        '.............w###..##...',
+        '............Rw###..##...',
+        '.............w###.......',
+        '........C..bb.###.......',
+        '.......###....###.......',
+        '.......###....###.......',
+        '....*..###....###.......',
+        '.......###....###.......',
+        '.......###....###.......',
+        '.......###....###.......',
+        '..P..^.###^...###.......',
+        '######.###..............',
+        '........................',
+        '........................',
     ),
 )
 
@@ -157,8 +197,8 @@ def validate_rooms(rooms: dict[str, Room] | None = None,
     if not rooms or start_room not in rooms:
         raise MapError(f"Starting room {start_room!r} does not exist")
     for key, room in rooms.items():
-        if len(room.tiles) != settings.ROWS:
-            raise MapError(f"Room {key!r}: expected {settings.ROWS} rows, found {len(room.tiles)}")
+        if len(room.tiles) < settings.ROWS:
+            raise MapError(f"Room {key!r}: expected at least {settings.ROWS} rows, found {len(room.tiles)}")
         for row_index, line in enumerate(room.tiles):
             if len(line) != settings.COLS:
                 raise MapError(f"Room {key!r}, row {row_index + 1}: expected "

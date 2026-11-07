@@ -12,7 +12,8 @@ changing a value will do. Run the game to check.
 
 ## 1. Berry collector (10 minutes)
 
-Find the berry at the start of Trailhead. Touch it: it disappears but your
+Find either berry in Trailhead (one is high above its first cliff). Touch it:
+it disappears but your
 `BERRIES` counter stays 0. Open `collect_berry(game)`. What does `game.berries`
 mean? Write the one line that increments it. Demonstrate that touching a berry
 twice does not score twice. Try awarding points instead of counting berries.
@@ -72,13 +73,15 @@ similarly at 30 FPS and 60 FPS? Try beating your time.
 ## 7. Author a fifth room (30–50 minutes)
 
 Copy an existing `Room` in `levels.py`, give it a new name, and edit its tile
-rows. Every row has exactly 24 characters; there are exactly 15 rows. Include
+rows. Every row has exactly 24 characters; you can make rooms taller than the
+15-row viewport (the four examples have 20–31 rows). Include
 one `P` and one `G`. Add it to `ROOMS` with a new key. Connect the previous
 last room's `next_room` to your key. Make this course fair with the mechanics
 that work **before** the optional missions. Try the new room with
 `python main.py --room your_new_key` (replace with your key).
 
-Try **two playtests**: your own run and someone else's first attempt. What
+Try **two playtests**: your own run and someone else's first attempt. Try
+adding a 5-tile-high rock face and a gap with no floor; use C + UP to grip it. What
 could they infer from the level without reading your code? Can they finish
 without using optional crystals, wind, or moving platforms?
 

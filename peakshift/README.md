@@ -7,8 +7,9 @@ that already works. This is an independent classroom starter, not a Celeste
 clone: the rooms, character, visuals, and generated music are original.
 
 You start with working **running, variable-height jumping, coyote time, jump
-buffering, wall sliding, wall jumping, eight-direction dashing, spikes,
-checkpoints, death/respawn, and four connected authored rooms**. You can finish
+buffering, wall sliding, wall jumping, stamina-limited wall grabbing/climbing,
+eight-direction dashing, spikes, checkpoints, death/respawn, vertical camera
+tracking, and four connected authored rooms**. You can finish
 all four rooms without completing a single coding assignment. Optional
 mechanics are visible in the maps but await student code.
 
@@ -30,6 +31,7 @@ runs silently when audio is unavailable.
 | A / D or left / right | Run |
 | Space or Z | Jump; hold for higher jumps |
 | X or Shift | Dash once until landing (aim with WASD or arrows) |
+| Hold C near rock | Grip the wall; W / S (or up/down) climbs/descends until stamina runs out |
 | W / S or up / down | Aim dash vertically or diagonally |
 | H | Controls / help |
 | P | Pause |
@@ -65,19 +67,30 @@ them in any order.
 ## Authored levels, like UnderCode
 
 Open **`peakshift/levels.py`**. Every room has a `Room` record with a name,
-`tiles` (15 rows of 24 characters), a gameplay hint, and an explicit
+`tiles` (24 columns and **at least** 15 rows), a gameplay hint, and an explicit
 `next_room` destination. The `ROOMS` dictionary connects the rooms into a
 course. To make a new level, copy one Room, edit its letter map, and connect
 its key. See the exact symbol legend at the top of `levels.py`.
 
 ```text
-..P......^^...........G.
-########################
+..P....###..............
+######.###..............
+........................
 ```
 
-`P` is the spawn; `^` are spikes; `G` is the exit; `#` is rock; `=` is a jump-through ledge. Other symbols
+`P` is the spawn; `^` are spikes; `G` is the exit; `#` is climbable
+rock; `=` is a jump-through ledge. Other symbols
 include a checkpoint, refill crystal, berry, moving platform, crumble tile,
 and wind. The checker reports the room, row, and column of map mistakes.
+
+The rooms are 20–31 tiles tall and scroll vertically. **There is no
+automatic floor**: a gap where there is no `#`, `=`, `m`, or `b` beneath a
+character is a real fall, followed by checkpoint respawn. The four starter
+rooms emphasize different obstacles: Trailhead has cliff faces and two
+crossings; Switchbacks is a tall, narrow wall-jump shaft; Skybridge is a
+wide gorge with an elevated pillar and dash crossing; Lantern Ridge has
+three towers, high-altitude ledges, and long drops. Students can practice
+any single room using `--room <key>`.
 
 Levels are **fixed and authored**, not procedural. You can deliberately
 place challenges around specific mechanics, then playtest whether each route
@@ -89,7 +102,7 @@ death immediately respawns you at the last checkpoint.
 ```text
 main.py                  Run the game; optional testing switches
 peakshift/student.py      All guided missions (start here)
-peakshift/levels.py       Four editable, authored rooms and map checker
+peakshift/levels.py       Four tall editable rooms and map checker
 peakshift/physics.py      Velocity, jumping, dash, collision, respawn
 peakshift/art.py          Shapes, mountain backgrounds, HUD, effects
 peakshift/audio.py        Synthesized song and game sounds

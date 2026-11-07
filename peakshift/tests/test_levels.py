@@ -11,9 +11,37 @@ class LevelTests(unittest.TestCase):
     def test_every_authored_room_valid(self):
         levels.validate_rooms()
         self.assertEqual(len(levels.ROOMS), 4)
-        self.assertTrue(all(len(room.tiles) == 15 for room in levels.ROOMS.values()))
+        self.assertEqual([len(room.tiles) for room in levels.ROOMS.values()],
+                         [20, 29, 23, 31])
+        self.assertTrue(all(len(line) == 24 for room in levels.ROOMS.values()
+                            for line in room.tiles))
         self.assertEqual([room.name for room in levels.ROOMS.values()],
                          ["Trailhead", "Switchbacks", "Skybridge", "Lantern Ridge"])
+
+    def test_authored_course_contains_real_cliff_walls_and_floorless_gaps(self):
+        """Tall faces and an absent collision floor, not painted scenery."""
+        for name, room in levels.ROOMS.items():
+            with self.subTest(room=name):
+                # At least one face has >=4 tiles of vertical rock.
+                wall_height = max(
+                    max((len(run) for run in ''.join(
+                        'X' if row[col] == '#' else '.' for row in room.tiles
+                    ).split('.')), default=0)
+                    for col in range(24))
+                self.assertGreaterEqual(wall_height, 4)
+                # Below spawn height, a 4-column hole has no collision floor.
+                spawn_row = levels.find(room.tiles, 'P')[0][1]
+                gaps = [all(row[col] not in '#=bm'
+                            for row in room.tiles[spawn_row + 1:])
+                        for col in range(24)]
+                self.assertIn('XXXX', ''.join('X' if gap else '.' for gap in gaps))
+
+    def test_validator_accepts_tall_maps_but_rejects_too_short(self):
+        from peakshift import settings
+        from dataclasses import replace
+        short = replace(levels.WELCOME, tiles=levels.WELCOME.tiles[:settings.ROWS - 1])
+        with self.assertRaisesRegex(levels.MapError, 'expected at least 15 rows'):
+            levels.validate_rooms({'short': short}, 'short')
 
     def test_graph_connects_to_a_terminal_room(self):
         key = levels.START_ROOM
@@ -26,7 +54,7 @@ class LevelTests(unittest.TestCase):
 
     def test_student_map_error_points_to_row(self):
         bad = replace(levels.WELCOME, tiles=levels.WELCOME.tiles[:-1] + ("###",))
-        with self.assertRaisesRegex(levels.MapError, "row 15: expected 24 columns"):
+        with self.assertRaisesRegex(levels.MapError, "row 20: expected 24 columns"):
             levels.validate_rooms({"bad": bad}, "bad")
 
     def test_missing_spawn_is_explained(self):
@@ -50,7 +78,7 @@ class LevelTests(unittest.TestCase):
 
     def test_adjacent_platform_characters_form_one_bridge(self):
         self.assertEqual(list(levels.moving_platform_runs(levels.DIVIDE.tiles)),
-                         [(16 * 32, 10 * 32, 4 * 32)])
+                         [(18 * 32, 17 * 32, 2 * 32)])
 
 
 if __name__ == "__main__":

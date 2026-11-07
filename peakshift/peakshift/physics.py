@@ -22,6 +22,7 @@ class Controls:
     jump_pressed: bool = False
     jump_held: bool = False
     dash_pressed: bool = False
+    grab_held: bool = False  # Hold C near rock; UP / DOWN climb or descend
 
 
 @dataclass
@@ -87,6 +88,8 @@ class Player:
     coyote: float = 0.0
     jump_buffer: float = 0.0
     wall_lock: float = 0.0
+    grip_left: float = settings.WALL_GRIP_SECONDS
+    grabbing: bool = False
     jump_was_held: bool = False
     ground_platform: MovingPlatform | None = None
 
@@ -127,6 +130,10 @@ class Game:
         self.ledges: list[Rect] = []
         self.load_room(self.room_key)
 
+    @property
+    def world_height(self) -> int:
+        return len(self.room.tiles) * settings.TILE
+
     def load_room(self, key: str) -> None:
         self.room_key = key
         self.room = self.rooms[key]
@@ -142,6 +149,15 @@ class Game:
             (col, row): CrumbleBlock(col, row)
             for col, row in levels.find(self.room.tiles, "b")
         }
+        self.solids = [Rect(col * t, row * t, t, t)
+                       for row, line in enumerate(self.room.tiles)
+                       for col, letter in enumerate(line) if letter == "#"]
+        self.trigger_tiles = [(col, row, letter)
+                              for row, line in enumerate(self.room.tiles)
+                              for col, letter in enumerate(line)
+                              if letter in "^C*RG"]
+        self.wind_tiles = [Rect(col * t, row * t, t, t)
+                           for col, row in levels.find(self.room.tiles, "w")]
         self.ledges = [Rect(x, y, w, 8)
                        for x, y, w in levels.one_way_runs(self.room.tiles)]
         self.platforms = [
@@ -189,14 +205,8 @@ def approach(value: float, target: float, amount: float) -> float:
 
 
 def solid_rects(game: Game) -> list[Rect]:
-    """Full solid rock. Crumble tiles are jump-through supports from above."""
-    t = settings.TILE
-    result = []
-    for row, line in enumerate(game.room.tiles):
-        for col, letter in enumerate(line):
-            if letter == "#":
-                result.append(Rect(col * t, row * t, t, t))
-    return result
+    """Solid rock is fixed in each room, so reuse the collision geometry."""
+    return game.solids
 
 
 def _touch_wall(player: Player, blocks: list[Rect]) -> int:
@@ -274,37 +284,34 @@ def _touch_symbols(game: Game) -> None:
     """Handle hazards, checkpoints, berries, crystals and exits."""
     player = game.player
     t = settings.TILE
-    for row, line in enumerate(game.room.tiles):
-        for col, letter in enumerate(line):
-            if letter not in "^C*RG":
-                continue
-            # Spikes have a small forgiving inset, unlike solid rock.
-            padding = 6 if letter == "^" else 2
-            rect = Rect(col * t + padding, row * t + padding,
-                        t - 2 * padding, t - 2 * padding)
-            if not player.rect.overlaps(rect):
-                continue
-            pos = (col, row)
-            if letter == "^":
-                game.die()
-                return
-            if letter == "C":
-                checkpoint = (col * t + (t - settings.PLAYER_W) / 2,
-                              (row + 1) * t - settings.PLAYER_H)
-                if checkpoint != game.checkpoint:
-                    game.checkpoint = checkpoint
-                    game.events.append("checkpoint")
-            elif letter == "*" and pos not in game.collected_berries:
-                game.collected_berries.add(pos)
-                student.collect_berry(game)
-                game.events.append("berry")
-            elif letter == "R" and pos not in game.used_crystals:
-                if student.refill_dash_from_crystal(player):
-                    game.used_crystals.add(pos)
-                    game.events.append("crystal")
-            elif letter == "G":
-                game.advance()
-                return
+    for col, row, letter in game.trigger_tiles:
+        # Spikes have a forgiving inset, unlike solid rock.
+        padding = 6 if letter == "^" else 2
+        rect = Rect(col * t + padding, row * t + padding,
+                    t - 2 * padding, t - 2 * padding)
+        if not player.rect.overlaps(rect):
+            continue
+        pos = (col, row)
+        if letter == "^":
+            game.die()
+            return
+        if letter == "C":
+            checkpoint = (col * t + (t - settings.PLAYER_W) / 2,
+                          (row + 1) * t - settings.PLAYER_H)
+            if checkpoint != game.checkpoint:
+                game.checkpoint = checkpoint
+                game.events.append("checkpoint")
+        elif letter == "*" and pos not in game.collected_berries:
+            game.collected_berries.add(pos)
+            student.collect_berry(game)
+            game.events.append("berry")
+        elif letter == "R" and pos not in game.used_crystals:
+            if student.refill_dash_from_crystal(player):
+                game.used_crystals.add(pos)
+                game.events.append("crystal")
+        elif letter == "G":
+            game.advance()
+            return
 
 
 def _substep(game: Game, controls: Controls, dt: float) -> None:
@@ -353,6 +360,15 @@ def _substep(game: Game, controls: Controls, dt: float) -> None:
     if horizontal and player.wall_lock <= 0:
         player.facing = horizontal
 
+    # Grip a solid cliff. Climbing uses stamina; landing refills it.
+    # A wall jump always wins over a grab so the player can kick away.
+    player.grabbing = (controls.grab_held and player.wall_side != 0
+                       and not player.on_ground and player.wall_lock <= 0
+                       and player.dash_time <= 0 and player.grip_left > 0)
+    if player.grabbing:
+        player.grip_left = max(0.0, player.grip_left - dt)
+        player.vx = 0.0
+
     # Exactly one dash until your next landing. Direction is sampled on press.
     if controls.dash_pressed and player.dashes > 0 and player.dash_time <= 0:
         dx = horizontal
@@ -371,30 +387,32 @@ def _substep(game: Game, controls: Controls, dt: float) -> None:
         game.events.append("dash")
 
     if player.dash_time > 0:
+        player.grabbing = False
         player.dash_time = max(0.0, player.dash_time - dt)
     else:
-        if player.wall_lock <= 0:
+        if player.wall_lock <= 0 and not player.grabbing:
             target = horizontal * settings.RUN_SPEED
             accel = settings.RUN_ACCEL if player.on_ground else settings.AIR_ACCEL
             if horizontal == 0:
                 accel = settings.FRICTION if player.on_ground else settings.AIR_ACCEL * 0.55
             player.vx = approach(player.vx, target, accel * dt)
-        player.vy = min(settings.MAX_FALL, player.vy + settings.GRAVITY * dt)
+        if player.grabbing:
+            # Stick to the rock, or climb with up/down. No hidden magic jump.
+            player.vy = (-settings.WALL_CLIMB_SPEED if controls.up
+                         else settings.WALL_CLIMB_SPEED if controls.down else 0.0)
+        else:
+            player.vy = min(settings.MAX_FALL, player.vy + settings.GRAVITY * dt)
         leaning = (controls.right and player.wall_side == 1) or (
             controls.left and player.wall_side == -1)
-        if not player.on_ground and player.wall_side and leaning and player.vy > 0:
+        if not player.grabbing and not player.on_ground and player.wall_side and leaning and player.vy > 0:
             player.vy = min(player.vy, settings.WALL_SLIDE)
-        if player.jump_was_held and not controls.jump_held and not controls.jump_pressed:
+        if not player.grabbing and player.jump_was_held and not controls.jump_held and not controls.jump_pressed:
             if player.vy < 0:
                 player.vy *= settings.JUMP_CUT
             player.jump_was_held = False
 
     # Wind changes acceleration, not teleportation; lesson hook starts at 0.
-    inside_wind = any(
-        player.rect.overlaps(Rect(col * settings.TILE, row * settings.TILE,
-                                  settings.TILE, settings.TILE))
-        for col, row in levels.find(game.room.tiles, "w")
-    )
+    inside_wind = any(player.rect.overlaps(wind) for wind in game.wind_tiles)
     player.vx += student.wind_acceleration(player, inside_wind) * dt
     player.vx = max(-settings.RUN_SPEED * 1.8,
                     min(settings.RUN_SPEED * 1.8, player.vx)) if player.dash_time <= 0 else player.vx
@@ -406,6 +424,8 @@ def _substep(game: Game, controls: Controls, dt: float) -> None:
     player.on_ground = _move_y(player, dt, blocks, game.platforms,
                                game.ledges + active_crumble_tops)
     if player.on_ground:
+        player.grip_left = settings.WALL_GRIP_SECONDS
+        player.grabbing = False
         player.dashes = 1
         player.coyote = settings.COYOTE_TIME
         if not was_grounded:
@@ -418,6 +438,8 @@ def _substep(game: Game, controls: Controls, dt: float) -> None:
             player.jump_buffer = 0.0
             game.events.append("jump")
     player.wall_side = _touch_wall(player, blocks)
+    if player.wall_side == 0:
+        player.grabbing = False
 
     for block in game.blocks.values():
         support = (not block.broken and abs(player.bottom - block.rect.y) < 1.5
@@ -425,7 +447,7 @@ def _substep(game: Game, controls: Controls, dt: float) -> None:
                    and player.x < block.rect.right - 1)
         student.update_crumble(block, dt, support)
 
-    if player.y > settings.HEIGHT + 96:
+    if player.y > game.world_height + settings.CAMERA_OVERSCROLL:
         game.die()
         return
     _touch_symbols(game)
@@ -447,7 +469,8 @@ def update(game: Game, controls: Controls, seconds: float) -> None:
         dt = min(remaining, settings.STEP)
         inp = controls if first else Controls(
             left=controls.left, right=controls.right, up=controls.up,
-            down=controls.down, jump_held=controls.jump_held)
+            down=controls.down, jump_held=controls.jump_held,
+            grab_held=controls.grab_held)
         _substep(game, inp, dt)
         if game.finished or "hurt" in game.events or "room" in game.events:
             # On a transition, don't simulate leftover time in the next room.

@@ -2,7 +2,7 @@
 
 TILE = 32
 COLS = 24
-ROWS = 15
+ROWS = 15       # Visible rows; authored levels can be taller
 WIDTH = TILE * COLS
 HEIGHT = TILE * ROWS
 HUD_HEIGHT = 68
@@ -21,6 +21,9 @@ JUMP_CUT = 0.52        # Releasing jump early produces a shorter jump
 COYOTE_TIME = 0.095    # Short grace period after leaving a ledge
 JUMP_BUFFER = 0.105    # Remember a jump press shortly before landing
 WALL_SLIDE = 115.0
+WALL_CLIMB_SPEED = 125.0
+WALL_GRIP_SECONDS = 1.7   # Climbing stamina, replenished by landing
+CAMERA_OVERSCROLL = 96   # Reveal the last seconds of a bottomless fall
 WALL_JUMP_X = 310.0
 WALL_JUMP_Y = 560.0
 WALL_LOCK = 0.13

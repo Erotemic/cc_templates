@@ -41,17 +41,24 @@ mission, manually or automatically check the corresponding success criterion.
 
 ## Map design guidance
 
-The bounding grid is 24 columns × 15 rows, with 32 pixels per tile. Spawns,
+The view displays 24 columns × 15 rows, with 32 pixels per tile. Rooms have
+24 columns and 20–31 authored rows; the camera follows the climber vertically.
+Students may author any height from 15 rows upward. Spawns,
 exits, checkpoints, platform runs, jump-through ledges, and hazards use letters. The validator
 reports map-shape errors with row and column references, and unknown
 `next_room` destinations by name. This is a *syntactic* validator; no
 algorithm can guarantee a platforming level feels fair. Have students play
 their rooms and obtain peer feedback.
 
-The starter includes four distinct rooms: Trailhead (jump and obstacle),
-Switchbacks (rising ledges and walls), Skybridge (a void crossing with a dash
-and an optional moving ledge), and Lantern Ridge (several staggered ledges
-and the most student-editable materials). Optional mechanics are not
+The starter includes four distinct rooms: Trailhead (an early spike and gap,
+then two climbable cliffs), Switchbacks (a 19-tile-high narrow wall-jump
+shaft with two resting ledges), Skybridge (two true gaps, a tall central
+pillar, and a horizontal dash), and Lantern Ridge (three successive towers,
+long falls, and two checkpoints). All rock faces have real collision geometry;
+missing bottom rows do not introduce an invisible floor. The player can
+hold **C** against a rock face and press **up/down** to climb, with a finite
+stamina pool replenished on landing. Jumping off a wall works without grabbing.
+Climb and camera code are supplied, not student prerequisites. Optional mechanics are not
 needed to unlock exits.
 
 ## Files and concepts
@@ -86,3 +93,17 @@ Allow students to use `--room` to practice a mechanic rather than forcing a
 full campaign replay. Students who cannot perform fast inputs can still
 learn from the headless simulation, level authoring, and mission tests.
 A further accessibility extension is configurable speed or assist mode.
+
+## Playtest the authored routes
+
+`tests/test_physics.py` includes recorded input sequences that complete each
+room without dying and without solving student TODOs. These are reachability
+regressions, not a substitute for first-time student playtesting. The tests
+also verify that empty gaps cause a true fall, cliff-grabbing can lift the
+player, and grip stamina runs out.
+
+Room-building questions to give students: How far apart can two facing walls
+be while remaining wall-jumpable? Where would you place a checkpoint after a
+long climb? Can you use a pit to teach dash timing without making the level
+impossible for someone who has not yet coded crystal refills? Let students
+change the geometry and compare their predictions with actual play.

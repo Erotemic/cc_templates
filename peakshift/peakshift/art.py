@@ -8,6 +8,13 @@ import random
 from . import levels, settings, student
 
 
+def camera_top(game):
+    """Visible world-space Y, clamped beyond the map for short pit falls."""
+    wanted = game.player.y - settings.HEIGHT * 0.60
+    limit = max(0, game.world_height - settings.HEIGHT) + settings.CAMERA_OVERSCROLL
+    return max(0, min(wanted, limit))
+
+
 class Painter:
     def __init__(self, pygame):
         self.pg = pygame
@@ -16,6 +23,11 @@ class Painter:
         self.big = pygame.font.SysFont("dejavusans", 42, bold=True)
         self.help = False
         self.trail = []
+        self.fog_bands = []
+        for band in range(5):
+            fog = pygame.Surface((settings.WIDTH, settings.TILE), pygame.SRCALPHA)
+            fog.fill((16, 13, 37, 24 + band * 11))
+            self.fog_bands.append(fog)
         rng = random.Random(401)
         self.stars = [(rng.randrange(settings.WIDTH), rng.randrange(360),
                        rng.choice((1, 1, 1, 2))) for _ in range(75)]
@@ -47,15 +59,21 @@ class Painter:
             points.extend([(settings.WIDTH + 20, settings.HEIGHT)])
             pg.draw.polygon(surface, color, points)
 
-    def tile(self, surface, col, row, symbol, game, seconds):
+    def tile(self, surface, col, row, symbol, game, seconds, camera_y=0):
         pg = self.pg
         t = settings.TILE
-        x, y = col * t, row * t
+        x, y = col * t, round(row * t - camera_y)
         r = pg.Rect(x, y, t, t)
         if symbol == "#":
             pg.draw.rect(surface, (76, 92, 121), r)
-            pg.draw.rect(surface, (109, 126, 155), (x, y, t, 4))
-            pg.draw.line(surface, (58, 73, 104), (x, y + 28), (x + t, y + 28), 2)
+            # Exposed edges make vertical climbable faces easier to read.
+            tiles = game.room.tiles
+            if row == 0 or tiles[row - 1][col] != "#":
+                pg.draw.rect(surface, (134, 155, 175), (x, y, t, 4))
+            if col == 0 or tiles[row][col - 1] != "#":
+                pg.draw.rect(surface, (113, 139, 153), (x, y, 4, t))
+            if col == len(tiles[row]) - 1 or tiles[row][col + 1] != "#":
+                pg.draw.rect(surface, (55, 72, 102), (x + t - 4, y, 4, t))
             if (col * 3 + row * 7) % 5 == 0:
                 pg.draw.line(surface, (61, 77, 106), (x + 8, y + 13), (x + 17, y + 13), 2)
         elif symbol == "b" and not game.blocks[(col, row)].broken:
@@ -106,18 +124,18 @@ class Painter:
                              (x + 2 + slide // 2, y + dy),
                              (x + 6 + slide // 2, y + dy - 3), 2)
 
-    def player(self, surface, player, seconds):
+    def player(self, surface, player, seconds, camera_y=0):
         pg = self.pg
         p = player
-        px, py = int(p.x), int(p.y)
+        px, py = int(p.x), int(p.y - camera_y)
         if p.dash_time > 0:
-            self.trail.append((px, py, 0.18))
+            self.trail.append((p.x, p.y, 0.18))
         self.trail = [(x, y, ttl - 1 / 60) for x, y, ttl in self.trail if ttl > 1 / 60][-12:]
         for x, y, ttl in self.trail:
             ghost = pg.Surface((settings.PLAYER_W, settings.PLAYER_H), pg.SRCALPHA)
             pg.draw.rect(ghost, (*student.HERO_COLOR, round(90 * ttl / 0.18)),
                          ghost.get_rect(), border_radius=6)
-            surface.blit(ghost, (x, y))
+            surface.blit(ghost, (round(x), round(y - camera_y)))
         scarf_direction = -p.facing
         pg.draw.polygon(surface, student.SCARF_COLOR,
                         [(px + 10, py + 8),
@@ -131,32 +149,47 @@ class Painter:
         pg.draw.rect(surface, (44, 58, 82), (eye_x, py + 8, 3, 3))
         if p.dashes:
             pg.draw.line(surface, (152, 239, 241), (px + 5, py + 2), (px + 15, py + 2), 2)
+        if p.grabbing:
+            # Small hand detail on the wall side; the grip bar is in the HUD.
+            hand_x = px - 3 if p.wall_side < 0 else px + settings.PLAYER_W - 1
+            pg.draw.rect(surface, (158, 242, 207), (hand_x, py + 11, 5, 8),
+                         border_radius=2)
         pg.draw.rect(surface, (55, 65, 87), (px + 2, py + 21, 6, 5), border_radius=2)
         pg.draw.rect(surface, (55, 65, 87), (px + 12, py + 21, 6, 5), border_radius=2)
 
     def draw(self, surface, game, seconds, *, paused=False, muted=False):
         pg = self.pg
         self.background(surface, game, seconds)
+        camera_y = camera_top(game)
         t = settings.TILE
+        # Clip the moving world so it does not overlap the permanent HUD.
+        surface.set_clip(pg.Rect(0, 0, settings.WIDTH, settings.HEIGHT))
+        # Mist below the last cliffs communicates the depth of a floorless fall.
+        for band, fog in enumerate(self.fog_bands):
+            fog_y = game.world_height - (5 - band) * t - camera_y
+            surface.blit(fog, (0, round(fog_y)))
         for row, line in enumerate(game.room.tiles):
+            if row * t > camera_y + settings.HEIGHT or (row + 1) * t < camera_y:
+                continue
             for col, symbol in enumerate(line):
                 if symbol in "#b^*RCGw":
-                    self.tile(surface, col, row, symbol, game, seconds)
+                    self.tile(surface, col, row, symbol, game, seconds, camera_y)
         for ledge in game.ledges:
             pg.draw.rect(surface, (124, 171, 163),
-                         pg.Rect(round(ledge.x), round(ledge.y), round(ledge.w), 8),
+                         pg.Rect(round(ledge.x), round(ledge.y - camera_y), round(ledge.w), 8),
                          border_radius=3)
             pg.draw.line(surface, (181, 235, 198),
-                         (round(ledge.x) + 2, round(ledge.y) + 1),
-                         (round(ledge.right) - 2, round(ledge.y) + 1), 2)
+                         (round(ledge.x) + 2, round(ledge.y - camera_y) + 1),
+                         (round(ledge.right) - 2, round(ledge.y - camera_y) + 1), 2)
         for platform in game.platforms:
             pg.draw.rect(surface, (76, 156, 200),
-                         pg.Rect(round(platform.x), round(platform.y),
+                         pg.Rect(round(platform.x), round(platform.y - camera_y),
                                  round(platform.w), 10), border_radius=3)
             pg.draw.line(surface, (141, 222, 246),
-                         (round(platform.x) + 3, round(platform.y) + 2),
-                         (round(platform.x + platform.w) - 3, round(platform.y) + 2), 2)
-        self.player(surface, game.player, seconds)
+                         (round(platform.x) + 3, round(platform.y - camera_y) + 2),
+                         (round(platform.x + platform.w) - 3, round(platform.y - camera_y) + 2), 2)
+        self.player(surface, game.player, seconds, camera_y)
+        surface.set_clip(None)
 
         # HUD is BELOW gameplay so it cannot obscure the ground or spikes.
         pg.draw.rect(surface, (13, 22, 42),
@@ -167,14 +200,21 @@ class Painter:
                    (164, 232, 246))
         self.label(surface, game.room.name, (170, settings.HEIGHT + 9))
         self.label(surface, f"DASH {'READY' if game.player.dashes else 'USED'}",
-                   (445, settings.HEIGHT + 9),
+                   (437, settings.HEIGHT + 9),
                    (152, 241, 201) if game.player.dashes else (239, 150, 170))
-        self.label(surface, f"BERRIES {game.berries}", (612, settings.HEIGHT + 9))
-        self.label(surface, game.room.hint, (18, settings.HEIGHT + 39),
+        self.label(surface, f"BERRIES {game.berries}", (617, settings.HEIGHT + 9))
+        # Grip stamina stays visible during the long vertical shaft.
+        bar_x, bar_y, bar_w = 335, settings.HEIGHT + 43, 96
+        self.label(surface, 'GRIP', (288, settings.HEIGHT + 38), small=True)
+        pg.draw.rect(surface, (52, 66, 87), (bar_x, bar_y, bar_w, 9), border_radius=3)
+        fill = round(bar_w * game.player.grip_left / settings.WALL_GRIP_SECONDS)
+        if fill:
+            pg.draw.rect(surface, (134, 222, 205), (bar_x, bar_y, fill, 9), border_radius=3)
+        self.label(surface, game.room.hint, (18, settings.HEIGHT + 26),
                    (177, 191, 214), small=True)
         self.label(surface, f"DEATHS {game.deaths}  TIME {game.elapsed:05.1f}",
                    (546, settings.HEIGHT + 38), (173, 193, 210), small=True)
-        self.label(surface, "H: help   R: restart   M: mute", (18, 9),
+        self.label(surface, "C: GRAB   H: help   R: restart   M: mute", (18, 9),
                    (185, 194, 220), small=True)
         if game.finished or self.help or paused:
             shade = pg.Surface((settings.WIDTH, settings.HEIGHT), pg.SRCALPHA)
@@ -193,9 +233,10 @@ class Painter:
                 lines = ["A / D or Left / Right : walk",
                          "Space or Z : jump (hold longer for a higher jump)",
                          "X or Left Shift : dash (8 directions with WASD / arrows)",
+                         "C: hold a cliff; C + UP/DOWN: climb (grip stamina).",
                          "Jump into a wall, then jump again to kick off.",
                          "Land to get your dash back. C flags save progress.",
-                         "Spikes and gaps respawn you. R restarts this room.",
+                         "There is NO floor below gaps. Falling respawns you.",
                          "M : mute    P : pause    H : close help",
                          "Edit peakshift/student.py to build the other mechanics."]
             text = self.big.render(title, True, (169, 236, 246))

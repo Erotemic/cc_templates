@@ -79,6 +79,7 @@ def run_graphical(*, frames: int = 0, screenshot: str | None = None,
                 jump_pressed=jump_pressed,
                 jump_held=bool(pressed[pg.K_SPACE] or pressed[pg.K_z]),
                 dash_pressed=dash_pressed,
+                grab_held=bool(pressed[pg.K_c]),
             )
             if not paused and not painter.help:
                 update(game, controls, dt)
