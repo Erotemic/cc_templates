@@ -1,0 +1,17 @@
+[project]
+name = "peakshift-classroom"
+version = "0.1.0"
+description = "An authored-room, student-hackable precision platformer"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["pygame-ce>=2.5"]
+
+[build-system]
+requires = ["setuptools>=65"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["peakshift"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -11,6 +11,8 @@ Start with the project folder that matches the student's comfort level:
   data-driven program.
 * ``platformer``: a 2D pygame platformer.
 * ``rpg``: a larger pygame RPG with more structure.
+* ``peakshift``: Peakshift, an authored-room Celeste-inspired precision platformer
+  with dash and wall movement, plus student-coded optional mechanics.
 * ``undercode``: UnderCode, a pygame overworld and encounter template with
   separate overworld and encounter engines, Python letter-map stories, guided
   implementation exercises, and independent game-design challenges.
@@ -23,7 +25,7 @@ Running the games
 -----------------
 
 For the projects with a ``pyproject.toml`` (``platformer``, ``rpg``,
-``fpx3d``, ``undercode``), the simplest way to run them is from inside the
+``fpx3d``, ``undercode``, ``peakshift``), the simplest way to run them is from inside the
 project folder:
 
 .. code-block:: bash
